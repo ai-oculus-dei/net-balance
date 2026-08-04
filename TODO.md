@@ -2,12 +2,12 @@
 
 ## Configuración manual pendiente (una sola vez)
 
-- [ ] Ejecutar `supabase/migrations/0001_schema.sql` y `0002_rls.sql` en el SQL Editor de Supabase (en ese orden).
-- [ ] Supabase Dashboard → Authentication → Providers → Email → desactivar "Allow new users to sign up".
-- [ ] Supabase Dashboard → Authentication → Users → crear las 2 cuentas (`amda.97@gmail.com`, `lauraplaza403@gmail.com`).
-- [ ] Ejecutar los `UPDATE` de renombrado de perfiles indicados al final de `0001_schema.sql` (Alvaro / Lauri).
-- [ ] GitHub → Settings → Pages → Build and deployment → Source = "GitHub Actions".
-- [ ] GitHub → Settings → Secrets and variables → Actions → añadir `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
+- [x] Ejecutar `supabase/migrations/0001_schema.sql` y `0002_rls.sql` en el SQL Editor de Supabase (en ese orden).
+- [x] Supabase Dashboard → Authentication → Providers → Email → desactivar "Allow new users to sign up".
+- [x] Supabase Dashboard → Authentication → Users → crear las 2 cuentas (`amda.97@gmail.com`, `lauraplaza403@gmail.com`).
+- [x] Ejecutar los `UPDATE` de renombrado de perfiles indicados al final de `0001_schema.sql` (Alvaro / Lauri).
+- [x] GitHub → Settings → Pages → Build and deployment → Source = "GitHub Actions".
+- [x] GitHub → Settings → Secrets and variables → Actions → añadir `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
 - [ ] Copiar `.env.example` a `.env.local` y rellenarlo para desarrollo local (`npm run dev`).
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)

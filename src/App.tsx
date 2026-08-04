@@ -23,6 +23,7 @@ function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
+          <Route path="nuevo-gasto" element={<DashboardPage />} />
           <Route path="movimientos" element={<MovimientosPage />} />
           <Route path="objetivos" element={<ObjetivosPage />} />
           <Route path="ajustes" element={<AjustesPage />} />

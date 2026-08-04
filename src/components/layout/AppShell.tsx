@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { QuickAddButton } from '../movimientos/QuickAddButton';
 import { QuickAddSheet } from '../movimientos/QuickAddSheet';
@@ -13,6 +13,19 @@ import { useAuth } from '../../lib/auth/useAuth';
 export function AppShell() {
   const { session } = useAuth();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Permite un acceso directo instalado aparte en el movil (ver Ajustes) que abre la app
+  // directamente sobre el alta rapida, sin pasar por el dashboard.
+  useEffect(() => {
+    if (location.pathname === '/nuevo-gasto') setQuickAddOpen(true);
+  }, [location.pathname]);
+
+  function handleCloseQuickAdd() {
+    setQuickAddOpen(false);
+    if (location.pathname === '/nuevo-gasto') navigate('/', { replace: true });
+  }
 
   async function handleCreated(values: MovimientoFormValues) {
     if (!session) return;
@@ -47,7 +60,7 @@ export function AppShell() {
       </main>
 
       <QuickAddButton onClick={() => setQuickAddOpen(true)} />
-      <QuickAddSheet open={quickAddOpen} onClose={() => setQuickAddOpen(false)} onCreated={handleCreated} />
+      <QuickAddSheet open={quickAddOpen} onClose={handleCloseQuickAdd} onCreated={handleCreated} />
     </div>
   );
 }

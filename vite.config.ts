@@ -26,6 +26,16 @@ export default defineConfig({
           { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           { src: 'icons/icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
+        // Menu al mantener pulsado el icono instalado (soportado en Android; iOS lo ignora,
+        // por eso ademas existe el acceso directo por URL de Ajustes -> "Nuevo gasto").
+        shortcuts: [
+          {
+            name: 'Nuevo gasto',
+            short_name: 'Nuevo gasto',
+            url: `${base}#/nuevo-gasto`,
+            icons: [{ src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml' }],
+          },
+        ],
       },
       workbox: {
         // Los datos financieros nunca deben servirse desde caché: solo se precachea el app shell.

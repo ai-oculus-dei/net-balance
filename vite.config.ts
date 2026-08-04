@@ -1,0 +1,36 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
+
+// Repo name is "net-balance" -> published at https://ai-oculus-dei.github.io/net-balance/
+const base = '/net-balance/'
+
+export default defineConfig({
+  base,
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'Net Balance',
+        short_name: 'NetBalance',
+        description: 'Gastos, ingresos y objetivos de ahorro',
+        start_url: base,
+        scope: base,
+        display: 'standalone',
+        background_color: '#0d1117',
+        theme_color: '#0d1117',
+        icons: [
+          { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'icons/icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        // Los datos financieros nunca deben servirse desde caché: solo se precachea el app shell.
+        navigateFallbackDenylist: [/supabase\.co/],
+      },
+    }),
+  ],
+})

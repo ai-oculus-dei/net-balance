@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+/* Dark mode se activa con clase .dark en <html> (ver src/lib/theme/ThemeProvider.tsx) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-border: #d7dae0;
+  --color-text: #14151a;
+  --color-text-muted: #5b5f6b;
+  --color-accent: #2563eb;
+  --color-gain: #16a34a;
+  --color-loss: #dc2626;
+}
+
+.dark {
+  --color-bg: #0d0f14;
+  --color-surface: #14161d;
+  --color-border: #262933;
+  --color-text: #e6e8ec;
+  --color-text-muted: #8b909c;
+  --color-accent: #3b82f6;
+  --color-gain: #22c55e;
+  --color-loss: #ef4444;
+}
+
+body {
+  margin: 0;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  background: var(--color-bg);
+  color: var(--color-text);
+  color-scheme: light dark;
+}
+
+#root {
+  min-height: 100svh;
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { ObjetivoCard } from '../components/objetivos/ObjetivoCard';
@@ -10,7 +10,8 @@ import type { ObjetivoAhorro } from '../lib/supabase/database.types';
 
 export function ObjetivosPage() {
   const { objetivos, loading, crear, actualizar, borrar } = useObjetivos();
-  const { ingresoReal, loading: loadingIngreso } = useDisponibleMes();
+  const hoy = useMemo(() => new Date(), []);
+  const { ingresoReal, loading: loadingIngreso } = useDisponibleMes(hoy);
   const [creando, setCreando] = useState(false);
   const [editando, setEditando] = useState<ObjetivoAhorro | null>(null);
 

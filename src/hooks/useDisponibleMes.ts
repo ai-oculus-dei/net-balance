@@ -8,7 +8,11 @@ import { calcularAportacionDeseada } from '../lib/finance/calcularAportacionDese
 import { gastosFijosDelMes, indexarSubcategorias, ingresoRealDelMes } from '../lib/finance/taxonomia';
 
 export function useDisponibleMes(fecha: Date = new Date()) {
-  const rango = useMemo(() => rangoDelMes(fecha), [fecha]);
+  // Clave estable (año-mes) en vez de la referencia de `fecha`: si quien llama pasa un `new Date()`
+  // fresco en cada render (o usa el valor por defecto), esto evita que useMemo/useEffect de abajo
+  // detecten un "cambio" en cada render y entren en bucle de recarga infinita.
+  const claveMes = `${fecha.getFullYear()}-${fecha.getMonth()}`;
+  const rango = useMemo(() => rangoDelMes(fecha), [claveMes]); // eslint-disable-line react-hooks/exhaustive-deps
   const { movimientos, loading: loadingMovimientos } = useMovimientos(rango);
   const { objetivos, loading: loadingObjetivos } = useObjetivos();
   const { subcategorias, loading: loadingTaxonomia } = useTaxonomia();
@@ -27,7 +31,8 @@ export function useDisponibleMes(fecha: Date = new Date()) {
     const { disponible, aportacionesAplicadas } = calcularDisponible(ingresoReal, gastosFijos, aportacionesDeseadas);
 
     return { ingresoReal, gastosFijos, disponible, aportacionesDeseadas, aportacionesAplicadas, objetivosActivos };
-  }, [movimientos, objetivos, subcategorias, fecha]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movimientos, objetivos, subcategorias, claveMes]);
 
   return {
     ...resultado,

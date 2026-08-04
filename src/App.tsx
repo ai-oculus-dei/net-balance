@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MovimientosPage } from './pages/MovimientosPage';
 import { ObjetivosPage } from './pages/ObjetivosPage';
+import { VisualizacionesPage } from './pages/VisualizacionesPage';
 import { AjustesPage } from './pages/AjustesPage';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
           <Route path="nuevo-gasto" element={<DashboardPage />} />
           <Route path="movimientos" element={<MovimientosPage />} />
           <Route path="objetivos" element={<ObjetivosPage />} />
+          <Route path="visualizaciones" element={<VisualizacionesPage />} />
           <Route path="ajustes" element={<AjustesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

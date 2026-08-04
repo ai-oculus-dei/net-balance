@@ -97,6 +97,13 @@ Disponible = Ingreso real del mes − Gastos fijos del mes − Aportaciones a ob
 - Progreso de cada objetivo de ahorro (acumulado vs meta / % de presupuesto recurrente usado).
 - Vista combinada: movimientos propios + movimientos compartidos visibles del otro usuario.
 
+**Página "Visualizaciones" (comparador libre):**
+- Rango de meses (selector "Desde" / "Hasta", tipo mes/año).
+- Una o varias "líneas" a comparar, cada una una categoría + subcategoría (o **Todas** las subcategorías de esa categoría, sumando su balance neto). Botón "+" para añadir más líneas, hasta un máximo de 8 (techo real de la paleta de colores categórica sin perder distinción por daltonismo).
+- Gráfico de serie temporal (una serie por línea, un punto por mes del rango).
+- Gráfico de tarta (una porción por línea, con el total neto de todo el rango).
+- El mismo color identifica a la misma línea en ambos gráficos.
+
 ## 10. Estilo visual
 
 - **Temas**: Claro y Oscuro, seleccionables por el usuario. La app recuerda la última preferencia elegida (no hay un tema por defecto fijo; se persiste por usuario/dispositivo).

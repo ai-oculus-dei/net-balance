@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { IconAjustes, IconInicio, IconMovimientos, IconObjetivos } from './NavIcons';
+import { IconAjustes, IconInicio, IconMovimientos, IconObjetivos, IconVisualizaciones } from './NavIcons';
 
 const links = [
   { to: '/', label: 'Inicio', end: true, Icon: IconInicio },
   { to: '/movimientos', label: 'Movimientos', Icon: IconMovimientos },
   { to: '/objetivos', label: 'Objetivos', Icon: IconObjetivos },
+  { to: '/visualizaciones', label: 'Visualizaciones', Icon: IconVisualizaciones },
   { to: '/ajustes', label: 'Ajustes', Icon: IconAjustes },
 ];
 

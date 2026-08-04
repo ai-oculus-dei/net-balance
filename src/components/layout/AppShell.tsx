@@ -5,7 +5,9 @@ import { QuickAddButton } from '../movimientos/QuickAddButton';
 import { QuickAddSheet } from '../movimientos/QuickAddSheet';
 import type { MovimientoFormValues } from '../movimientos/MovimientoForm';
 import { crearMovimiento } from '../../lib/supabase/queries/movimientos';
+import { crearAportacion } from '../../lib/supabase/queries/aportaciones';
 import { emitMovimientosChanged } from '../../lib/events/movimientosBus';
+import { emitObjetivosChanged } from '../../lib/events/objetivosBus';
 import { useAuth } from '../../lib/auth/useAuth';
 
 export function AppShell() {
@@ -14,7 +16,7 @@ export function AppShell() {
 
   async function handleCreated(values: MovimientoFormValues) {
     if (!session) return;
-    await crearMovimiento({
+    const movimiento = await crearMovimiento({
       nombre: values.nombre,
       fecha: values.fecha,
       importe: values.importe,
@@ -25,6 +27,15 @@ export function AppShell() {
       nota: values.nota || null,
     });
     emitMovimientosChanged();
+
+    if (values.aportacion) {
+      await crearAportacion({
+        movimiento_id: movimiento.id,
+        objetivo_id: values.aportacion.objetivoId,
+        importe: values.aportacion.importe,
+      });
+      emitObjetivosChanged();
+    }
   }
 
   return (

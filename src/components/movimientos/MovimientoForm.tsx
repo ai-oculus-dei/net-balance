@@ -7,8 +7,9 @@ import { CategoriaSelect } from './CategoriaSelect';
 import { SubcategoriaSelect } from './SubcategoriaSelect';
 import { useTaxonomia } from '../../hooks/useTaxonomia';
 import { useProfiles } from '../../hooks/useProfiles';
+import { useObjetivos } from '../../hooks/useObjetivos';
 import { useAuth } from '../../lib/auth/useAuth';
-import type { Movimiento, Visibilidad } from '../../lib/supabase/database.types';
+import type { AportacionObjetivo, Movimiento, Visibilidad } from '../../lib/supabase/database.types';
 
 export interface MovimientoFormValues {
   nombre: string;
@@ -18,10 +19,12 @@ export interface MovimientoFormValues {
   usuario_id: string;
   visibilidad: Visibilidad;
   nota: string;
+  aportacion: { objetivoId: string; importe: number } | null;
 }
 
 interface MovimientoFormProps {
   initialValues?: Partial<Movimiento>;
+  aportacionInicial?: AportacionObjetivo | null;
   onSubmit: (values: MovimientoFormValues) => Promise<void>;
   onCancel: () => void;
 }
@@ -32,10 +35,11 @@ function toDatetimeLocal(iso?: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function MovimientoForm({ initialValues, onSubmit, onCancel }: MovimientoFormProps) {
+export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onCancel }: MovimientoFormProps) {
   const { session } = useAuth();
   const { categorias, subcategorias: todasLasSubcategorias, subcategoriasDe, loading: loadingTaxonomia } = useTaxonomia();
   const { profiles } = useProfiles();
+  const { objetivos } = useObjetivos();
 
   const subInicial = initialValues?.subcategoria_id ?? null;
 
@@ -50,10 +54,17 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
   const [usuarioId, setUsuarioId] = useState(initialValues?.usuario_id ?? session?.user.id ?? '');
   const [visibilidad, setVisibilidad] = useState<Visibilidad>(initialValues?.visibilidad ?? 'privado');
   const [nota, setNota] = useState(initialValues?.nota ?? '');
+  const [objetivoDestino, setObjetivoDestino] = useState(aportacionInicial?.objetivo_id ?? '');
+  const [importeAportacion, setImporteAportacion] = useState(aportacionInicial?.importe ?? 0);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const subcategorias = categoriaId !== null ? subcategoriasDe(categoriaId) : [];
+  const subcategoriaSeleccionada = todasLasSubcategorias.find((s) => s.id === subcategoriaId);
+
+  const puedeAsignarAObjetivo =
+    esGasto && subcategoriaSeleccionada?.es_ahorro === true && usuarioId === session?.user.id;
+  const objetivosActivos = objetivos.filter((o) => o.activo);
 
   // Al editar un movimiento existente, deriva la categoria a partir de su subcategoria
   // en cuanto la taxonomia termina de cargar (solo tenemos subcategoria_id guardado).
@@ -63,6 +74,17 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
     if (sub) setCategoriaId(sub.categoria_id);
   }, [subInicial, todasLasSubcategorias, categoriaId]);
 
+  // Si el importe se reduce por debajo de lo ya asignado a un objetivo, ajusta la asignacion.
+  useEffect(() => {
+    setImporteAportacion((actual) => (actual > magnitud ? magnitud : actual));
+  }, [magnitud]);
+
+  function handleSeleccionarObjetivo(id: string) {
+    setObjetivoDestino(id);
+    if (id && importeAportacion <= 0) setImporteAportacion(magnitud);
+    if (!id) setImporteAportacion(0);
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!subcategoriaId) {
@@ -71,6 +93,10 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
     }
     if (magnitud <= 0) {
       setError('Introduce un importe.');
+      return;
+    }
+    if (puedeAsignarAObjetivo && objetivoDestino && importeAportacion <= 0) {
+      setError('Introduce cuánto destinas al objetivo.');
       return;
     }
     setGuardando(true);
@@ -84,6 +110,10 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
         usuario_id: usuarioId,
         visibilidad,
         nota,
+        aportacion:
+          puedeAsignarAObjetivo && objetivoDestino
+            ? { objetivoId: objetivoDestino, importe: Math.min(importeAportacion, magnitud) }
+            : null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar el movimiento.');
@@ -124,6 +154,42 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
           <CategoriaSelect categorias={categorias} value={categoriaId} onChange={(id) => { setCategoriaId(id); setSubcategoriaId(null); }} />
           <SubcategoriaSelect subcategorias={subcategorias} value={subcategoriaId} onChange={setSubcategoriaId} />
         </>
+      )}
+
+      {subcategoriaSeleccionada?.es_traspaso && (
+        <p className="text-xs text-[var(--color-text-muted)] bg-black/5 dark:bg-white/5 rounded-md px-3 py-2">
+          Un movimiento en {subcategoriaSeleccionada.nombre} es un traspaso a otra cuenta tuya, no dinero perdido:
+          aunque salga en rojo del balance, sigue siendo tuyo, solo que guardado en otro sitio.
+        </p>
+      )}
+
+      {puedeAsignarAObjetivo && (
+        <div className="flex flex-col gap-2 border border-[var(--color-border)] rounded-md p-3">
+          <Select
+            label="Destinar a un objetivo de ahorro (opcional)"
+            value={objetivoDestino}
+            onChange={(e) => handleSeleccionarObjetivo(e.target.value)}
+          >
+            <option value="">No asignar</option>
+            {objetivosActivos.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.nombre}
+              </option>
+            ))}
+          </Select>
+          {objetivoDestino && (
+            <Input
+              label="Cantidad destinada (€)"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0.01"
+              max={magnitud}
+              value={importeAportacion || ''}
+              onChange={(e) => setImporteAportacion(Math.min(Number(e.target.value), magnitud))}
+            />
+          )}
+        </div>
       )}
 
       <Input label="Fecha" type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} required />

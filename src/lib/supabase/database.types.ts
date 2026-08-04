@@ -42,6 +42,8 @@ export interface Subcategoria {
   nombre: string;
   es_ingreso_real: boolean;
   es_gasto_fijo: boolean;
+  es_ahorro: boolean;
+  es_traspaso: boolean;
 }
 
 export interface Movimiento {
@@ -134,27 +136,27 @@ export interface ObjetivoAhorroUpdate {
 export interface AportacionObjetivo {
   id: string;
   objetivo_id: string;
-  anio_mes: string;
-  importe_calculado: number;
-  importe_aplicado: number;
+  movimiento_id: string | null;
+  importe: number;
   created_at: string;
+  updated_at: string;
 }
 
 export interface AportacionObjetivoInsert {
   id?: string;
   objetivo_id: string;
-  anio_mes: string;
-  importe_calculado: number;
-  importe_aplicado: number;
+  movimiento_id?: string | null;
+  importe: number;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface AportacionObjetivoUpdate {
   id?: string;
   objetivo_id?: string;
-  anio_mes?: string;
-  importe_calculado?: number;
-  importe_aplicado?: number;
+  movimiento_id?: string | null;
+  importe?: number;
   created_at?: string;
+  updated_at?: string;
 }
 

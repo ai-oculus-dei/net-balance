@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
@@ -8,7 +8,9 @@ import { useMovimientos } from '../hooks/useMovimientos';
 import { useTaxonomia } from '../hooks/useTaxonomia';
 import { rangoDelMes } from '../lib/finance/fechas';
 import { indexarSubcategorias } from '../lib/finance/taxonomia';
-import type { Movimiento } from '../lib/supabase/database.types';
+import { fetchAportacionPorMovimiento, sincronizarAportacion } from '../lib/supabase/queries/aportaciones';
+import { emitObjetivosChanged } from '../lib/events/objetivosBus';
+import type { AportacionObjetivo, Movimiento } from '../lib/supabase/database.types';
 
 export function MovimientosPage() {
   const [offsetMeses, setOffsetMeses] = useState(0);
@@ -23,6 +25,21 @@ export function MovimientosPage() {
   const subcategoriasPorId = useMemo(() => indexarSubcategorias(subcategorias), [subcategorias]);
 
   const [editando, setEditando] = useState<Movimiento | null>(null);
+  const [aportacionEditando, setAportacionEditando] = useState<AportacionObjetivo | null>(null);
+
+  useEffect(() => {
+    if (!editando) {
+      setAportacionEditando(null);
+      return;
+    }
+    let cancelado = false;
+    fetchAportacionPorMovimiento(editando.id).then((a) => {
+      if (!cancelado) setAportacionEditando(a);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [editando]);
 
   async function handleUpdate(values: MovimientoFormValues) {
     if (!editando) return;
@@ -35,6 +52,8 @@ export function MovimientosPage() {
       visibilidad: values.visibilidad,
       nota: values.nota || null,
     });
+    await sincronizarAportacion(editando.id, aportacionEditando, values.aportacion);
+    emitObjetivosChanged();
     setEditando(null);
   }
 
@@ -82,11 +101,17 @@ export function MovimientosPage() {
       <Modal open={editando !== null} onClose={() => setEditando(null)} title="Editar movimiento">
         {editando && (
           <div className="flex flex-col gap-4">
-            <MovimientoForm initialValues={editando} onSubmit={handleUpdate} onCancel={() => setEditando(null)} />
+            <MovimientoForm
+              initialValues={editando}
+              aportacionInicial={aportacionEditando}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditando(null)}
+            />
             <Button
               variant="danger"
               onClick={async () => {
                 await borrar(editando.id);
+                emitObjetivosChanged();
                 setEditando(null);
               }}
             >

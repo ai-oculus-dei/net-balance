@@ -53,6 +53,13 @@ create table subcategorias (
   -- true para las subcategorias fijas de la seccion 6: el "disponible" (seccion 8) resta el
   -- balance neto (gasto - ingreso) de estas subcategorias como "gastos fijos" cada mes.
   es_gasto_fijo   boolean not null default false,
+  -- true solo para "Ahorro": un gasto en esta subcategoria puede destinarse (total o
+  -- parcialmente) a un objetivo de ahorro concreto (seccion 7), sumando a su "acumulado".
+  es_ahorro       boolean not null default false,
+  -- true para "Ahorro" e "Inversiones": son traspasos a otra cuenta propia, no gasto real.
+  -- Se usa solo para mostrar un aviso informativo en el formulario de alta, sin efecto en
+  -- ningun calculo (el balance neto por categoria ya reflejaria un reembolso si lo hubiera).
+  es_traspaso     boolean not null default false,
   unique (categoria_id, nombre)
 );
 
@@ -143,6 +150,10 @@ update subcategorias set es_gasto_fijo = true where nombre in (
   'Electrónica'
 );
 
+-- "Ahorro" permite destinar el gasto a un objetivo; "Ahorro" e "Inversiones" son traspasos
+update subcategorias set es_ahorro = true where nombre = 'Ahorro';
+update subcategorias set es_traspaso = true where nombre in ('Ahorro', 'Inversiones');
+
 -- ============================================================
 -- MOVIMIENTOS (seccion 3)
 -- ============================================================
@@ -186,16 +197,49 @@ create table objetivos_ahorro (
   constraint chk_automatico_valido   check (modo_aportacion <> 'automatico' or (tipo = 'acumulativo' and fecha_objetivo is not null))
 );
 
--- Log de aportaciones mensuales aplicadas (auditoria + fuente de "acumulado")
+-- Aportaciones reales a un objetivo, originadas al registrar un gasto en la subcategoria
+-- "Ahorro" (es_ahorro = true) y elegir a que objetivo se destina (seccion 7). Es la fuente
+-- unica de verdad de "acumulado": un trigger (mas abajo) lo mantiene sincronizado.
 create table aportaciones_objetivo (
-  id                uuid primary key default gen_random_uuid(),
-  objetivo_id       uuid not null references objetivos_ahorro(id) on delete cascade,
-  anio_mes          date not null, -- primer dia del mes
-  importe_calculado numeric(12,2) not null, -- antes de la reduccion proporcional (seccion 8)
-  importe_aplicado  numeric(12,2) not null, -- despues de la reduccion proporcional
-  created_at        timestamptz not null default now(),
-  unique (objetivo_id, anio_mes)
+  id            uuid primary key default gen_random_uuid(),
+  objetivo_id   uuid not null references objetivos_ahorro(id) on delete cascade,
+  movimiento_id uuid references movimientos(id) on delete cascade,
+  importe       numeric(12,2) not null check (importe > 0),
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (movimiento_id)
 );
+
+-- Mantiene objetivos_ahorro.acumulado sincronizado con la suma de sus aportaciones,
+-- para que crear/editar/borrar una aportacion (o borrar el movimiento que la origino,
+-- via cascade) mueva la barra de progreso automaticamente.
+create or replace function aplicar_aportacion_objetivo()
+returns trigger
+language plpgsql
+as $$
+begin
+  if TG_OP = 'INSERT' then
+    update objetivos_ahorro set acumulado = acumulado + new.importe where id = new.objetivo_id;
+    return new;
+  elsif TG_OP = 'DELETE' then
+    update objetivos_ahorro set acumulado = acumulado - old.importe where id = old.objetivo_id;
+    return old;
+  elsif TG_OP = 'UPDATE' then
+    if old.objetivo_id = new.objetivo_id then
+      update objetivos_ahorro set acumulado = acumulado - old.importe + new.importe where id = new.objetivo_id;
+    else
+      update objetivos_ahorro set acumulado = acumulado - old.importe where id = old.objetivo_id;
+      update objetivos_ahorro set acumulado = acumulado + new.importe where id = new.objetivo_id;
+    end if;
+    return new;
+  end if;
+  return null;
+end;
+$$;
+
+create trigger trg_aportacion_objetivo_insert after insert on aportaciones_objetivo for each row execute function aplicar_aportacion_objetivo();
+create trigger trg_aportacion_objetivo_update after update on aportaciones_objetivo for each row execute function aplicar_aportacion_objetivo();
+create trigger trg_aportacion_objetivo_delete after delete on aportaciones_objetivo for each row execute function aplicar_aportacion_objetivo();
 
 -- ============================================================
 -- TRIGGERS updated_at
@@ -208,5 +252,6 @@ begin
 end;
 $$;
 
-create trigger trg_movimientos_updated_at before update on movimientos      for each row execute function set_updated_at();
-create trigger trg_objetivos_updated_at   before update on objetivos_ahorro for each row execute function set_updated_at();
+create trigger trg_movimientos_updated_at   before update on movimientos          for each row execute function set_updated_at();
+create trigger trg_objetivos_updated_at     before update on objetivos_ahorro     for each row execute function set_updated_at();
+create trigger trg_aportaciones_updated_at  before update on aportaciones_objetivo for each row execute function set_updated_at();

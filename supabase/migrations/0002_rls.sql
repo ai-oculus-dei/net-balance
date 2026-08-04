@@ -70,20 +70,29 @@ create policy objetivos_delete on objetivos_ahorro
   for delete using (usuario_id = auth.uid());
 
 -- ============================================================
--- aportaciones_objetivo (solo lectura desde cliente; escritura via RPC security definer)
+-- aportaciones_objetivo (el usuario gestiona las aportaciones de SUS PROPIOS objetivos)
 -- ============================================================
 alter table aportaciones_objetivo enable row level security;
 
 create policy aportaciones_select on aportaciones_objetivo
   for select using (
-    exists (
-      select 1 from objetivos_ahorro o
-      where o.id = objetivo_id and o.usuario_id = auth.uid()
-    )
+    exists (select 1 from objetivos_ahorro o where o.id = objetivo_id and o.usuario_id = auth.uid())
   );
--- Sin policies de insert/update/delete para el rol authenticated: solo una funcion RPC
--- security definer (a implementar junto al calculo de "disponible", seccion 8) puede
--- escribir aqui, evitando que el cliente falsee el historico de aportaciones.
+
+create policy aportaciones_insert on aportaciones_objetivo
+  for insert with check (
+    exists (select 1 from objetivos_ahorro o where o.id = objetivo_id and o.usuario_id = auth.uid())
+  );
+
+create policy aportaciones_update on aportaciones_objetivo
+  for update
+  using (exists (select 1 from objetivos_ahorro o where o.id = objetivo_id and o.usuario_id = auth.uid()))
+  with check (exists (select 1 from objetivos_ahorro o where o.id = objetivo_id and o.usuario_id = auth.uid()));
+
+create policy aportaciones_delete on aportaciones_objetivo
+  for delete using (
+    exists (select 1 from objetivos_ahorro o where o.id = objetivo_id and o.usuario_id = auth.uid())
+  );
 
 -- ============================================================
 -- Paso operativo fuera de SQL (Supabase Dashboard):

@@ -78,6 +78,10 @@ Dos tipos de objetivo, cada usuario gestiona los suyos:
 - Se resetea cada mes (no acumula remanente).
 - Funciona como tope de gasto para ese mes.
 
+**Cómo se acumula de verdad (`acumulado` / barra de progreso):** el % o importe calculado en "Automático"/"Manual" es solo el **objetivo del mes** (lo que se muestra como "Ahorrar este mes" en Objetivos/Inicio) — no mueve la barra por sí solo. La barra sube únicamente cuando el usuario registra un **gasto real en la subcategoría "Ahorro"** (Finanzas) y, al darlo de alta, elige a qué objetivo de ahorro destinarlo (total o parcialmente): ese importe se suma al `acumulado` del objetivo elegido. Editar o borrar ese movimiento ajusta (o revierte) la barra en consecuencia. No existe ningún proceso automático de "cierre de mes" que sume el objetivo del mes al acumulado — la aportación real siempre es una acción explícita del usuario, ligada a un movimiento de dinero de verdad.
+
+**Aviso informativo en el alta de movimiento:** al elegir la subcategoría "Ahorro" o "Inversiones", se muestra un mensaje breve y no intrusivo recordando que un gasto en esas subcategorías es un traspaso a otra cuenta propia (no dinero perdido), aunque aparezca en rojo en el balance.
+
 ## 8. Cálculo de disponible
 
 ```

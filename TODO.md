@@ -10,7 +10,8 @@
 - [x] GitHub → Settings → Secrets and variables → Actions → añadir `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
 - [ ] Copiar `.env.example` a `.env.local` y rellenarlo para desarrollo local (`npm run dev`).
 - [x] Ejecutar `supabase/migrations/0003_subcategoria_facturas.sql` en el SQL Editor de Supabase (añade "Facturas" a Vivienda).
-- [ ] Ejecutar `supabase/migrations/0004_reemplazar_recurrentes_por_categorias_fijas.sql` en el SQL Editor de Supabase (elimina la funcionalidad de recurrentes y define "gastos fijos" por subcategoría — sección 6).
+- [x] Ejecutar `supabase/migrations/0004_reemplazar_recurrentes_por_categorias_fijas.sql` en el SQL Editor de Supabase (elimina la funcionalidad de recurrentes y define "gastos fijos" por subcategoría — sección 6).
+- [x] Ejecutar `supabase/migrations/0005_aportaciones_desde_ahorro.sql` en el SQL Editor de Supabase (nuevas columnas `es_ahorro`/`es_traspaso` en subcategorías, y redefine `aportaciones_objetivo` con el trigger que mantiene `acumulado` sincronizado — sección 7).
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)
 
@@ -20,7 +21,8 @@
 ## Mejoras conocidas / deuda técnica
 
 - [ ] Los iconos de `public/icons/*.svg` son un placeholder (monograma "NB"); sustituir por un diseño real cuando se defina la identidad visual de la app.
-- [ ] Persistencia de `aportaciones_objetivo`: hoy `useDisponibleMes` calcula el disponible y las aportaciones aplicadas en el cliente en cada carga, pero no las escribe todavía en la tabla `aportaciones_objetivo` (pensada para auditoría vía RPC `security definer`, ver sección 8 del plan de arquitectura). Sin esto, `acumulado` de cada objetivo no se actualiza solo — falta la función RPC que, al cierre de cada mes, sume la aportación aplicada al `acumulado` del objetivo y deje el registro en `aportaciones_objetivo`.
+- [ ] El "objetivo del mes" (sección 7, tarjetas "Ahorrar este mes") sigue siendo solo una referencia visual — no se aplica ni se recuerda automáticamente. Si en el futuro se quiere avisar cuando el usuario no ha destinado suficiente dinero real a un objetivo ese mes, haría falta comparar `aportaciones_objetivo` del mes en curso contra `calcularAportacionDeseada`.
+- [ ] La asignación de un gasto de "Ahorro" a un objetivo solo se puede hacer sobre movimientos propios (`usuario_id` = usuario de la sesión), nunca "a nombre del otro" — por las políticas RLS de `objetivos_ahorro` (individuales, sección 7), la sesión activa no puede ver los objetivos del otro usuario para poder elegirlos.
 - [ ] Tipos de `src/lib/supabase/database.types.ts` están escritos a mano porque no hay CLI de Supabase autenticado en este entorno. Cuando se disponga de `supabase login`, regenerar con:
       `npx supabase gen types typescript --project-id koyvpbsnrxqheaugkxbu --schema public > src/lib/supabase/database.types.ts`
 - [ ] `npm audit` reporta un aviso "high" sobre `react-router-dom` (GHSA-qwww-vcr4-c8h2, CSRF en "RSC Mode"). No aplica a esta app: es una SPA client-side con `HashRouter`, sin React Server Components ni server actions. Revisar si sale una versión >8.2.0 que lo resuelva sin downgrade.

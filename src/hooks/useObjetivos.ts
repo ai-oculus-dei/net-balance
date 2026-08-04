@@ -7,6 +7,7 @@ import {
   type NuevoObjetivo,
 } from '../lib/supabase/queries/objetivos';
 import type { ObjetivoAhorro } from '../lib/supabase/database.types';
+import { emitObjetivosChanged, onObjetivosChanged } from '../lib/events/objetivosBus';
 
 export function useObjetivos() {
   const [objetivos, setObjetivos] = useState<ObjetivoAhorro[]>([]);
@@ -26,19 +27,26 @@ export function useObjetivos() {
     recargar();
   }, [recargar]);
 
+  // Se refresca tambien cuando otra pantalla (p.ej. el alta rapida global de AppShell) crea
+  // una aportacion a un objetivo, cambiando su "acumulado".
+  useEffect(() => onObjetivosChanged(recargar), [recargar]);
+
   async function crear(objetivo: NuevoObjetivo) {
     await crearObjetivo(objetivo);
     await recargar();
+    emitObjetivosChanged();
   }
 
   async function actualizar(id: string, cambios: Partial<ObjetivoAhorro>) {
     await actualizarObjetivo(id, cambios);
     await recargar();
+    emitObjetivosChanged();
   }
 
   async function borrar(id: string) {
     await borrarObjetivo(id);
     await recargar();
+    emitObjetivosChanged();
   }
 
   return { objetivos, loading, error, crear, actualizar, borrar, recargar };

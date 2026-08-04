@@ -10,7 +10,7 @@ export function Select({ label, id, className = '', children, ...props }: Select
       {label && <span>{label}</span>}
       <select
         id={id}
-        className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md px-3 py-2 text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${className}`}
+        className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md px-3 py-2 text-base text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${className}`}
         {...props}
       >
         {children}

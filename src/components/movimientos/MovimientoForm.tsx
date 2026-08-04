@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Input } from '../ui/Input';
+import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { CategoriaSelect } from './CategoriaSelect';
@@ -68,6 +69,10 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
       setError('Selecciona una subcategoría.');
       return;
     }
+    if (magnitud <= 0) {
+      setError('Introduce un importe.');
+      return;
+    }
     setGuardando(true);
     setError(null);
     try {
@@ -103,15 +108,11 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
         </Button>
       </div>
 
-      <Input
+      <ImporteKeypadInput
         label="Importe"
-        type="number"
-        step="0.01"
-        min="0"
-        required
-        value={magnitud || ''}
-        onChange={(e) => setMagnitud(Number(e.target.value))}
-        className={esGasto ? 'text-[var(--color-loss)]' : 'text-[var(--color-gain)]'}
+        value={magnitud}
+        onChange={setMagnitud}
+        colorClassName={esGasto ? 'text-[var(--color-loss)]' : 'text-[var(--color-gain)]'}
       />
 
       <Input label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required placeholder="Cena viernes" />

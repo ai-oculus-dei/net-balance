@@ -42,7 +42,7 @@ Cada movimiento (gasto o ingreso) tiene:
 
 | Categoría | Subcategorías |
 |---|---|
-| Vivienda | Alquiler, Luz, Agua, Gas, Internet, Limpieza, Línea Móvil |
+| Vivienda | Alquiler, Luz, Agua, Gas, Internet, Limpieza, Línea Móvil, Facturas |
 | Transporte | Letra Coche, Combustible, Mantenimiento, Seguro Coche, TTP, Taxi/Uber, Parking, Peaje |
 | Alimentación | Supermercado, Expendedora, Chino, Comida a Domicilio, Alcohol, Refresco, Café, Restaurantes |
 | Salud | Seguro Médico, Farmacia, Peluquería, Higiene, Dentista, Fisioterapia |

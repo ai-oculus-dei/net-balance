@@ -65,6 +65,7 @@ insert into subcategorias (categoria_id, nombre) values
   ((select id from categorias where nombre = 'Vivienda'), 'Internet'),
   ((select id from categorias where nombre = 'Vivienda'), 'Limpieza'),
   ((select id from categorias where nombre = 'Vivienda'), 'Línea Móvil'),
+  ((select id from categorias where nombre = 'Vivienda'), 'Facturas'),
 
   ((select id from categorias where nombre = 'Transporte'), 'Letra Coche'),
   ((select id from categorias where nombre = 'Transporte'), 'Combustible'),
@@ -130,6 +131,7 @@ insert into subcategorias (categoria_id, nombre, es_ingreso_real) values
 
 -- ============================================================
 -- GASTOS RECURRENTES (definicion unica, se replica cada mes — seccion 6)
+-- `importe` admite signo: negativo = gasto fijo, positivo = ingreso recurrente (nomina, renta...)
 -- ============================================================
 create table gastos_recurrentes (
   id              uuid primary key default gen_random_uuid(),

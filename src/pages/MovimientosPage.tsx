@@ -42,14 +42,24 @@ export function MovimientosPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <Button variant="secondary" onClick={() => setOffsetMeses((o) => o - 1)}>
-          ← Anterior
-        </Button>
-        <h2 className="text-sm font-semibold capitalize">{etiquetaMes}</h2>
-        <Button variant="secondary" onClick={() => setOffsetMeses((o) => o + 1)}>
-          Siguiente →
-        </Button>
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOffsetMeses((o) => o - 1)}
+          aria-label="Mes anterior"
+          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-md border border-[var(--color-border)] text-lg text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
+        >
+          ‹
+        </button>
+        <h2 className="text-base font-semibold capitalize text-center truncate">{etiquetaMes}</h2>
+        <button
+          type="button"
+          onClick={() => setOffsetMeses((o) => o + 1)}
+          aria-label="Mes siguiente"
+          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-md border border-[var(--color-border)] text-lg text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
+        >
+          ›
+        </button>
       </div>
 
       <Card>

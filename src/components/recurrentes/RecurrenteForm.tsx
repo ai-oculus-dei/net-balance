@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Input } from '../ui/Input';
+import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { CategoriaSelect } from '../movimientos/CategoriaSelect';
@@ -10,7 +11,7 @@ import type { GastoRecurrente, Visibilidad } from '../../lib/supabase/database.t
 
 export interface RecurrenteFormValues {
   nombre: string;
-  importe: number; // negativo, siempre gasto
+  importe: number; // con signo: negativo = gasto fijo, positivo = ingreso recurrente (nómina, renta...)
   subcategoria_id: number;
   dia_del_mes: number;
   usuario_id: string;
@@ -30,6 +31,7 @@ export function RecurrenteForm({ initialValues, onSubmit, onCancel }: Recurrente
   const { categorias, subcategorias: todas, subcategoriasDe, loading: loadingTaxonomia } = useTaxonomia();
 
   const [nombre, setNombre] = useState(initialValues?.nombre ?? '');
+  const [esGasto, setEsGasto] = useState((initialValues?.importe ?? -1) < 0);
   const [importe, setImporte] = useState(initialValues?.importe !== undefined ? Math.abs(initialValues.importe) : 0);
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [subcategoriaId, setSubcategoriaId] = useState<number | null>(initialValues?.subcategoria_id ?? null);
@@ -53,12 +55,16 @@ export function RecurrenteForm({ initialValues, onSubmit, onCancel }: Recurrente
       setError('Selecciona una subcategoría.');
       return;
     }
+    if (importe <= 0) {
+      setError('Introduce un importe.');
+      return;
+    }
     setGuardando(true);
     setError(null);
     try {
       await onSubmit({
         nombre,
-        importe: -Math.abs(importe),
+        importe: esGasto ? -Math.abs(importe) : Math.abs(importe),
         subcategoria_id: subcategoriaId,
         dia_del_mes: diaDelMes,
         usuario_id: initialValues?.usuario_id ?? session!.user.id,
@@ -75,17 +81,27 @@ export function RecurrenteForm({ initialValues, onSubmit, onCancel }: Recurrente
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <Input label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required placeholder="Alquiler" />
+      <Input label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required placeholder="Alquiler, nómina..." />
 
-      <Input
+      <div className="grid grid-cols-2 gap-2">
+        <Button type="button" variant={esGasto ? 'danger' : 'secondary'} onClick={() => setEsGasto(true)}>
+          Gasto
+        </Button>
+        <Button
+          type="button"
+          variant={!esGasto ? 'primary' : 'secondary'}
+          className={!esGasto ? 'bg-[var(--color-gain)] hover:opacity-90' : ''}
+          onClick={() => setEsGasto(false)}
+        >
+          Ingreso
+        </Button>
+      </div>
+
+      <ImporteKeypadInput
         label="Importe (€)"
-        type="number"
-        step="0.01"
-        min="0"
-        required
-        value={importe || ''}
-        onChange={(e) => setImporte(Number(e.target.value))}
-        className="text-[var(--color-loss)]"
+        value={importe}
+        onChange={setImporte}
+        colorClassName={esGasto ? 'text-[var(--color-loss)]' : 'text-[var(--color-gain)]'}
       />
 
       {loadingTaxonomia ? (

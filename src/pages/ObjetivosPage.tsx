@@ -4,10 +4,13 @@ import { Modal } from '../components/ui/Modal';
 import { ObjetivoCard } from '../components/objetivos/ObjetivoCard';
 import { ObjetivoForm, type ObjetivoFormValues } from '../components/objetivos/ObjetivoForm';
 import { useObjetivos } from '../hooks/useObjetivos';
+import { useDisponibleMes } from '../hooks/useDisponibleMes';
+import { calcularAportacionDeseada } from '../lib/finance/calcularAportacionDeseada';
 import type { ObjetivoAhorro } from '../lib/supabase/database.types';
 
 export function ObjetivosPage() {
   const { objetivos, loading, crear, actualizar, borrar } = useObjetivos();
+  const { ingresoReal, loading: loadingIngreso } = useDisponibleMes();
   const [creando, setCreando] = useState(false);
   const [editando, setEditando] = useState<ObjetivoAhorro | null>(null);
 
@@ -31,14 +34,19 @@ export function ObjetivosPage() {
         <Button onClick={() => setCreando(true)}>+ Nuevo</Button>
       </div>
 
-      {loading ? (
+      {loading || loadingIngreso ? (
         <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
       ) : objetivos.length === 0 ? (
         <p className="text-sm text-[var(--color-text-muted)]">Todavía no tienes objetivos.</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {objetivos.map((o) => (
-            <ObjetivoCard key={o.id} objetivo={o} onClick={() => setEditando(o)} />
+            <ObjetivoCard
+              key={o.id}
+              objetivo={o}
+              aportacionMensual={calcularAportacionDeseada(o, ingresoReal)}
+              onClick={() => setEditando(o)}
+            />
           ))}
         </div>
       )}

@@ -14,8 +14,21 @@ const MESES_SERIE = 6;
 
 export function DashboardPage() {
   const hoy = useMemo(() => new Date(), []);
-  const { ingresoReal, gastosFijos, disponible, movimientos, loading: loadingDisponible } = useDisponibleMes(hoy);
+  const {
+    ingresoReal,
+    gastosFijos,
+    disponible,
+    movimientos,
+    objetivosActivos,
+    aportacionesDeseadas,
+    loading: loadingDisponible,
+  } = useDisponibleMes(hoy);
   const { categorias, subcategorias, loading: loadingTaxonomia } = useTaxonomia();
+
+  const totalAhorroMensual = useMemo(
+    () => Math.round(aportacionesDeseadas.reduce((suma, a) => suma + a.importe, 0) * 100) / 100,
+    [aportacionesDeseadas]
+  );
 
   const rangoSerie = useMemo(() => rangoUltimosMeses(MESES_SERIE, hoy), [hoy]);
   const { movimientos: movimientosSerie, loading: loadingSerie } = useMovimientos(rangoSerie);
@@ -52,6 +65,40 @@ export function DashboardPage() {
             <p className={`font-mono font-semibold ${claseColorPorSigno(disponible)}`}>{disponible.toFixed(2)} €</p>
           </div>
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">
+          Ahorro mensual
+        </h2>
+        {loadingDisponible ? (
+          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+        ) : objetivosActivos.length === 0 ? (
+          <p className="text-sm text-[var(--color-text-muted)]">No tienes objetivos de ahorro activos.</p>
+        ) : (
+          <>
+            {objetivosActivos.map((o) => {
+              const importe = aportacionesDeseadas.find((a) => a.objetivoId === o.id)?.importe ?? 0;
+              return (
+                <div
+                  key={o.id}
+                  className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)] last:border-0"
+                >
+                  <span className="text-sm">{o.nombre}</span>
+                  <span className="font-mono text-sm font-semibold text-[var(--color-accent)]">
+                    {importe.toFixed(2)} €
+                  </span>
+                </div>
+              );
+            })}
+            <div className="flex items-center justify-between pt-2 mt-1 border-t border-[var(--color-border)]">
+              <span className="text-sm font-semibold">Total</span>
+              <span className="font-mono text-sm font-semibold text-[var(--color-accent)]">
+                {totalAhorroMensual.toFixed(2)} €
+              </span>
+            </div>
+          </>
+        )}
       </Card>
 
       <Card>

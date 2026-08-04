@@ -5,6 +5,7 @@ import { Modal } from '../components/ui/Modal';
 import { RecurrenteForm, type RecurrenteFormValues } from '../components/recurrentes/RecurrenteForm';
 import { useGastosRecurrentes } from '../hooks/useGastosRecurrentes';
 import { useTaxonomia } from '../hooks/useTaxonomia';
+import { claseColorPorSigno } from '../components/charts/colors';
 import type { GastoRecurrente } from '../lib/supabase/database.types';
 
 export function RecurrentesPage() {
@@ -28,7 +29,7 @@ export function RecurrentesPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-          Gastos fijos / recurrentes
+          Movimientos recurrentes
         </h2>
         <Button onClick={() => setCreando(true)}>+ Nuevo</Button>
       </div>
@@ -37,7 +38,7 @@ export function RecurrentesPage() {
         {loading ? (
           <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
         ) : recurrentes.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Todavía no hay gastos recurrentes.</p>
+          <p className="text-sm text-[var(--color-text-muted)]">Todavía no hay movimientos recurrentes.</p>
         ) : (
           recurrentes.map((r) => (
             <button
@@ -52,7 +53,8 @@ export function RecurrentesPage() {
                   {!r.activo ? ' · inactivo' : ''}
                 </p>
               </div>
-              <span className="shrink-0 font-mono text-sm font-semibold text-[var(--color-loss)]">
+              <span className={`shrink-0 font-mono text-sm font-semibold ${claseColorPorSigno(r.importe)}`}>
+                {r.importe > 0 ? '+' : ''}
                 {r.importe.toFixed(2)} €
               </span>
             </button>
@@ -60,11 +62,11 @@ export function RecurrentesPage() {
         )}
       </Card>
 
-      <Modal open={creando} onClose={() => setCreando(false)} title="Nuevo gasto recurrente">
+      <Modal open={creando} onClose={() => setCreando(false)} title="Nuevo movimiento recurrente">
         <RecurrenteForm onSubmit={handleCrear} onCancel={() => setCreando(false)} />
       </Modal>
 
-      <Modal open={editando !== null} onClose={() => setEditando(null)} title="Editar gasto recurrente">
+      <Modal open={editando !== null} onClose={() => setEditando(null)} title="Editar movimiento recurrente">
         {editando && (
           <div className="flex flex-col gap-4">
             <RecurrenteForm initialValues={editando} onSubmit={handleActualizar} onCancel={() => setEditando(null)} />
@@ -75,7 +77,7 @@ export function RecurrentesPage() {
                 setEditando(null);
               }}
             >
-              Borrar gasto recurrente
+              Borrar movimiento recurrente
             </Button>
           </div>
         )}

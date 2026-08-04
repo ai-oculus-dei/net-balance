@@ -15,11 +15,14 @@ export function ingresoRealDelMes(movimientos: Movimiento[], subcategorias: Subc
     .reduce((suma, m) => suma + m.importe, 0);
 }
 
-// Gastos fijos del mes (seccion 6): movimientos generados desde gastos_recurrentes.
-// Se almacenan con importe negativo (son gastos), se devuelve como magnitud positiva
-// para poder restarla directamente en calcularDisponible.
+// Gastos fijos del mes (seccion 6): solo la parte de gasto de los movimientos recurrentes
+// (importe negativo) — los recurrentes marcados como ingreso (nomina, renta...) no restan
+// aqui, ya cuentan como ingreso real si su subcategoria esta marcada como tal. Se devuelve
+// como magnitud positiva para poder restarla directamente en calcularDisponible.
 export function gastosFijosDelMes(movimientos: Movimiento[]): number {
-  const total = movimientos.filter((m) => m.es_recurrente).reduce((suma, m) => suma + m.importe, 0);
+  const total = movimientos
+    .filter((m) => m.es_recurrente && m.importe < 0)
+    .reduce((suma, m) => suma + m.importe, 0);
   return -total;
 }
 

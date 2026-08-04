@@ -31,11 +31,7 @@ export function AppShell() {
   }
 
   return (
-    <div className="min-h-svh flex flex-col pb-20 sm:pb-0">
-      <header className="sticky top-0 z-20 border-b border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3">
-        <h1 className="text-sm font-semibold tracking-wide text-[var(--color-text)]">NET BALANCE</h1>
-      </header>
-
+    <div className="min-h-svh flex flex-col pb-24 sm:pb-0">
       <BottomNav />
 
       <main className="flex-1 max-w-3xl w-full mx-auto p-4">

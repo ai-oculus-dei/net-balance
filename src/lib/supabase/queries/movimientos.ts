@@ -35,8 +35,3 @@ export async function borrarMovimiento(id: string): Promise<void> {
   const { error } = await supabase.from('movimientos').delete().eq('id', id);
   if (error) throw error;
 }
-
-export async function generarMovimientosRecurrentes(): Promise<void> {
-  const { error } = await supabase.rpc('generar_movimientos_recurrentes');
-  if (error) throw error;
-}

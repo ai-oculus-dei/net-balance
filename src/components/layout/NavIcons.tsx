@@ -41,17 +41,6 @@ export function IconObjetivos(props: IconProps) {
   );
 }
 
-export function IconRecurrentes(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M4 12a8 8 0 0 1 14-5" />
-      <path d="M18 4v4h-4" />
-      <path d="M20 12a8 8 0 0 1-14 5" />
-      <path d="M6 20v-4h4" />
-    </svg>
-  );
-}
-
 export function IconAjustes(props: IconProps) {
   return (
     <svg {...base} {...props}>

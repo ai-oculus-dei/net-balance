@@ -20,7 +20,7 @@ export function useDisponibleMes(fecha: Date = new Date()) {
   const resultado = useMemo(() => {
     const subcategoriasPorId = indexarSubcategorias(subcategorias);
     const ingresoReal = ingresoRealDelMes(movimientos, subcategoriasPorId);
-    const gastosFijos = gastosFijosDelMes(movimientos);
+    const gastosFijos = gastosFijosDelMes(movimientos, subcategoriasPorId);
 
     const objetivosActivos = objetivos.filter((o) => o.activo);
     const aportacionesDeseadas: AportacionDeseada[] = objetivosActivos.map((o) => ({

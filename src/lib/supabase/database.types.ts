@@ -41,48 +41,7 @@ export interface Subcategoria {
   categoria_id: number;
   nombre: string;
   es_ingreso_real: boolean;
-}
-
-export interface GastoRecurrente {
-  id: string;
-  nombre: string;
-  importe: number;
-  subcategoria_id: number;
-  dia_del_mes: number;
-  usuario_id: string;
-  visibilidad: Visibilidad;
-  activo: boolean;
-  fecha_inicio: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface GastoRecurrenteInsert {
-  id?: string;
-  nombre: string;
-  importe: number;
-  subcategoria_id: number;
-  dia_del_mes: number;
-  usuario_id: string;
-  visibilidad?: Visibilidad;
-  activo?: boolean;
-  fecha_inicio?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface GastoRecurrenteUpdate {
-  id?: string;
-  nombre?: string;
-  importe?: number;
-  subcategoria_id?: number;
-  dia_del_mes?: number;
-  usuario_id?: string;
-  visibilidad?: Visibilidad;
-  activo?: boolean;
-  fecha_inicio?: string;
-  created_at?: string;
-  updated_at?: string;
+  es_gasto_fijo: boolean;
 }
 
 export interface Movimiento {
@@ -94,9 +53,6 @@ export interface Movimiento {
   usuario_id: string;
   creado_por: string;
   visibilidad: Visibilidad;
-  es_recurrente: boolean;
-  gasto_recurrente_id: string | null;
-  mes_generado: string | null;
   nota: string | null;
   created_at: string;
   updated_at: string;
@@ -111,9 +67,6 @@ export interface MovimientoInsert {
   usuario_id: string;
   creado_por: string;
   visibilidad?: Visibilidad;
-  es_recurrente?: boolean;
-  gasto_recurrente_id?: string | null;
-  mes_generado?: string | null;
   nota?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -128,9 +81,6 @@ export interface MovimientoUpdate {
   usuario_id?: string;
   creado_por?: string;
   visibilidad?: Visibilidad;
-  es_recurrente?: boolean;
-  gasto_recurrente_id?: string | null;
-  mes_generado?: string | null;
   nota?: string | null;
   created_at?: string;
   updated_at?: string;

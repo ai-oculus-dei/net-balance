@@ -22,9 +22,6 @@ export function AppShell() {
       usuario_id: values.usuario_id,
       creado_por: session.user.id,
       visibilidad: values.visibilidad,
-      es_recurrente: false,
-      gasto_recurrente_id: null,
-      mes_generado: null,
       nota: values.nota || null,
     });
     emitMovimientosChanged();

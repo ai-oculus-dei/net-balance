@@ -10,6 +10,7 @@
 - [x] GitHub → Settings → Secrets and variables → Actions → añadir `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
 - [ ] Copiar `.env.example` a `.env.local` y rellenarlo para desarrollo local (`npm run dev`).
 - [x] Ejecutar `supabase/migrations/0003_subcategoria_facturas.sql` en el SQL Editor de Supabase (añade "Facturas" a Vivienda).
+- [ ] Ejecutar `supabase/migrations/0004_reemplazar_recurrentes_por_categorias_fijas.sql` en el SQL Editor de Supabase (elimina la funcionalidad de recurrentes y define "gastos fijos" por subcategoría — sección 6).
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)
 

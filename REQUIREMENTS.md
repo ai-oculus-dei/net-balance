@@ -21,7 +21,6 @@ Cada movimiento (gasto o ingreso) tiene:
 - `categoria` / `subcategoria` (ver taxonomía en sección 5)
 - `usuario` (Alvaro o Lauri)
 - `visibilidad`: `privado` | `compartido` — determina si el otro usuario puede ver este movimiento
-- `es_recurrente`: booleano — true si proviene de la lista de gastos fijos recurrentes (sección 6)
 - `nota` (opcional)
 
 **Regla clave — balance neto por categoría:** una categoría admite tanto gastos como ingresos (ej. "Restaurantes −100€" + "Restaurantes +80€" de un reembolso = −20€ neto, que refleja el coste real). No existe un mecanismo separado de "reembolso vinculado" ni de liquidación de saldos entre usuarios — todo se resuelve por el neto de la categoría.
@@ -55,10 +54,13 @@ Cada movimiento (gasto o ingreso) tiene:
 
 Categorías fijas, sin gestión de alta/baja desde la interfaz en la v1 (se editan directamente en código/config si hace falta cambiarlas).
 
-## 6. Gastos fijos / recurrentes
+## 6. Gastos fijos
 
-- Lista de gastos recurrentes configurables (ej. Alquiler, Seguro Coche, Suscripciones) que se generan automáticamente cada mes (importe, categoría/subcategoría, día del mes).
-- No se marca "es fijo" a mano en cada movimiento individual — se define una única vez en la lista de recurrentes y el sistema los replica mensualmente.
+No existe una lista de recurrentes que se generen solos ni una pantalla dedicada: **"gastos fijos" es el balance neto (gasto − ingreso) del mes de un conjunto cerrado de subcategorías**, marcadas de antemano en la taxonomía (columna `es_gasto_fijo` en `subcategorias`):
+
+Alquiler, Luz, Agua, Gas, Internet, Limpieza, Línea Móvil, Letra Coche, Combustible, Seguro Coche, Facturas, Supermercado, Seguro Médico, Crossfit, Gimnasio, Clases de Padel, Suscripciones, Electrónica.
+
+Cada movimiento normal (alta rápida) que caiga en una de estas subcategorías cuenta automáticamente como gasto fijo ese mes — no hace falta marcarlo aparte ni configurar nada por movimiento.
 
 ## 7. Objetivos de ahorro (individuales, no compartidos)
 

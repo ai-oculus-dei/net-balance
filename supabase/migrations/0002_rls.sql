@@ -53,23 +53,6 @@ create policy movimientos_delete on movimientos
   for delete using (usuario_id = auth.uid() or creado_por = auth.uid());
 
 -- ============================================================
--- gastos_recurrentes
--- ============================================================
-alter table gastos_recurrentes enable row level security;
-
-create policy gastos_recurrentes_select on gastos_recurrentes
-  for select using (usuario_id = auth.uid() or visibilidad = 'compartido');
-
-create policy gastos_recurrentes_insert on gastos_recurrentes
-  for insert with check (usuario_id = auth.uid());
-
-create policy gastos_recurrentes_update on gastos_recurrentes
-  for update using (usuario_id = auth.uid()) with check (usuario_id = auth.uid());
-
-create policy gastos_recurrentes_delete on gastos_recurrentes
-  for delete using (usuario_id = auth.uid());
-
--- ============================================================
 -- objetivos_ahorro (individuales — nunca compartidos, seccion 7)
 -- ============================================================
 alter table objetivos_ahorro enable row level security;

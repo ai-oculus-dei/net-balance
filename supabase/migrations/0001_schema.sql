@@ -50,6 +50,9 @@ create table subcategorias (
   nombre          text not null,
   -- true solo para: Salario, Paga Extra, Variable, Beneficios, Ingreso Extra (regla "ingreso real", seccion 5)
   es_ingreso_real boolean not null default false,
+  -- true para las subcategorias fijas de la seccion 6: el "disponible" (seccion 8) resta el
+  -- balance neto (gasto - ingreso) de estas subcategorias como "gastos fijos" cada mes.
+  es_gasto_fijo   boolean not null default false,
   unique (categoria_id, nombre)
 );
 
@@ -129,22 +132,15 @@ insert into subcategorias (categoria_id, nombre, es_ingreso_real) values
   ((select id from categorias where nombre = 'Finanzas'), 'Beneficios', true),
   ((select id from categorias where nombre = 'Finanzas'), 'Ingreso Extra', true);
 
--- ============================================================
--- GASTOS RECURRENTES (definicion unica, se replica cada mes — seccion 6)
--- `importe` admite signo: negativo = gasto fijo, positivo = ingreso recurrente (nomina, renta...)
--- ============================================================
-create table gastos_recurrentes (
-  id              uuid primary key default gen_random_uuid(),
-  nombre          text not null check (char_length(trim(nombre)) > 0),
-  importe         numeric(12,2) not null check (importe <> 0),
-  subcategoria_id smallint not null references subcategorias(id),
-  dia_del_mes     smallint not null check (dia_del_mes between 1 and 31),
-  usuario_id      uuid not null references profiles(id),
-  visibilidad     text not null default 'privado' check (visibilidad in ('privado', 'compartido')),
-  activo          boolean not null default true,
-  fecha_inicio    date not null default current_date,
-  created_at      timestamptz not null default now(),
-  updated_at      timestamptz not null default now()
+-- Subcategorias cuyo balance neto mensual cuenta como "gastos fijos" (seccion 6/8)
+update subcategorias set es_gasto_fijo = true where nombre in (
+  'Alquiler', 'Luz', 'Agua', 'Gas', 'Internet', 'Limpieza', 'Línea Móvil', 'Facturas',
+  'Letra Coche', 'Combustible', 'Seguro Coche',
+  'Supermercado',
+  'Seguro Médico',
+  'Crossfit', 'Gimnasio', 'Clases de Padel',
+  'Suscripciones',
+  'Electrónica'
 );
 
 -- ============================================================
@@ -159,13 +155,9 @@ create table movimientos (
   usuario_id           uuid not null references profiles(id),        -- a quien se atribuye el movimiento
   creado_por           uuid not null references profiles(id),        -- quien lo registro realmente
   visibilidad          text not null default 'privado' check (visibilidad in ('privado', 'compartido')),
-  es_recurrente        boolean not null default false,
-  gasto_recurrente_id  uuid references gastos_recurrentes(id) on delete set null,
-  mes_generado         date, -- solo en movimientos autogenerados; evita duplicar el mismo mes
   nota                 text,
   created_at           timestamptz not null default now(),
-  updated_at           timestamptz not null default now(),
-  constraint uq_recurrente_mes unique (gasto_recurrente_id, mes_generado)
+  updated_at           timestamptz not null default now()
 );
 
 create index idx_movimientos_usuario_fecha on movimientos (usuario_id, fecha desc);
@@ -216,51 +208,5 @@ begin
 end;
 $$;
 
-create trigger trg_movimientos_updated_at        before update on movimientos        for each row execute function set_updated_at();
-create trigger trg_gastos_recurrentes_updated_at before update on gastos_recurrentes for each row execute function set_updated_at();
-create trigger trg_objetivos_updated_at          before update on objetivos_ahorro   for each row execute function set_updated_at();
-
--- ============================================================
--- Generacion mensual de movimientos recurrentes (seccion 6)
--- Invocada por RPC desde el cliente (no pg_cron, ver REQUIREMENTS/plan): idempotente
--- via uq_recurrente_mes, y resuelve gratis el caso de meses saltados sin abrir la app.
--- ============================================================
-create or replace function generar_movimientos_recurrentes()
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  r record;
-  mes_cursor date;
-  mes_actual date := date_trunc('month', current_date)::date;
-  dia integer;
-  fecha_generada date;
-begin
-  for r in
-    select * from gastos_recurrentes
-    where activo = true and usuario_id = auth.uid()
-  loop
-    mes_cursor := date_trunc('month', r.fecha_inicio)::date;
-    while mes_cursor <= mes_actual loop
-      dia := least(r.dia_del_mes, extract(day from (mes_cursor + interval '1 month - 1 day'))::int);
-      fecha_generada := mes_cursor + (dia - 1);
-
-      insert into movimientos (
-        fecha, nombre, importe, subcategoria_id, usuario_id, creado_por,
-        visibilidad, es_recurrente, gasto_recurrente_id, mes_generado
-      )
-      values (
-        fecha_generada::timestamptz, r.nombre, r.importe, r.subcategoria_id, r.usuario_id, r.usuario_id,
-        r.visibilidad, true, r.id, mes_cursor
-      )
-      on conflict (gasto_recurrente_id, mes_generado) do nothing;
-
-      mes_cursor := mes_cursor + interval '1 month';
-    end loop;
-  end loop;
-end;
-$$;
-
-grant execute on function generar_movimientos_recurrentes() to authenticated;
+create trigger trg_movimientos_updated_at before update on movimientos      for each row execute function set_updated_at();
+create trigger trg_objetivos_updated_at   before update on objetivos_ahorro for each row execute function set_updated_at();

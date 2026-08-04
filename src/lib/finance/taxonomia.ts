@@ -15,15 +15,16 @@ export function ingresoRealDelMes(movimientos: Movimiento[], subcategorias: Subc
     .reduce((suma, m) => suma + m.importe, 0);
 }
 
-// Gastos fijos del mes (seccion 6): solo la parte de gasto de los movimientos recurrentes
-// (importe negativo) — los recurrentes marcados como ingreso (nomina, renta...) no restan
-// aqui, ya cuentan como ingreso real si su subcategoria esta marcada como tal. Se devuelve
-// como magnitud positiva para poder restarla directamente en calcularDisponible.
-export function gastosFijosDelMes(movimientos: Movimiento[]): number {
-  const total = movimientos
-    .filter((m) => m.es_recurrente && m.importe < 0)
+// Gastos fijos del mes (seccion 6): balance neto (gasto - ingreso, con signo) de las
+// subcategorias marcadas es_gasto_fijo (Alquiler, Luz, Supermercado, Gimnasio...). Igual que
+// con el ingreso real, un reembolso dentro de una de estas subcategorias reduce el gasto fijo
+// neto en vez de tratarse aparte. Se devuelve como magnitud positiva para poder restarla
+// directamente en calcularDisponible.
+export function gastosFijosDelMes(movimientos: Movimiento[], subcategorias: SubcategoriasPorId): number {
+  const balance = movimientos
+    .filter((m) => subcategorias.get(m.subcategoria_id)?.es_gasto_fijo)
     .reduce((suma, m) => suma + m.importe, 0);
-  return -total;
+  return -balance;
 }
 
 export interface BalanceCategoria {

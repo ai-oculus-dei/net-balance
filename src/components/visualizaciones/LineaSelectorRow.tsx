@@ -34,10 +34,10 @@ export function LineaSelectorRow({
         style={{ backgroundColor: color }}
         aria-hidden="true"
       />
-      <div className="flex-1">
+      <div className="w-28 shrink-0">
         <CategoriaSelect categorias={categorias} value={linea.categoriaId} onChange={onChangeCategoria} />
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <Select
           label="Subcategoría"
           value={linea.subcategoriaId ?? ''}

@@ -9,6 +9,7 @@ import { crearAportacion } from '../../lib/supabase/queries/aportaciones';
 import { emitMovimientosChanged } from '../../lib/events/movimientosBus';
 import { emitObjetivosChanged } from '../../lib/events/objetivosBus';
 import { useAuth } from '../../lib/auth/useAuth';
+import { VisualizacionesProvider } from '../../lib/visualizaciones/VisualizacionesProvider';
 
 export function AppShell() {
   const { session } = useAuth();
@@ -56,7 +57,9 @@ export function AppShell() {
       <BottomNav />
 
       <main className="flex-1 max-w-3xl w-full mx-auto p-4">
-        <Outlet />
+        <VisualizacionesProvider>
+          <Outlet />
+        </VisualizacionesProvider>
       </main>
 
       <QuickAddButton onClick={() => setQuickAddOpen(true)} />

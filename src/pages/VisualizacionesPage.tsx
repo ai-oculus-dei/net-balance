@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -9,7 +9,8 @@ import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
 import { useTaxonomia } from '../hooks/useTaxonomia';
 import { useMovimientos } from '../hooks/useMovimientos';
 import { useTheme } from '../lib/theme/useTheme';
-import { formatearMes, parseMes, rangoEntreMeses } from '../lib/finance/fechas';
+import { useVisualizacionesState } from '../lib/visualizaciones/useVisualizacionesState';
+import { parseMes, rangoEntreMeses } from '../lib/finance/fechas';
 import { indexarSubcategorias } from '../lib/finance/taxonomia';
 import {
   etiquetaLinea,
@@ -37,10 +38,9 @@ function nuevaLinea(lineasActuales: LineaSeleccion[]): LineaSeleccion {
 }
 
 export function VisualizacionesPage() {
-  const hoy = useMemo(() => new Date(), []);
-  const [desdeMes, setDesdeMes] = useState(() => formatearMes(new Date(hoy.getFullYear(), hoy.getMonth() - 5, 1)));
-  const [hastaMes, setHastaMes] = useState(() => formatearMes(hoy));
-  const [lineas, setLineas] = useState<LineaSeleccion[]>(() => [nuevaLinea([])]);
+  // Vive en un contexto montado en AppShell (no en esta pagina): asi la seleccion sobrevive a
+  // cambiar de pestaña, pero se pierde si se cierra/recarga la app (no se persiste a proposito).
+  const { desdeMes, hastaMes, lineas, setDesdeMes, setHastaMes, setLineas } = useVisualizacionesState();
 
   const { theme } = useTheme();
   const { categorias, subcategorias, subcategoriasDe, loading: loadingTaxonomia } = useTaxonomia();
@@ -152,6 +152,12 @@ export function VisualizacionesPage() {
           <LineasPieChart datos={datosPie} theme={theme} />
         )}
       </Card>
+
+      {lineas.length > 0 && (
+        <Button type="button" variant="danger" onClick={() => setLineas([])}>
+          Borrar todas las líneas
+        </Button>
+      )}
     </div>
   );
 }

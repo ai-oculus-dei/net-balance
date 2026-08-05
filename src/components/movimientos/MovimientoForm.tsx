@@ -145,8 +145,6 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
         colorClassName={esGasto ? 'text-[var(--color-loss)]' : 'text-[var(--color-gain)]'}
       />
 
-      <Input label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required placeholder="Cena viernes" />
-
       {loadingTaxonomia ? (
         <p className="text-sm text-[var(--color-text-muted)]">Cargando categorías...</p>
       ) : (
@@ -155,6 +153,12 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
           <SubcategoriaSelect subcategorias={subcategorias} value={subcategoriaId} onChange={setSubcategoriaId} />
         </>
       )}
+
+      {/* El nombre va despues de categoria/subcategoria a proposito: abrir un <select> justo
+          tras escribir en un campo de texto deja el teclado de iOS animandose fuera todavia,
+          y el desplegable nativo se renderiza con el viewport reducido (se ve "cortado" aunque
+          se puede hacer scroll dentro). Con un select justo antes, no hay teclado que cerrar. */}
+      <Input label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required placeholder="Cena viernes" />
 
       {subcategoriaSeleccionada?.es_traspaso && (
         <p className="text-xs text-[var(--color-text-muted)] bg-black/5 dark:bg-white/5 rounded-md px-3 py-2">

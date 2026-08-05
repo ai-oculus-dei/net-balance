@@ -58,6 +58,7 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
   const [importeAportacion, setImporteAportacion] = useState(aportacionInicial?.importe ?? 0);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mostrarMas, setMostrarMas] = useState(false);
 
   const subcategorias = categoriaId !== null ? subcategoriasDe(categoriaId) : [];
   const subcategoriaSeleccionada = todasLasSubcategorias.find((s) => s.id === subcategoriaId);
@@ -198,20 +199,35 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
 
       <Input label="Fecha" type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
 
-      <Select label="Usuario" value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)}>
-        {profiles.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.nombre}
-          </option>
-        ))}
-      </Select>
+      <div>
+        <button
+          type="button"
+          onClick={() => setMostrarMas((v) => !v)}
+          className="flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+        >
+          <span className={`inline-block transition-transform ${mostrarMas ? 'rotate-90' : ''}`}>▸</span>
+          Usuario, privacidad y nota
+        </button>
 
-      <Select label="Visibilidad" value={visibilidad} onChange={(e) => setVisibilidad(e.target.value as Visibilidad)}>
-        <option value="privado">Privado</option>
-        <option value="compartido">Compartido</option>
-      </Select>
+        {mostrarMas && (
+          <div className="flex flex-col gap-4 mt-3">
+            <Select label="Usuario" value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)}>
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre}
+                </option>
+              ))}
+            </Select>
 
-      <Input label="Nota (opcional)" value={nota} onChange={(e) => setNota(e.target.value)} />
+            <Select label="Visibilidad" value={visibilidad} onChange={(e) => setVisibilidad(e.target.value as Visibilidad)}>
+              <option value="privado">Privado</option>
+              <option value="compartido">Compartido</option>
+            </Select>
+
+            <Input label="Nota (opcional)" value={nota} onChange={(e) => setNota(e.target.value)} />
+          </div>
+        )}
+      </div>
 
       {error && <p className="text-sm text-[var(--color-loss)]">{error}</p>}
 

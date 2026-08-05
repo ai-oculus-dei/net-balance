@@ -6,19 +6,20 @@ import { MovimientoRow } from '../components/movimientos/MovimientoRow';
 import { MovimientoForm, type MovimientoFormValues } from '../components/movimientos/MovimientoForm';
 import { useMovimientos } from '../hooks/useMovimientos';
 import { useTaxonomia } from '../hooks/useTaxonomia';
-import { rangoDelMes } from '../lib/finance/fechas';
+import { formatearMes, parseMes, rangoDelMes } from '../lib/finance/fechas';
 import { indexarSubcategorias } from '../lib/finance/taxonomia';
 import { fetchAportacionPorMovimiento, sincronizarAportacion } from '../lib/supabase/queries/aportaciones';
 import { emitObjetivosChanged } from '../lib/events/objetivosBus';
 import type { AportacionObjetivo, Movimiento } from '../lib/supabase/database.types';
 
 export function MovimientosPage() {
-  const [offsetMeses, setOffsetMeses] = useState(0);
-  const fechaBase = useMemo(() => {
-    const hoy = new Date();
-    return new Date(hoy.getFullYear(), hoy.getMonth() + offsetMeses, 1);
-  }, [offsetMeses]);
+  const [mes, setMes] = useState(() => formatearMes(new Date()));
+  const fechaBase = useMemo(() => parseMes(mes), [mes]);
   const rango = useMemo(() => rangoDelMes(fechaBase), [fechaBase]);
+
+  function cambiarMes(delta: number) {
+    setMes(formatearMes(new Date(fechaBase.getFullYear(), fechaBase.getMonth() + delta, 1)));
+  }
 
   const { movimientos, loading, actualizar, borrar } = useMovimientos(rango);
   const { subcategorias } = useTaxonomia();
@@ -64,16 +65,27 @@ export function MovimientosPage() {
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
         <button
           type="button"
-          onClick={() => setOffsetMeses((o) => o - 1)}
+          onClick={() => cambiarMes(-1)}
           aria-label="Mes anterior"
           className="w-10 h-10 shrink-0 flex items-center justify-center rounded-md border border-[var(--color-border)] text-lg text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
         >
           ‹
         </button>
-        <h2 className="text-base font-semibold capitalize text-center truncate">{etiquetaMes}</h2>
+        <div className="relative">
+          <h2 className="text-base font-semibold capitalize text-center truncate pointer-events-none">
+            {etiquetaMes}
+          </h2>
+          <input
+            type="month"
+            value={mes}
+            onChange={(e) => e.target.value && setMes(e.target.value)}
+            aria-label="Elegir mes y año"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+        </div>
         <button
           type="button"
-          onClick={() => setOffsetMeses((o) => o + 1)}
+          onClick={() => cambiarMes(1)}
           aria-label="Mes siguiente"
           className="w-10 h-10 shrink-0 flex items-center justify-center rounded-md border border-[var(--color-border)] text-lg text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
         >

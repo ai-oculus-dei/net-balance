@@ -26,16 +26,19 @@ export function LineasPieChart({ datos, theme }: LineasPieChartProps) {
     return <p className="text-sm text-[var(--color-text-muted)]">Sin movimientos en ese rango para estas líneas.</p>;
   }
 
+  // Hasta 8 lineas con etiquetas largas pueden ocupar varias filas de leyenda: se deja mucho
+  // hueco fijo debajo de la tarta (cy alto + radio mas pequeño) en vez de dejar que Recharts
+  // superponga la leyenda sobre las etiquetas de porcentaje.
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
+    <ResponsiveContainer width="100%" height={380}>
+      <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
         <Pie
           data={datosConMagnitud}
           dataKey="magnitud"
           nameKey="etiqueta"
           cx="50%"
-          cy="50%"
-          outerRadius={100}
+          cy="38%"
+          outerRadius={80}
           label={({ percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`}
           labelLine={false}
         >
@@ -47,7 +50,7 @@ export function LineasPieChart({ datos, theme }: LineasPieChartProps) {
           formatter={(_value, _name, item) => [`${(item.payload as { neto: number }).neto.toFixed(2)} €`, item.payload.etiqueta]}
           contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: 12 }}
         />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 12, lineHeight: '1.6em' }} />
       </PieChart>
     </ResponsiveContainer>
   );

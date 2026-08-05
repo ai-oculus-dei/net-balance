@@ -1,8 +1,16 @@
 import type { RangoFechas } from '../supabase/queries/movimientos';
 import type { Movimiento } from '../supabase/database.types';
 
+// OJO: nunca usar `d.toISOString().slice(0, 10)` aqui. `d` se construye con el constructor
+// local de Date (medianoche en la zona horaria del usuario), y toISOString() lo convierte a
+// UTC — en una zona por delante de UTC (España, UTC+1/+2) eso resta horas y empuja la fecha
+// al dia anterior. El limite superior de "rango del mes" (medianoche del dia 1 del mes
+// siguiente) se corria asi al ultimo dia del mes actual, y los movimientos de ese ultimo dia
+// quedaban fuera de su mes y se colaban en el mes siguiente. Se formatea con los getters
+// locales, sin pasar por UTC.
 function toIsoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export function rangoDelMes(fecha: Date = new Date()): RangoFechas {

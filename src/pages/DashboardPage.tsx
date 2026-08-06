@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Card } from '../components/ui/Card';
 import { StatTile } from '../components/ui/StatTile';
 import { MovimientoRow } from '../components/movimientos/MovimientoRow';
+import { EsteMesCard } from '../components/dashboard/EsteMesCard';
 import { useDisponibleMes } from '../hooks/useDisponibleMes';
 import { useTaxonomia } from '../hooks/useTaxonomia';
 import { balancePorSubcategoria, indexarSubcategorias } from '../lib/finance/taxonomia';
@@ -56,6 +57,8 @@ export function DashboardPage() {
     [movimientos, subcategoriasPorId, categorias]
   );
 
+  const etiquetaMes = useMemo(() => hoy.toLocaleDateString('es-ES', { month: 'long', year: '2-digit' }), [hoy]);
+
   const loading = loadingDisponible || loadingTaxonomia;
 
   return (
@@ -84,36 +87,7 @@ export function DashboardPage() {
         )}
       </Card>
 
-      <Card>
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">
-          Este mes
-        </h2>
-        {loading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
-        ) : balanceSubcategorias.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Sin movimientos este mes.</p>
-        ) : (
-          balanceSubcategorias.map((linea, indice) => {
-            const nuevaCategoria = indice === 0 || balanceSubcategorias[indice - 1].categoriaId !== linea.categoriaId;
-            return (
-              <div key={linea.subcategoriaId}>
-                {nuevaCategoria && (
-                  <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mt-3 first:mt-0">
-                    {linea.categoria}
-                  </p>
-                )}
-                <div className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)] last:border-0">
-                  <span className="text-sm">{linea.subcategoria}</span>
-                  <span className={`font-mono text-sm font-semibold ${claseColorPorSigno(linea.neto)}`}>
-                    {linea.neto > 0 ? '+' : ''}
-                    {linea.neto.toFixed(2)} €
-                  </span>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </Card>
+      <EsteMesCard etiquetaMes={etiquetaMes} balanceSubcategorias={balanceSubcategorias} loading={loading} />
 
       <Card>
         <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">

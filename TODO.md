@@ -12,10 +12,11 @@
 - [x] Ejecutar `supabase/migrations/0003_subcategoria_facturas.sql` en el SQL Editor de Supabase (añade "Facturas" a Vivienda).
 - [x] Ejecutar `supabase/migrations/0004_reemplazar_recurrentes_por_categorias_fijas.sql` en el SQL Editor de Supabase (elimina la funcionalidad de recurrentes y define "gastos fijos" por subcategoría — sección 6).
 - [x] Ejecutar `supabase/migrations/0005_aportaciones_desde_ahorro.sql` en el SQL Editor de Supabase (nuevas columnas `es_ahorro`/`es_traspaso` en subcategorías, y redefine `aportaciones_objetivo` con el trigger que mantiene `acumulado` sincronizado — sección 7).
+- [x] Ejecutar `supabase/migrations/0006_es_inversion.sql` en el SQL Editor de Supabase (nueva columna `es_inversion` en subcategorías, para la métrica "Inversión total del mes" del Dashboard — sección 9).
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)
 
-- [ ] Nivel de agregación de las series temporales (por ahora Dashboard usa mensual fijo, 6 meses).
+- [ ] Nivel de agregación de las series temporales: el Dashboard ya no tiene gráfico de evolución (se quitó); en Visualizaciones el usuario elige el rango de meses libremente, pero sigue siendo agregación mensual fija (no semanal/anual).
 - [ ] Backup/exportación de la base de datos.
 
 ## Mejoras conocidas / deuda técnica

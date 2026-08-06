@@ -56,9 +56,12 @@ create table subcategorias (
   -- true solo para "Ahorro": un gasto en esta subcategoria puede destinarse (total o
   -- parcialmente) a un objetivo de ahorro concreto (seccion 7), sumando a su "acumulado".
   es_ahorro       boolean not null default false,
+  -- true solo para "Inversiones": mismo tratamiento de signo que es_ahorro para la metrica
+  -- "Inversion total del mes" (negativo = se invirtio de verdad; positivo = retirada).
+  es_inversion    boolean not null default false,
   -- true para "Ahorro" e "Inversiones": son traspasos a otra cuenta propia, no gasto real.
-  -- Se usa solo para mostrar un aviso informativo en el formulario de alta, sin efecto en
-  -- ningun calculo (el balance neto por categoria ya reflejaria un reembolso si lo hubiera).
+  -- Se usa para el aviso informativo del alta de movimiento y para excluirlos del "gasto
+  -- total real" en las metricas del Dashboard (seccion 9).
   es_traspaso     boolean not null default false,
   unique (categoria_id, nombre)
 );
@@ -152,6 +155,7 @@ update subcategorias set es_gasto_fijo = true where nombre in (
 
 -- "Ahorro" permite destinar el gasto a un objetivo; "Ahorro" e "Inversiones" son traspasos
 update subcategorias set es_ahorro = true where nombre = 'Ahorro';
+update subcategorias set es_inversion = true where nombre = 'Inversiones';
 update subcategorias set es_traspaso = true where nombre in ('Ahorro', 'Inversiones');
 
 -- ============================================================

@@ -92,8 +92,10 @@ Disponible = Ingreso real del mes − Gastos fijos del mes − Aportaciones a ob
 
 ## 9. Visualización
 
-- Balance neto por categoría y subcategoría (gráfico de barras/tarta).
-- Series temporales: evolución mensual de gastos, ingresos y disponible.
+**Página de Inicio:**
+- **Métricas del mes**: fila de indicadores — Ingreso real, Gastos fijos, Gasto variable (gasto real total menos gastos fijos), Disponible, Balance neto del mes (todo lo ingresado menos todo lo gastado, sin excluir nada), Ahorro total del mes, Inversión total del mes, Tasa de ahorro (% del ingreso real destinado a ahorro + inversión).
+  - **Ahorro total** e **Inversión total**: un gasto (importe negativo) en esas subcategorías es dinero que de verdad se guarda/invierte; un ingreso (positivo) es una retirada de vuelta a la cuenta de gastos. Se invierte el signo para que "ahorrar de verdad" se vea en positivo.
+- **Este mes**: balance neto de cada subcategoría con movimientos ese mes, agrupado por categoría (solo las que han tenido actividad, no las 60 siempre).
 - Progreso de cada objetivo de ahorro (acumulado vs meta / % de presupuesto recurrente usado).
 - Vista combinada: movimientos propios + movimientos compartidos visibles del otro usuario.
 

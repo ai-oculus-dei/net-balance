@@ -27,27 +27,41 @@ export function gastosFijosDelMes(movimientos: Movimiento[], subcategorias: Subc
   return -balance;
 }
 
-export interface BalanceCategoria {
+export interface BalanceSubcategoria {
+  subcategoriaId: number;
+  categoriaId: number;
   categoria: string;
+  subcategoria: string;
   neto: number;
 }
 
-// Balance neto por categoria (seccion 3 y 9): agrega el importe (con signo) de todos los
-// movimientos de cada categoria, para reflejar el coste/ingreso real tras reembolsos, etc.
-export function balancePorCategoria(
+// Balance neto por subcategoria (seccion 9), solo de las que han tenido movimientos ese mes —
+// para la lista de "Este mes" del Dashboard. Ordenado por categoria y luego subcategoria,
+// siguiendo el orden natural de la taxonomia (seccion 5).
+export function balancePorSubcategoria(
   movimientos: Movimiento[],
   subcategorias: SubcategoriasPorId,
   categorias: Categoria[]
-): BalanceCategoria[] {
-  const netoPorCategoriaId = new Map<number, number>();
+): BalanceSubcategoria[] {
+  const categoriaPorId = new Map(categorias.map((c) => [c.id, c.nombre]));
+  const netoPorSubcategoriaId = new Map<number, number>();
 
   for (const m of movimientos) {
-    const sub = subcategorias.get(m.subcategoria_id);
-    if (!sub) continue;
-    netoPorCategoriaId.set(sub.categoria_id, (netoPorCategoriaId.get(sub.categoria_id) ?? 0) + m.importe);
+    netoPorSubcategoriaId.set(m.subcategoria_id, (netoPorSubcategoriaId.get(m.subcategoria_id) ?? 0) + m.importe);
   }
 
-  return categorias
-    .filter((c) => netoPorCategoriaId.has(c.id))
-    .map((c) => ({ categoria: c.nombre, neto: Math.round((netoPorCategoriaId.get(c.id) ?? 0) * 100) / 100 }));
+  const resultado: BalanceSubcategoria[] = [];
+  for (const [subcategoriaId, neto] of netoPorSubcategoriaId) {
+    const sub = subcategorias.get(subcategoriaId);
+    if (!sub) continue;
+    resultado.push({
+      subcategoriaId,
+      categoriaId: sub.categoria_id,
+      categoria: categoriaPorId.get(sub.categoria_id) ?? '—',
+      subcategoria: sub.nombre,
+      neto: Math.round(neto * 100) / 100,
+    });
+  }
+
+  return resultado.sort((a, b) => a.categoriaId - b.categoriaId || a.subcategoriaId - b.subcategoriaId);
 }

@@ -9,9 +9,9 @@ const categorias: Categoria[] = [
 ];
 
 const subcategorias: Subcategoria[] = [
-  { id: 10, categoria_id: 1, nombre: 'Alquiler', es_ingreso_real: false, es_gasto_fijo: true, es_ahorro: false, es_traspaso: false },
-  { id: 11, categoria_id: 1, nombre: 'Luz', es_ingreso_real: false, es_gasto_fijo: true, es_ahorro: false, es_traspaso: false },
-  { id: 20, categoria_id: 2, nombre: 'Letra Coche', es_ingreso_real: false, es_gasto_fijo: true, es_ahorro: false, es_traspaso: false },
+  { id: 10, categoria_id: 1, nombre: 'Alquiler', es_ingreso_real: false, es_gasto_fijo: true, es_ahorro: false, es_inversion: false, es_traspaso: false },
+  { id: 11, categoria_id: 1, nombre: 'Luz', es_ingreso_real: false, es_gasto_fijo: true, es_ahorro: false, es_inversion: false, es_traspaso: false },
+  { id: 20, categoria_id: 2, nombre: 'Letra Coche', es_ingreso_real: false, es_gasto_fijo: true, es_ahorro: false, es_inversion: false, es_traspaso: false },
 ];
 
 const subcategoriasPorId = indexarSubcategorias(subcategorias);

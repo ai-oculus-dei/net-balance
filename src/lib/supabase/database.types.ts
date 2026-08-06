@@ -43,6 +43,7 @@ export interface Subcategoria {
   es_ingreso_real: boolean;
   es_gasto_fijo: boolean;
   es_ahorro: boolean;
+  es_inversion: boolean;
   es_traspaso: boolean;
 }
 

@@ -1,16 +1,19 @@
 import { useMemo } from 'react';
 import { Card } from '../components/ui/Card';
-import { BalancePorCategoriaChart } from '../components/charts/BalancePorCategoriaChart';
-import { SerieTemporalChart } from '../components/charts/SerieTemporalChart';
+import { StatTile } from '../components/ui/StatTile';
 import { MovimientoRow } from '../components/movimientos/MovimientoRow';
 import { useDisponibleMes } from '../hooks/useDisponibleMes';
-import { useMovimientos } from '../hooks/useMovimientos';
 import { useTaxonomia } from '../hooks/useTaxonomia';
-import { agruparPorMes, rangoUltimosMeses } from '../lib/finance/fechas';
-import { balancePorCategoria, indexarSubcategorias } from '../lib/finance/taxonomia';
+import { balancePorSubcategoria, indexarSubcategorias } from '../lib/finance/taxonomia';
+import {
+  ahorroTotalDelMes,
+  balanceNetoDelMes,
+  gastoRealTotalDelMes,
+  gastoVariableDelMes,
+  inversionTotalDelMes,
+  tasaAhorroDelMes,
+} from '../lib/finance/metricas';
 import { claseColorPorSigno } from '../components/charts/colors';
-
-const MESES_SERIE = 6;
 
 export function DashboardPage() {
   const hoy = useMemo(() => new Date(), []);
@@ -30,17 +33,27 @@ export function DashboardPage() {
     [aportacionesDeseadas]
   );
 
-  const rangoSerie = useMemo(() => rangoUltimosMeses(MESES_SERIE, hoy), [hoy]);
-  const { movimientos: movimientosSerie, loading: loadingSerie } = useMovimientos(rangoSerie);
-
   const subcategoriasPorId = useMemo(() => indexarSubcategorias(subcategorias), [subcategorias]);
-  const balanceCategorias = useMemo(
-    () => balancePorCategoria(movimientos, subcategoriasPorId, categorias),
-    [movimientos, subcategoriasPorId, categorias]
+
+  const balanceNeto = useMemo(() => balanceNetoDelMes(movimientos), [movimientos]);
+  const ahorroTotal = useMemo(() => ahorroTotalDelMes(movimientos, subcategoriasPorId), [movimientos, subcategoriasPorId]);
+  const inversionTotal = useMemo(
+    () => inversionTotalDelMes(movimientos, subcategoriasPorId),
+    [movimientos, subcategoriasPorId]
   );
-  const serieTemporal = useMemo(
-    () => agruparPorMes(movimientosSerie, MESES_SERIE, hoy),
-    [movimientosSerie, hoy]
+  const gastoRealTotal = useMemo(
+    () => gastoRealTotalDelMes(movimientos, subcategoriasPorId),
+    [movimientos, subcategoriasPorId]
+  );
+  const gastoVariable = useMemo(() => gastoVariableDelMes(gastoRealTotal, gastosFijos), [gastoRealTotal, gastosFijos]);
+  const tasaAhorro = useMemo(
+    () => tasaAhorroDelMes(ahorroTotal, inversionTotal, ingresoReal),
+    [ahorroTotal, inversionTotal, ingresoReal]
+  );
+
+  const balanceSubcategorias = useMemo(
+    () => balancePorSubcategoria(movimientos, subcategoriasPorId, categorias),
+    [movimientos, subcategoriasPorId, categorias]
   );
 
   const loading = loadingDisponible || loadingTaxonomia;
@@ -49,22 +62,57 @@ export function DashboardPage() {
     <div className="flex flex-col gap-4">
       <Card>
         <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-3 uppercase tracking-wide">
+          Métricas del mes
+        </h2>
+        {loading ? (
+          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatTile label="Ingreso real" value={`${ingresoReal.toFixed(2)} €`} colorClassName="text-[var(--color-gain)]" />
+            <StatTile label="Gastos fijos" value={`${gastosFijos.toFixed(2)} €`} colorClassName="text-[var(--color-loss)]" />
+            <StatTile label="Gasto variable" value={`${gastoVariable.toFixed(2)} €`} colorClassName={claseColorPorSigno(-gastoVariable)} />
+            <StatTile label="Disponible" value={`${disponible.toFixed(2)} €`} colorClassName={claseColorPorSigno(disponible)} />
+            <StatTile label="Balance neto" value={`${balanceNeto.toFixed(2)} €`} colorClassName={claseColorPorSigno(balanceNeto)} />
+            <StatTile label="Ahorro total" value={`${ahorroTotal.toFixed(2)} €`} colorClassName={claseColorPorSigno(ahorroTotal)} />
+            <StatTile label="Inversión total" value={`${inversionTotal.toFixed(2)} €`} colorClassName={claseColorPorSigno(inversionTotal)} />
+            <StatTile
+              label="Tasa de ahorro"
+              value={tasaAhorro === null ? '—' : `${tasaAhorro.toFixed(0)} %`}
+              colorClassName={tasaAhorro === null ? '' : claseColorPorSigno(tasaAhorro)}
+            />
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">
           Este mes
         </h2>
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div>
-            <p className="text-xs text-[var(--color-text-muted)]">Ingreso real</p>
-            <p className="font-mono font-semibold text-[var(--color-gain)]">{ingresoReal.toFixed(2)} €</p>
-          </div>
-          <div>
-            <p className="text-xs text-[var(--color-text-muted)]">Gastos fijos</p>
-            <p className="font-mono font-semibold text-[var(--color-loss)]">{gastosFijos.toFixed(2)} €</p>
-          </div>
-          <div>
-            <p className="text-xs text-[var(--color-text-muted)]">Disponible</p>
-            <p className={`font-mono font-semibold ${claseColorPorSigno(disponible)}`}>{disponible.toFixed(2)} €</p>
-          </div>
-        </div>
+        {loading ? (
+          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+        ) : balanceSubcategorias.length === 0 ? (
+          <p className="text-sm text-[var(--color-text-muted)]">Sin movimientos este mes.</p>
+        ) : (
+          balanceSubcategorias.map((linea, indice) => {
+            const nuevaCategoria = indice === 0 || balanceSubcategorias[indice - 1].categoriaId !== linea.categoriaId;
+            return (
+              <div key={linea.subcategoriaId}>
+                {nuevaCategoria && (
+                  <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mt-3 first:mt-0">
+                    {linea.categoria}
+                  </p>
+                )}
+                <div className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)] last:border-0">
+                  <span className="text-sm">{linea.subcategoria}</span>
+                  <span className={`font-mono text-sm font-semibold ${claseColorPorSigno(linea.neto)}`}>
+                    {linea.neto > 0 ? '+' : ''}
+                    {linea.neto.toFixed(2)} €
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        )}
       </Card>
 
       <Card>
@@ -98,28 +146,6 @@ export function DashboardPage() {
               </span>
             </div>
           </>
-        )}
-      </Card>
-
-      <Card>
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">
-          Balance por categoría
-        </h2>
-        {loading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
-        ) : (
-          <BalancePorCategoriaChart datos={balanceCategorias} />
-        )}
-      </Card>
-
-      <Card>
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">
-          Evolución ({MESES_SERIE} meses)
-        </h2>
-        {loadingSerie ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
-        ) : (
-          <SerieTemporalChart datos={serieTemporal} />
         )}
       </Card>
 

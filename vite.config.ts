@@ -13,6 +13,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registro manual en main.tsx (para poder comprobar actualizaciones cada minuto), en vez
+      // del script auto-inyectado por defecto.
+      injectRegister: false,
       manifest: {
         name: 'Net Balance',
         short_name: 'NetBalance',

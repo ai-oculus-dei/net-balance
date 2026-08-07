@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
+import { Select } from '../components/ui/Select';
 import { MovimientoRow } from '../components/movimientos/MovimientoRow';
 import { MovimientoForm, type MovimientoFormValues } from '../components/movimientos/MovimientoForm';
 import { useMovimientos } from '../hooks/useMovimientos';
@@ -22,8 +23,22 @@ export function MovimientosPage() {
   }
 
   const { movimientos, loading, actualizar, borrar } = useMovimientos(rango);
-  const { subcategorias } = useTaxonomia();
+  const { categorias, subcategorias, subcategoriasDe } = useTaxonomia();
   const subcategoriasPorId = useMemo(() => indexarSubcategorias(subcategorias), [subcategorias]);
+
+  const [filtroCategoriaId, setFiltroCategoriaId] = useState<number | null>(null);
+  const [filtroSubcategoriaId, setFiltroSubcategoriaId] = useState<number | null>(null);
+  const subcategoriasDelFiltro = filtroCategoriaId !== null ? subcategoriasDe(filtroCategoriaId) : [];
+
+  const movimientosFiltrados = useMemo(() => {
+    if (filtroCategoriaId === null) return movimientos;
+    return movimientos.filter((m) => {
+      const sub = subcategoriasPorId.get(m.subcategoria_id);
+      if (!sub || sub.categoria_id !== filtroCategoriaId) return false;
+      if (filtroSubcategoriaId !== null && sub.id !== filtroSubcategoriaId) return false;
+      return true;
+    });
+  }, [movimientos, subcategoriasPorId, filtroCategoriaId, filtroSubcategoriaId]);
 
   const [editando, setEditando] = useState<Movimiento | null>(null);
   const [aportacionEditando, setAportacionEditando] = useState<AportacionObjetivo | null>(null);
@@ -94,12 +109,48 @@ export function MovimientosPage() {
       </div>
 
       <Card>
+        <div className="grid grid-cols-2 gap-2">
+          <Select
+            label="Categoría"
+            value={filtroCategoriaId ?? ''}
+            onChange={(e) => {
+              const valor = e.target.value;
+              setFiltroCategoriaId(valor === '' ? null : Number(valor));
+              setFiltroSubcategoriaId(null);
+            }}
+          >
+            <option value="">Todas</option>
+            {categorias.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </Select>
+          <Select
+            label="Subcategoría"
+            value={filtroSubcategoriaId ?? ''}
+            onChange={(e) => setFiltroSubcategoriaId(e.target.value === '' ? null : Number(e.target.value))}
+            disabled={filtroCategoriaId === null}
+          >
+            <option value="">Todas</option>
+            {subcategoriasDelFiltro.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </Card>
+
+      <Card>
         {loading ? (
           <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
-        ) : movimientos.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Sin movimientos este mes.</p>
+        ) : movimientosFiltrados.length === 0 ? (
+          <p className="text-sm text-[var(--color-text-muted)]">
+            {filtroCategoriaId === null ? 'Sin movimientos este mes.' : 'Sin movimientos con ese filtro este mes.'}
+          </p>
         ) : (
-          movimientos.map((m) => (
+          movimientosFiltrados.map((m) => (
             <MovimientoRow
               key={m.id}
               movimiento={m}

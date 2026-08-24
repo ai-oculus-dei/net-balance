@@ -13,7 +13,7 @@
 - [x] Ejecutar `supabase/migrations/0004_reemplazar_recurrentes_por_categorias_fijas.sql` en el SQL Editor de Supabase (elimina la funcionalidad de recurrentes y define "gastos fijos" por subcategoría — sección 6).
 - [x] Ejecutar `supabase/migrations/0005_aportaciones_desde_ahorro.sql` en el SQL Editor de Supabase (nuevas columnas `es_ahorro`/`es_traspaso` en subcategorías, y redefine `aportaciones_objetivo` con el trigger que mantiene `acumulado` sincronizado — sección 7).
 - [x] Ejecutar `supabase/migrations/0006_es_inversion.sql` en el SQL Editor de Supabase (nueva columna `es_inversion` en subcategorías, para la métrica "Inversión total del mes" del Dashboard — sección 9).
-- [ ] Ejecutar `supabase/migrations/0007_ingreso_condicional.sql` en el SQL Editor de Supabase (nueva columna `es_ingreso_condicional` en subcategorías; redefine "Ingreso real" — sección 5).
+- [x] Ejecutar `supabase/migrations/0007_ingreso_condicional.sql` en el SQL Editor de Supabase (nueva columna `es_ingreso_condicional` en subcategorías; redefine "Ingreso real" — sección 5).
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)
 

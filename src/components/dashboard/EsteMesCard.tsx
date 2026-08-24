@@ -19,6 +19,11 @@ export function EsteMesCard({ etiquetaMes, balanceSubcategorias, loading }: Este
     .reduce((suma, l) => suma + Math.abs(l.neto), 0);
   const totalIngresado = balanceSubcategorias.filter((l) => l.neto > 0).reduce((suma, l) => suma + l.neto, 0);
 
+  const netoPorCategoriaId = new Map<number, number>();
+  for (const l of balanceSubcategorias) {
+    netoPorCategoriaId.set(l.categoriaId, (netoPorCategoriaId.get(l.categoriaId) ?? 0) + l.neto);
+  }
+
   function valorMostrado(neto: number): string {
     if (modo === 'neto') {
       return `${neto > 0 ? '+' : ''}${neto.toFixed(2)} €`;
@@ -68,9 +73,14 @@ export function EsteMesCard({ etiquetaMes, balanceSubcategorias, loading }: Este
               className={nuevaCategoria ? 'pt-3 mt-3 border-t-2 border-[var(--color-border)] first:pt-0 first:mt-0 first:border-t-0' : ''}
             >
               {nuevaCategoria && (
-                <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-1">
-                  {linea.categoria}
-                </p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+                    {linea.categoria}
+                  </p>
+                  <p className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">
+                    {valorMostrado(netoPorCategoriaId.get(linea.categoriaId) ?? 0)}
+                  </p>
+                </div>
               )}
               <div className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)] last:border-0">
                 <span className="text-sm">{linea.subcategoria}</span>

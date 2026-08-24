@@ -2,12 +2,12 @@ import { useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { CategoriaPickerModal } from '../components/visualizaciones/CategoriaPickerModal';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
 import { LineasPieChart } from '../components/charts/LineasPieChart';
+import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
 import { MAX_LINEAS, colorCategorico } from '../components/charts/colorsCategoricos';
 import { MetricasCard } from '../components/dashboard/MetricasCard';
-import { EsteMesCard } from '../components/dashboard/EsteMesCard';
+import { EsteMesCard, type SeleccionCategorias } from '../components/dashboard/EsteMesCard';
 import { useTaxonomia } from '../hooks/useTaxonomia';
 import { useMovimientos } from '../hooks/useMovimientos';
 import { useTheme } from '../lib/theme/useTheme';
@@ -34,10 +34,10 @@ export function VisualizacionesPage() {
   // Vive en un contexto montado en AppShell (no en esta pagina): asi la seleccion sobrevive a
   // cambiar de pestaña, pero se pierde si se cierra/recarga la app (no se persiste a proposito).
   const { desdeMes, hastaMes, lineas, setDesdeMes, setHastaMes, setLineas } = useVisualizacionesState();
-  const [pickerAbierto, setPickerAbierto] = useState(false);
+  const [modoSeleccion, setModoSeleccion] = useState(false);
 
   const { theme } = useTheme();
-  const { categorias, subcategorias, subcategoriasDe, loading: loadingTaxonomia } = useTaxonomia();
+  const { categorias, subcategorias, loading: loadingTaxonomia } = useTaxonomia();
   const rango = useMemo(() => rangoEntreMeses(desdeMes, hastaMes), [desdeMes, hastaMes]);
   const { movimientos, loading: loadingMovimientos } = useMovimientos(rango);
   const subcategoriasPorId = useMemo(() => indexarSubcategorias(subcategorias), [subcategorias]);
@@ -94,6 +94,17 @@ export function VisualizacionesPage() {
     );
   }
 
+  const seleccion: SeleccionCategorias = {
+    activa: modoSeleccion,
+    estaSeleccionada: (categoriaId, subcategoriaId) =>
+      lineas.some((l) => l.categoriaId === categoriaId && l.subcategoriaId === subcategoriaId),
+    colorDe: (categoriaId, subcategoriaId) => {
+      const linea = lineas.find((l) => l.categoriaId === categoriaId && l.subcategoriaId === subcategoriaId);
+      return linea ? colorCategorico(linea.colorIndex, theme) : undefined;
+    },
+    onToggle: toggleSeleccion,
+  };
+
   const loading = loadingTaxonomia || loadingMovimientos;
 
   return (
@@ -115,7 +126,12 @@ export function VisualizacionesPage() {
         loading={loading}
       />
 
-      <EsteMesCard titulo="Resumen Categorías" balanceSubcategorias={balanceSubcategorias} loading={loading} />
+      <EsteMesCard
+        titulo="Resumen Categorías"
+        balanceSubcategorias={balanceSubcategorias}
+        loading={loading}
+        seleccion={seleccion}
+      />
 
       <Card>
         <div className="flex items-center justify-between mb-3">
@@ -150,58 +166,49 @@ export function VisualizacionesPage() {
           </div>
         )}
 
+        {modoSeleccion && (
+          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+            Pulsa los nombres en «Resumen Categorías» de arriba para (des)seleccionarlos.
+          </p>
+        )}
+
         <div className="flex gap-2">
           <Button
             type="button"
-            variant="secondary"
+            variant={modoSeleccion ? 'primary' : 'secondary'}
             className="flex-1"
-            onClick={() => setPickerAbierto(true)}
-            disabled={lineas.length >= MAX_LINEAS}
+            onClick={() => setModoSeleccion((m) => !m)}
+            aria-pressed={modoSeleccion}
           >
-            + Añadir categoría
+            {modoSeleccion ? 'Hecho' : '+ Añadir categoría'}
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="flex-1"
-            onClick={seleccionarTodasCategorias}
-          >
+          <Button type="button" variant="secondary" className="flex-1" onClick={seleccionarTodasCategorias}>
             Seleccionar todas
           </Button>
         </div>
       </Card>
 
-      <CategoriaPickerModal
-        open={pickerAbierto}
-        onClose={() => setPickerAbierto(false)}
-        categorias={categorias}
-        subcategoriasDe={subcategoriasDe}
-        lineas={lineas}
-        maxLineas={MAX_LINEAS}
-        onToggle={toggleSeleccion}
+      <TarjetaGrafico
+        titulo="Evolución mensual"
+        render={(altura) =>
+          loading ? (
+            <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+          ) : (
+            <SerieTemporalLineasChart datos={serieTemporal} lineas={lineasInfo} theme={theme} altura={altura} />
+          )
+        }
       />
 
-      <Card>
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">
-          Evolución mensual
-        </h2>
-        {loading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
-        ) : (
-          <SerieTemporalLineasChart datos={serieTemporal} lineas={lineasInfo} theme={theme} />
-        )}
-      </Card>
-
-      <Card>
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">
-          Reparto del total ({desdeMes} a {hastaMes})
-        </h2>
-        {loading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
-        ) : (
-          <LineasPieChart datos={datosPie} theme={theme} />
-        )}
-      </Card>
+      <TarjetaGrafico
+        titulo={`Reparto del total (${desdeMes} a ${hastaMes})`}
+        render={(altura) =>
+          loading ? (
+            <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+          ) : (
+            <LineasPieChart datos={datosPie} theme={theme} altura={altura} />
+          )
+        }
+      />
 
       {lineas.length > 0 && (
         <Button type="button" variant="danger" onClick={() => setLineas([])}>

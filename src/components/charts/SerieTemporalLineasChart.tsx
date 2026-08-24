@@ -13,9 +13,10 @@ interface SerieTemporalLineasChartProps {
   datos: PuntoSerieLineas[];
   lineas: SerieLineaInfo[];
   theme: Theme;
+  altura?: number;
 }
 
-export function SerieTemporalLineasChart({ datos, lineas, theme }: SerieTemporalLineasChartProps) {
+export function SerieTemporalLineasChart({ datos, lineas, theme, altura = 280 }: SerieTemporalLineasChartProps) {
   if (lineas.length === 0) {
     return <p className="text-sm text-[var(--color-text-muted)]">Selecciona al menos una categoría para comparar.</p>;
   }
@@ -24,7 +25,7 @@ export function SerieTemporalLineasChart({ datos, lineas, theme }: SerieTemporal
   const datosAplanados = datos.map((p) => ({ mes: p.mes, ...p.valores }));
 
   return (
-    <ResponsiveContainer width="100%" height={280}>
+    <ResponsiveContainer width="100%" height={altura}>
       <LineChart data={datosAplanados} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
         <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />

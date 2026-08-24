@@ -12,6 +12,7 @@ export interface DatoPieLinea {
 interface LineasPieChartProps {
   datos: DatoPieLinea[];
   theme: Theme;
+  altura?: number;
 }
 
 // Umbral por debajo del cual una porcion no lleva etiqueta de porcentaje: con hasta 8 lineas,
@@ -48,7 +49,7 @@ function EtiquetaPorcentaje({ cx = 0, cy = 0, midAngle = 0, outerRadius = 0, per
   );
 }
 
-export function LineasPieChart({ datos, theme }: LineasPieChartProps) {
+export function LineasPieChart({ datos, theme, altura = 420 }: LineasPieChartProps) {
   if (datos.length === 0) {
     return <p className="text-sm text-[var(--color-text-muted)]">Selecciona al menos una categoría para comparar.</p>;
   }
@@ -64,7 +65,7 @@ export function LineasPieChart({ datos, theme }: LineasPieChartProps) {
   // fijo debajo de la tarta (cy por encima del centro) en vez de dejar que Recharts superponga
   // la leyenda sobre las etiquetas de porcentaje.
   return (
-    <ResponsiveContainer width="100%" height={420}>
+    <ResponsiveContainer width="100%" height={altura}>
       <PieChart margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
         <Pie
           data={datosConMagnitud}

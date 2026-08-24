@@ -104,10 +104,9 @@ Disponible = Ingreso real del mes − Gastos fijos del mes − Aportaciones a ob
 **Página "Visualizaciones" (comparador libre):**
 - Rango de meses (selector "Desde" / "Hasta", tipo mes/año).
 - **Métricas** y **Resumen Categorías**: los mismos bloques que en Inicio (grid de métricas y balance neto por categoría/subcategoría), pero calculados sobre el rango de meses elegido en vez del mes en curso.
-- Una o varias "líneas" a comparar, cada una una categoría + subcategoría (o **Todas** las subcategorías de esa categoría, sumando su balance neto). Se eligen desde un selector modal con el nombre de cada categoría y subcategoría (seleccionado = texto normal, sin seleccionar = atenuado); botón "Seleccionar todas" para elegir las 8 categorías de golpe. Máximo 8 líneas a la vez (techo real de la paleta de colores categórica sin perder distinción por daltonismo).
-- Gráfico de serie temporal (una serie por línea, un punto por mes del rango).
-- Gráfico de tarta (una porción por línea, con el total neto de todo el rango).
-- El mismo color identifica a la misma línea en ambos gráficos.
+- Una o varias "líneas" a comparar, cada una una categoría + subcategoría (o **Todas** las subcategorías de esa categoría, sumando su balance neto). No hay desplegables: el botón "+ Añadir categoría" activa un modo de selección en el que los propios nombres de **Resumen Categorías** (arriba) se vuelven pulsables — seleccionado = texto normal + punto de color, sin seleccionar = atenuado. Botón "Seleccionar todas" para elegir las 8 categorías de golpe. Máximo 8 líneas a la vez (techo real de la paleta de colores categórica sin perder distinción por daltonismo).
+- Gráfico de serie temporal (una serie por línea, un punto por mes del rango) y gráfico de tarta (una porción por línea, con el total neto de todo el rango). El mismo color identifica a la misma línea en ambos gráficos.
+- Cada gráfico tiene un botón "Pantalla grande" (esquina superior derecha) que lo amplía a pantalla completa; en móvil en vertical se rota 90° para aprovechar el lado largo de la pantalla como ancho del gráfico. Sigue siendo interactivo (tooltips, puntos) igual que en tamaño normal.
 
 ## 10. Estilo visual
 

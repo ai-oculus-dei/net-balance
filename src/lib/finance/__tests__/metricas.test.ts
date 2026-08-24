@@ -5,7 +5,9 @@ import {
   gastoRealTotalDelMes,
   gastoVariableDelMes,
   inversionTotalDelMes,
+  margenOperativoDelMes,
   tasaAhorroDelMes,
+  tasaInversionDelMes,
 } from '../metricas';
 import { indexarSubcategorias } from '../taxonomia';
 import type { Movimiento, Subcategoria } from '../../supabase/database.types';
@@ -87,5 +89,29 @@ describe('tasaAhorroDelMes', () => {
 
   it('devuelve null si no hay ingreso real', () => {
     expect(tasaAhorroDelMes(300, 0)).toBeNull();
+  });
+});
+
+describe('tasaInversionDelMes', () => {
+  it('calcula el porcentaje de ingreso real invertido', () => {
+    expect(tasaInversionDelMes(500, 2000)).toBe(25);
+  });
+
+  it('devuelve null si no hay ingreso real', () => {
+    expect(tasaInversionDelMes(500, 0)).toBeNull();
+  });
+});
+
+describe('margenOperativoDelMes', () => {
+  it('calcula el porcentaje de ingreso real que queda tras los gastos fijos', () => {
+    expect(margenOperativoDelMes(2000, 800)).toBe(60);
+  });
+
+  it('devuelve un margen negativo si los gastos fijos superan el ingreso real', () => {
+    expect(margenOperativoDelMes(500, 800)).toBe(-60);
+  });
+
+  it('devuelve null si no hay ingreso real', () => {
+    expect(margenOperativoDelMes(0, 800)).toBeNull();
   });
 });

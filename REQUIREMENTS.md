@@ -93,8 +93,10 @@ Disponible = Ingreso real del mes − Gastos fijos del mes − Aportaciones a ob
 ## 9. Visualización
 
 **Página de Inicio:**
-- **Métricas del mes**: fila de indicadores — Ingreso real, Gastos fijos, Gasto variable (gasto real total menos gastos fijos), Disponible, Balance neto del mes (todo lo ingresado menos todo lo gastado, sin excluir nada), Ahorro total del mes, Inversión total del mes, Tasa de ahorro (Ahorro total del mes / Ingreso real del mes × 100).
+- **Métricas del mes**: grid de 2 columnas, en este orden — Ingreso real / Gastos totales (Gastos fijos + Gastos variables), Gastos fijos / Gastos variables, Balance neto (todo lo ingresado menos todo lo gastado, sin excluir nada) / Operating margin ((Ingreso real − Gastos fijos) / Ingreso real × 100), Ahorro total / Inversión total, Tasa de ahorro (Ahorro total / Ingreso real × 100) / Tasa de inversión (Inversión total / Ingreso real × 100).
   - **Ahorro total** e **Inversión total**: un gasto (importe negativo) en esas subcategorías es dinero que de verdad se guarda/invierte; un ingreso (positivo) es una retirada de vuelta a la cuenta de gastos. Se invierte el signo para que "ahorrar de verdad" se vea en positivo.
+  - **Colores de Tasa de ahorro**: verde si > 30%, rojo si < 20%, blanco (neutro) entre 20% y 30%.
+  - **Colores de Tasa de inversión**: verde si > 15%, rojo si ≤ 15% (sin zona neutra).
 - **Este mes**: balance neto de cada subcategoría con movimientos ese mes, agrupado por categoría (solo las que han tenido actividad, no las 60 siempre).
 - Progreso de cada objetivo de ahorro (acumulado vs meta / % de presupuesto recurrente usado).
 - Vista combinada: movimientos propios + movimientos compartidos visibles del otro usuario.

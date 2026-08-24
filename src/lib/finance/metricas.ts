@@ -55,3 +55,16 @@ export function tasaAhorroDelMes(ahorroTotal: number, ingresoReal: number): numb
   if (ingresoReal <= 0) return null;
   return round2((ahorroTotal / ingresoReal) * 100);
 }
+
+// Tasa de inversion del mes: mismo tratamiento que la tasa de ahorro, para la inversion.
+export function tasaInversionDelMes(inversionTotal: number, ingresoReal: number): number | null {
+  if (ingresoReal <= 0) return null;
+  return round2((inversionTotal / ingresoReal) * 100);
+}
+
+// Margen operativo del mes: que parte del ingreso real queda tras cubrir los gastos fijos —
+// el equivalente personal a un margen operativo de negocio. Null si no hay ingreso real ese mes.
+export function margenOperativoDelMes(ingresoReal: number, gastosFijos: number): number | null {
+  if (ingresoReal <= 0) return null;
+  return round2(((ingresoReal - gastosFijos) / ingresoReal) * 100);
+}

@@ -6,12 +6,12 @@ import type { BalanceSubcategoria } from '../../lib/finance/taxonomia';
 type ModoVista = 'neto' | 'porcentaje';
 
 interface EsteMesCardProps {
-  etiquetaMes: string;
+  titulo: string;
   balanceSubcategorias: BalanceSubcategoria[];
   loading: boolean;
 }
 
-export function EsteMesCard({ etiquetaMes, balanceSubcategorias, loading }: EsteMesCardProps) {
+export function EsteMesCard({ titulo, balanceSubcategorias, loading }: EsteMesCardProps) {
   const [modo, setModo] = useState<ModoVista>('neto');
 
   const totalGastado = balanceSubcategorias
@@ -38,7 +38,7 @@ export function EsteMesCard({ etiquetaMes, balanceSubcategorias, loading }: Este
     <Card>
       <div className="flex items-center justify-between mb-2 gap-2">
         <h2 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide truncate">
-          Este mes: {etiquetaMes}
+          {titulo}
         </h2>
         <div className="flex rounded-md border border-[var(--color-border)] overflow-hidden shrink-0 text-xs font-semibold">
           <button
@@ -63,7 +63,7 @@ export function EsteMesCard({ etiquetaMes, balanceSubcategorias, loading }: Este
       {loading ? (
         <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
       ) : balanceSubcategorias.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Sin movimientos este mes.</p>
+        <p className="text-sm text-[var(--color-text-muted)]">Sin movimientos en este periodo.</p>
       ) : (
         balanceSubcategorias.map((linea, indice) => {
           const nuevaCategoria = indice === 0 || balanceSubcategorias[indice - 1].categoriaId !== linea.categoriaId;

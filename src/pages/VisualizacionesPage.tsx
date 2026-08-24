@@ -6,12 +6,14 @@ import { LineaSelectorRow } from '../components/visualizaciones/LineaSelectorRow
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
 import { LineasPieChart } from '../components/charts/LineasPieChart';
 import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
+import { MetricasCard } from '../components/dashboard/MetricasCard';
+import { EsteMesCard } from '../components/dashboard/EsteMesCard';
 import { useTaxonomia } from '../hooks/useTaxonomia';
 import { useMovimientos } from '../hooks/useMovimientos';
 import { useTheme } from '../lib/theme/useTheme';
 import { useVisualizacionesState } from '../lib/visualizaciones/useVisualizacionesState';
 import { parseMes, rangoEntreMeses } from '../lib/finance/fechas';
-import { indexarSubcategorias } from '../lib/finance/taxonomia';
+import { balancePorSubcategoria, indexarSubcategorias } from '../lib/finance/taxonomia';
 import {
   etiquetaLinea,
   lineaEsValida,
@@ -47,6 +49,11 @@ export function VisualizacionesPage() {
   const rango = useMemo(() => rangoEntreMeses(desdeMes, hastaMes), [desdeMes, hastaMes]);
   const { movimientos, loading: loadingMovimientos } = useMovimientos(rango);
   const subcategoriasPorId = useMemo(() => indexarSubcategorias(subcategorias), [subcategorias]);
+
+  const balanceSubcategorias = useMemo(
+    () => balancePorSubcategoria(movimientos, subcategoriasPorId, categorias),
+    [movimientos, subcategoriasPorId, categorias]
+  );
 
   const lineasValidas = useMemo(() => lineas.filter(lineaEsValida), [lineas]);
 
@@ -96,6 +103,15 @@ export function VisualizacionesPage() {
           <Input label="Hasta" type="month" value={hastaMes} onChange={(e) => setHastaMes(e.target.value)} />
         </div>
       </Card>
+
+      <MetricasCard
+        titulo={`Métricas (${desdeMes} a ${hastaMes})`}
+        movimientos={movimientos}
+        subcategoriasPorId={subcategoriasPorId}
+        loading={loading}
+      />
+
+      <EsteMesCard titulo="Resumen Categorías" balanceSubcategorias={balanceSubcategorias} loading={loading} />
 
       <Card>
         <div className="flex items-center justify-between mb-3">

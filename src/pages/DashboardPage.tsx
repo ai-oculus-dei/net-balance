@@ -1,47 +1,15 @@
 import { useMemo } from 'react';
 import { Card } from '../components/ui/Card';
-import { StatTile } from '../components/ui/StatTile';
 import { MovimientoRow } from '../components/movimientos/MovimientoRow';
 import { EsteMesCard } from '../components/dashboard/EsteMesCard';
+import { MetricasCard } from '../components/dashboard/MetricasCard';
 import { useDisponibleMes } from '../hooks/useDisponibleMes';
 import { useTaxonomia } from '../hooks/useTaxonomia';
 import { balancePorSubcategoria, indexarSubcategorias } from '../lib/finance/taxonomia';
-import {
-  ahorroTotalDelMes,
-  balanceNetoDelMes,
-  gastoRealTotalDelMes,
-  gastoVariableDelMes,
-  inversionTotalDelMes,
-  margenOperativoDelMes,
-  tasaAhorroDelMes,
-  tasaInversionDelMes,
-} from '../lib/finance/metricas';
-import { claseColorPorSigno } from '../components/charts/colors';
-
-// Tasa de ahorro: verde si se ahorra "bien" (>30%), roja si es baja (<20%), blanca en medio.
-function claseColorTasaAhorro(tasa: number | null): string {
-  if (tasa === null) return '';
-  if (tasa > 30) return 'text-[var(--color-gain)]';
-  if (tasa < 20) return 'text-[var(--color-loss)]';
-  return '';
-}
-
-// Tasa de inversion: verde por encima del 15%, roja por debajo (sin zona neutra).
-function claseColorTasaInversion(tasa: number | null): string {
-  if (tasa === null) return '';
-  return tasa > 15 ? 'text-[var(--color-gain)]' : 'text-[var(--color-loss)]';
-}
 
 export function DashboardPage() {
   const hoy = useMemo(() => new Date(), []);
-  const {
-    ingresoReal,
-    gastosFijos,
-    movimientos,
-    objetivosActivos,
-    aportacionesDeseadas,
-    loading: loadingDisponible,
-  } = useDisponibleMes(hoy);
+  const { movimientos, objetivosActivos, aportacionesDeseadas, loading: loadingDisponible } = useDisponibleMes(hoy);
   const { categorias, subcategorias, loading: loadingTaxonomia } = useTaxonomia();
 
   const totalAhorroMensual = useMemo(
@@ -50,21 +18,6 @@ export function DashboardPage() {
   );
 
   const subcategoriasPorId = useMemo(() => indexarSubcategorias(subcategorias), [subcategorias]);
-
-  const balanceNeto = useMemo(() => balanceNetoDelMes(movimientos), [movimientos]);
-  const ahorroTotal = useMemo(() => ahorroTotalDelMes(movimientos, subcategoriasPorId), [movimientos, subcategoriasPorId]);
-  const inversionTotal = useMemo(
-    () => inversionTotalDelMes(movimientos, subcategoriasPorId),
-    [movimientos, subcategoriasPorId]
-  );
-  const gastoRealTotal = useMemo(
-    () => gastoRealTotalDelMes(movimientos, subcategoriasPorId),
-    [movimientos, subcategoriasPorId]
-  );
-  const gastoVariable = useMemo(() => gastoVariableDelMes(gastoRealTotal, gastosFijos), [gastoRealTotal, gastosFijos]);
-  const tasaAhorro = useMemo(() => tasaAhorroDelMes(ahorroTotal, ingresoReal), [ahorroTotal, ingresoReal]);
-  const tasaInversion = useMemo(() => tasaInversionDelMes(inversionTotal, ingresoReal), [inversionTotal, ingresoReal]);
-  const margenOperativo = useMemo(() => margenOperativoDelMes(ingresoReal, gastosFijos), [ingresoReal, gastosFijos]);
 
   const balanceSubcategorias = useMemo(
     () => balancePorSubcategoria(movimientos, subcategoriasPorId, categorias),
@@ -77,41 +30,14 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card>
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-3 uppercase tracking-wide">
-          Métricas del mes
-        </h2>
-        {loading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-4">
-            <StatTile label="Ingreso real" value={`${ingresoReal.toFixed(2)} €`} colorClassName="text-[var(--color-gain)]" />
-            <StatTile label="Gastos totales" value={`${gastoRealTotal.toFixed(2)} €`} colorClassName="text-[var(--color-loss)]" />
-            <StatTile label="Gastos fijos" value={`${gastosFijos.toFixed(2)} €`} colorClassName="text-[var(--color-loss)]" />
-            <StatTile label="Gastos variables" value={`${gastoVariable.toFixed(2)} €`} colorClassName={claseColorPorSigno(-gastoVariable)} />
-            <StatTile label="Balance neto" value={`${balanceNeto.toFixed(2)} €`} colorClassName={claseColorPorSigno(balanceNeto)} />
-            <StatTile
-              label="Operating margin"
-              value={margenOperativo === null ? '—' : `${margenOperativo.toFixed(0)} %`}
-              colorClassName={margenOperativo === null ? '' : claseColorPorSigno(margenOperativo)}
-            />
-            <StatTile label="Ahorro total" value={`${ahorroTotal.toFixed(2)} €`} colorClassName={claseColorPorSigno(ahorroTotal)} />
-            <StatTile label="Inversión total" value={`${inversionTotal.toFixed(2)} €`} colorClassName={claseColorPorSigno(inversionTotal)} />
-            <StatTile
-              label="Tasa de ahorro"
-              value={tasaAhorro === null ? '—' : `${tasaAhorro.toFixed(0)} %`}
-              colorClassName={claseColorTasaAhorro(tasaAhorro)}
-            />
-            <StatTile
-              label="Tasa de inversión"
-              value={tasaInversion === null ? '—' : `${tasaInversion.toFixed(0)} %`}
-              colorClassName={claseColorTasaInversion(tasaInversion)}
-            />
-          </div>
-        )}
-      </Card>
+      <MetricasCard
+        titulo="Métricas del mes"
+        movimientos={movimientos}
+        subcategoriasPorId={subcategoriasPorId}
+        loading={loading}
+      />
 
-      <EsteMesCard etiquetaMes={etiquetaMes} balanceSubcategorias={balanceSubcategorias} loading={loading} />
+      <EsteMesCard titulo={`Este mes: ${etiquetaMes}`} balanceSubcategorias={balanceSubcategorias} loading={loading} />
 
       <Card>
         <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">

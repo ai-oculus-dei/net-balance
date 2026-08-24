@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { LineaSelectorRow } from '../components/visualizaciones/LineaSelectorRow';
+import { CategoriaPickerModal } from '../components/visualizaciones/CategoriaPickerModal';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
 import { LineasPieChart } from '../components/charts/LineasPieChart';
-import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
+import { MAX_LINEAS, colorCategorico } from '../components/charts/colorsCategoricos';
 import { MetricasCard } from '../components/dashboard/MetricasCard';
 import { EsteMesCard } from '../components/dashboard/EsteMesCard';
 import { useTaxonomia } from '../hooks/useTaxonomia';
@@ -30,19 +30,11 @@ function siguienteColorIndexLibre(lineas: LineaSeleccion[]): number {
   return 0;
 }
 
-function nuevaLinea(lineasActuales: LineaSeleccion[]): LineaSeleccion {
-  return {
-    id: crypto.randomUUID(),
-    colorIndex: siguienteColorIndexLibre(lineasActuales),
-    categoriaId: null,
-    subcategoriaId: null,
-  };
-}
-
 export function VisualizacionesPage() {
   // Vive en un contexto montado en AppShell (no en esta pagina): asi la seleccion sobrevive a
   // cambiar de pestaña, pero se pierde si se cierra/recarga la app (no se persiste a proposito).
   const { desdeMes, hastaMes, lineas, setDesdeMes, setHastaMes, setLineas } = useVisualizacionesState();
+  const [pickerAbierto, setPickerAbierto] = useState(false);
 
   const { theme } = useTheme();
   const { categorias, subcategorias, subcategoriasDe, loading: loadingTaxonomia } = useTaxonomia();
@@ -78,16 +70,28 @@ export function VisualizacionesPage() {
     neto: totales.find((t) => t.lineaId === info.id)?.total ?? 0,
   }));
 
-  function actualizarLinea(id: string, cambios: Partial<LineaSeleccion>) {
-    setLineas((actuales) => actuales.map((l) => (l.id === id ? { ...l, ...cambios } : l)));
-  }
-
   function quitarLinea(id: string) {
     setLineas((actuales) => actuales.filter((l) => l.id !== id));
   }
 
-  function anadirLinea() {
-    setLineas((actuales) => (actuales.length >= MAX_LINEAS ? actuales : [...actuales, nuevaLinea(actuales)]));
+  function toggleSeleccion(categoriaId: number, subcategoriaId: number | null) {
+    setLineas((actuales) => {
+      const existente = actuales.find((l) => l.categoriaId === categoriaId && l.subcategoriaId === subcategoriaId);
+      if (existente) return actuales.filter((l) => l.id !== existente.id);
+      if (actuales.length >= MAX_LINEAS) return actuales;
+      return [...actuales, { id: crypto.randomUUID(), colorIndex: siguienteColorIndexLibre(actuales), categoriaId, subcategoriaId }];
+    });
+  }
+
+  function seleccionarTodasCategorias() {
+    setLineas(() =>
+      categorias.slice(0, MAX_LINEAS).map((c, indice) => ({
+        id: crypto.randomUUID(),
+        colorIndex: indice,
+        categoriaId: c.id,
+        subcategoriaId: null,
+      }))
+    );
   }
 
   const loading = loadingTaxonomia || loadingMovimientos;
@@ -122,30 +126,60 @@ export function VisualizacionesPage() {
             <span className="text-xs text-[var(--color-text-muted)]">Máximo {MAX_LINEAS} líneas</span>
           )}
         </div>
-        <div className="flex flex-col gap-3">
-          {lineas.map((linea) => (
-            <LineaSelectorRow
-              key={linea.id}
-              linea={linea}
-              categorias={categorias}
-              subcategoriasDe={subcategoriasDe}
-              theme={theme}
-              onChangeCategoria={(categoriaId) => actualizarLinea(linea.id, { categoriaId, subcategoriaId: null })}
-              onChangeSubcategoria={(subcategoriaId) => actualizarLinea(linea.id, { subcategoriaId })}
-              onRemove={() => quitarLinea(linea.id)}
-            />
-          ))}
+
+        {lineas.length > 0 && (
+          <div className="flex flex-col gap-1.5 mb-3">
+            {lineas.map((linea) => (
+              <div key={linea.id} className="flex items-center gap-2">
+                <span
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: colorCategorico(linea.colorIndex, theme) }}
+                  aria-hidden="true"
+                />
+                <span className="flex-1 min-w-0 text-sm truncate">{etiquetaLinea(linea, categorias, subcategorias)}</span>
+                <button
+                  type="button"
+                  onClick={() => quitarLinea(linea.id)}
+                  aria-label="Quitar línea"
+                  className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="flex-1"
+            onClick={() => setPickerAbierto(true)}
+            disabled={lineas.length >= MAX_LINEAS}
+          >
+            + Añadir categoría
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="flex-1"
+            onClick={seleccionarTodasCategorias}
+          >
+            Seleccionar todas
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          className="mt-3"
-          onClick={anadirLinea}
-          disabled={lineas.length >= MAX_LINEAS}
-        >
-          + Añadir categoría
-        </Button>
       </Card>
+
+      <CategoriaPickerModal
+        open={pickerAbierto}
+        onClose={() => setPickerAbierto(false)}
+        categorias={categorias}
+        subcategoriasDe={subcategoriasDe}
+        lineas={lineas}
+        maxLineas={MAX_LINEAS}
+        onToggle={toggleSeleccion}
+      />
 
       <Card>
         <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">

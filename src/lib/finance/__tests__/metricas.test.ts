@@ -11,11 +11,11 @@ import { indexarSubcategorias } from '../taxonomia';
 import type { Movimiento, Subcategoria } from '../../supabase/database.types';
 
 const subcategorias: Subcategoria[] = [
-  { id: 1, categoria_id: 1, nombre: 'Salario', es_ingreso_real: true, es_gasto_fijo: false, es_ahorro: false, es_inversion: false, es_traspaso: false },
-  { id: 2, categoria_id: 1, nombre: 'Ahorro', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: true, es_inversion: false, es_traspaso: true },
-  { id: 3, categoria_id: 1, nombre: 'Inversiones', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: false, es_inversion: true, es_traspaso: true },
-  { id: 4, categoria_id: 2, nombre: 'Alquiler', es_ingreso_real: false, es_gasto_fijo: true, es_ahorro: false, es_inversion: false, es_traspaso: false },
-  { id: 5, categoria_id: 2, nombre: 'Restaurantes', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: false, es_inversion: false, es_traspaso: false },
+  { id: 1, categoria_id: 1, nombre: 'Salario', es_ingreso_real: true, es_gasto_fijo: false, es_ahorro: false, es_inversion: false, es_traspaso: false, es_ingreso_condicional: false },
+  { id: 2, categoria_id: 1, nombre: 'Ahorro', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: true, es_inversion: false, es_traspaso: true, es_ingreso_condicional: true },
+  { id: 3, categoria_id: 1, nombre: 'Inversiones', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: false, es_inversion: true, es_traspaso: true, es_ingreso_condicional: true },
+  { id: 4, categoria_id: 2, nombre: 'Alquiler', es_ingreso_real: false, es_gasto_fijo: true, es_ahorro: false, es_inversion: false, es_traspaso: false, es_ingreso_condicional: false },
+  { id: 5, categoria_id: 2, nombre: 'Restaurantes', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: false, es_inversion: false, es_traspaso: false, es_ingreso_condicional: false },
 ];
 
 const subcategoriasPorId = indexarSubcategorias(subcategorias);
@@ -81,11 +81,11 @@ describe('gastoVariableDelMes', () => {
 });
 
 describe('tasaAhorroDelMes', () => {
-  it('calcula el porcentaje de ingreso real destinado a ahorro+inversion', () => {
-    expect(tasaAhorroDelMes(300, 200, 2000)).toBe(25);
+  it('calcula el porcentaje de ingreso real ahorrado', () => {
+    expect(tasaAhorroDelMes(300, 2000)).toBe(15);
   });
 
   it('devuelve null si no hay ingreso real', () => {
-    expect(tasaAhorroDelMes(300, 200, 0)).toBeNull();
+    expect(tasaAhorroDelMes(300, 0)).toBeNull();
   });
 });

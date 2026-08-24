@@ -45,6 +45,7 @@ export interface Subcategoria {
   es_ahorro: boolean;
   es_inversion: boolean;
   es_traspaso: boolean;
+  es_ingreso_condicional: boolean;
 }
 
 export interface Movimiento {

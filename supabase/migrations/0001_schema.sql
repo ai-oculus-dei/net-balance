@@ -63,6 +63,11 @@ create table subcategorias (
   -- Se usa para el aviso informativo del alta de movimiento y para excluirlos del "gasto
   -- total real" en las metricas del Dashboard (seccion 9).
   es_traspaso     boolean not null default false,
+  -- true solo para: Impuestos, Ahorro, Efectivo, Inversiones. Su balance neto del mes solo
+  -- cuenta como ingreso real (seccion 5) cuando es POSITIVO (p.ej. una devolucion de
+  -- impuestos, o retirar mas de Ahorro/Inversiones de lo aportado ese mes) — si es negativo
+  -- no resta del ingreso real, simplemente no suma nada.
+  es_ingreso_condicional boolean not null default false,
   unique (categoria_id, nombre)
 );
 
@@ -157,6 +162,7 @@ update subcategorias set es_gasto_fijo = true where nombre in (
 update subcategorias set es_ahorro = true where nombre = 'Ahorro';
 update subcategorias set es_inversion = true where nombre = 'Inversiones';
 update subcategorias set es_traspaso = true where nombre in ('Ahorro', 'Inversiones');
+update subcategorias set es_ingreso_condicional = true where nombre in ('Impuestos', 'Ahorro', 'Efectivo', 'Inversiones');
 
 -- ============================================================
 -- MOVIMIENTOS (seccion 3)

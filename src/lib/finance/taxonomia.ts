@@ -7,12 +7,27 @@ export function indexarSubcategorias(subcategorias: Subcategoria[]): Subcategori
 }
 
 // Ingreso real del mes (seccion 5): neto de las subcategorias marcadas es_ingreso_real
-// (Salario, Paga Extra, Variable, Beneficios, Ingreso Extra). Se sigue la regla de "balance
-// neto por categoria" de la seccion 3 tambien aqui: se suman con signo, no solo positivos.
+// (Salario, Paga Extra, Variable, Beneficios, Ingreso Extra) SIEMPRE, con signo — mas el
+// balance neto de las subcategorias "condicionales" (Impuestos, Ahorro, Efectivo,
+// Inversiones), pero cada una de estas SOLO si su propio balance ese mes es positivo (p.ej.
+// una devolucion de impuestos, o retirar de Ahorro mas de lo aportado). Si el balance de una
+// condicional es negativo, no resta del ingreso real: simplemente no suma nada.
 export function ingresoRealDelMes(movimientos: Movimiento[], subcategorias: SubcategoriasPorId): number {
-  return movimientos
+  const incondicional = movimientos
     .filter((m) => subcategorias.get(m.subcategoria_id)?.es_ingreso_real)
     .reduce((suma, m) => suma + m.importe, 0);
+
+  const balancePorCondicional = new Map<number, number>();
+  for (const m of movimientos) {
+    const sub = subcategorias.get(m.subcategoria_id);
+    if (!sub?.es_ingreso_condicional) continue;
+    balancePorCondicional.set(sub.id, (balancePorCondicional.get(sub.id) ?? 0) + m.importe);
+  }
+  const condicional = Array.from(balancePorCondicional.values())
+    .filter((balance) => balance > 0)
+    .reduce((suma, balance) => suma + balance, 0);
+
+  return Math.round((incondicional + condicional) * 100) / 100;
 }
 
 // Gastos fijos del mes (seccion 6): balance neto (gasto - ingreso, con signo) de las

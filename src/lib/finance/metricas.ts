@@ -48,10 +48,10 @@ export function gastoVariableDelMes(gastoRealTotal: number, gastosFijos: number)
   return round2(gastoRealTotal - gastosFijos);
 }
 
-// Tasa de ahorro del mes: que parte del ingreso real se ha destinado de verdad a ahorro o
-// inversion — el equivalente personal a un "margen": cuanto de lo que entra se queda. Null
-// si no hay ingreso real ese mes (no tiene sentido dividir entre 0 o negativo).
-export function tasaAhorroDelMes(ahorroTotal: number, inversionTotal: number, ingresoReal: number): number | null {
+// Tasa de ahorro del mes: que parte del ingreso real se ha ahorrado de verdad — el
+// equivalente personal a un "margen": cuanto de lo que entra se queda. Null si no hay
+// ingreso real ese mes (no tiene sentido dividir entre 0 o negativo).
+export function tasaAhorroDelMes(ahorroTotal: number, ingresoReal: number): number | null {
   if (ingresoReal <= 0) return null;
-  return round2(((ahorroTotal + inversionTotal) / ingresoReal) * 100);
+  return round2((ahorroTotal / ingresoReal) * 100);
 }

@@ -47,10 +47,7 @@ export function DashboardPage() {
     [movimientos, subcategoriasPorId]
   );
   const gastoVariable = useMemo(() => gastoVariableDelMes(gastoRealTotal, gastosFijos), [gastoRealTotal, gastosFijos]);
-  const tasaAhorro = useMemo(
-    () => tasaAhorroDelMes(ahorroTotal, inversionTotal, ingresoReal),
-    [ahorroTotal, inversionTotal, ingresoReal]
-  );
+  const tasaAhorro = useMemo(() => tasaAhorroDelMes(ahorroTotal, ingresoReal), [ahorroTotal, ingresoReal]);
 
   const balanceSubcategorias = useMemo(
     () => balancePorSubcategoria(movimientos, subcategoriasPorId, categorias),

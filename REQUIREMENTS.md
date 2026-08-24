@@ -50,7 +50,7 @@ Cada movimiento (gasto o ingreso) tiene:
 | Compras | Ropa, Electrónica, Muebles, Decoración, Regalos, Juguetes |
 | Finanzas | Inversiones, Efectivo, Salario, Paga Extra, Variable, Beneficios, Ingreso Extra, Ahorro, Impuestos |
 
-**Regla especial — "Ingreso real":** de la categoría Finanzas, solo las subcategorías **Salario, Paga Extra, Variable, Beneficios e Ingreso Extra** cuentan como ingreso real (base para el cálculo de aportaciones a objetivos, sección 7). Inversiones, Efectivo, Ahorro e Impuestos son movimientos/transferencias y no deben sumar ni restar en ese cálculo.
+**Regla especial — "Ingreso real":** de la categoría Finanzas, las subcategorías **Salario, Paga Extra, Variable, Beneficios e Ingreso Extra** cuentan siempre como ingreso real, con signo (base para el cálculo de aportaciones a objetivos, sección 7). **Impuestos, Ahorro, Efectivo e Inversiones** son condicionales: cada una suma al ingreso real solo si su propio balance neto ese mes es positivo (p. ej. una devolución de impuestos, o retirar de Ahorro/Inversiones/Efectivo más de lo aportado). Si el balance de una de estas es negativo, no resta del ingreso real — simplemente no suma nada. Cada subcategoría condicional se evalúa de forma independiente.
 
 Categorías fijas, sin gestión de alta/baja desde la interfaz en la v1 (se editan directamente en código/config si hace falta cambiarlas).
 
@@ -93,7 +93,7 @@ Disponible = Ingreso real del mes − Gastos fijos del mes − Aportaciones a ob
 ## 9. Visualización
 
 **Página de Inicio:**
-- **Métricas del mes**: fila de indicadores — Ingreso real, Gastos fijos, Gasto variable (gasto real total menos gastos fijos), Disponible, Balance neto del mes (todo lo ingresado menos todo lo gastado, sin excluir nada), Ahorro total del mes, Inversión total del mes, Tasa de ahorro (% del ingreso real destinado a ahorro + inversión).
+- **Métricas del mes**: fila de indicadores — Ingreso real, Gastos fijos, Gasto variable (gasto real total menos gastos fijos), Disponible, Balance neto del mes (todo lo ingresado menos todo lo gastado, sin excluir nada), Ahorro total del mes, Inversión total del mes, Tasa de ahorro (Ahorro total del mes / Ingreso real del mes × 100).
   - **Ahorro total** e **Inversión total**: un gasto (importe negativo) en esas subcategorías es dinero que de verdad se guarda/invierte; un ingreso (positivo) es una retirada de vuelta a la cuenta de gastos. Se invierte el signo para que "ahorrar de verdad" se vea en positivo.
 - **Este mes**: balance neto de cada subcategoría con movimientos ese mes, agrupado por categoría (solo las que han tenido actividad, no las 60 siempre).
 - Progreso de cada objetivo de ahorro (acumulado vs meta / % de presupuesto recurrente usado).

@@ -146,9 +146,27 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
       <Input label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required placeholder="Apple Inc." />
 
       {unitario && (
-        <div className="grid grid-cols-2 gap-2">
-          <Input label="Ticker" value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="AAPL" />
-          <Input label="Mercado" value={mercado} onChange={(e) => setMercado(e.target.value)} placeholder="NASDAQ" />
+        <div className="flex flex-col gap-1.5">
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              label="Ticker"
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value)}
+              placeholder={tipo === 'criptomoneda' ? 'bitcoin' : 'AAPL'}
+            />
+            <Input
+              label="Mercado"
+              value={mercado}
+              onChange={(e) => setMercado(e.target.value)}
+              placeholder="NASDAQ"
+              disabled={tipo === 'criptomoneda'}
+            />
+          </div>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            {tipo === 'criptomoneda'
+              ? 'Usa el ID de CoinGecko, no el símbolo (p. ej. "bitcoin", no "BTC") — así se actualiza el precio solo.'
+              : 'Símbolo de Twelve Data (Mercado es opcional, solo para desambiguar si hace falta) — así se actualiza el precio solo.'}
+          </p>
         </div>
       )}
 

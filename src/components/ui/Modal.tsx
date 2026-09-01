@@ -5,15 +5,26 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  // Por defecto, hoja inferior en movil (pegada abajo, con hueco para que el boton de guardar
+  // no quede tapado por el teclado). `centrado` la muestra siempre centrada en vertical, para
+  // dialogos cortos (avisos/confirmaciones) donde no tiene sentido el patron de hoja inferior.
+  centrado?: boolean;
 }
 
-export function Modal({ open, onClose, title, children }: ModalProps) {
+export function Modal({ open, onClose, title, children, centrado = false }: ModalProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={onClose}>
+    <div
+      className={`fixed inset-0 z-50 flex justify-center bg-black/50 ${
+        centrado ? 'items-center' : 'items-end sm:items-center pb-8 sm:pb-0'
+      }`}
+      onClick={onClose}
+    >
       <div
-        className="w-full sm:max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
+        className={`w-full bg-[var(--color-surface)] border border-[var(--color-border)] p-5 max-h-[90vh] overflow-y-auto ${
+          centrado ? 'max-w-md mx-4 rounded-2xl' : 'sm:max-w-md rounded-t-2xl sm:rounded-2xl'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

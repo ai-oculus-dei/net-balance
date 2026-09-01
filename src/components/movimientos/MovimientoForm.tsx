@@ -312,7 +312,7 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
         </Button>
       </div>
 
-      <Modal open={confirmacionCierre !== null} onClose={cancelarCierre} title="Confirmar cierre de mes">
+      <Modal open={confirmacionCierre !== null} onClose={cancelarCierre} title="Confirmar cierre de mes" centrado>
         <p className="text-sm mb-4">
           Vas a cerrar el mes {etiquetaMesCierre} con {confirmacionCierre?.dias} días. ¿Quieres proceder a cerrarlo?
         </p>

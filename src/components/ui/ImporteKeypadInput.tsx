@@ -7,6 +7,7 @@ interface ImporteKeypadInputProps {
   value: number; // magnitud actual (siempre positiva; el signo lo decide el resto del formulario)
   onChange: (magnitud: number) => void;
   colorClassName?: string;
+  decimales?: number; // precision del redondeo (p.ej. 2 para importes en euros, mas para cantidades fraccionarias)
 }
 
 function formatearMagnitud(valor: number): string {
@@ -17,7 +18,7 @@ function simbolosParaMostrar(expresion: string): string {
   return expresion.replace(/\*/g, '×').replace(/\//g, '÷').replace(/-/g, '−');
 }
 
-export function ImporteKeypadInput({ label, value, onChange, colorClassName = '' }: ImporteKeypadInputProps) {
+export function ImporteKeypadInput({ label, value, onChange, colorClassName = '', decimales = 2 }: ImporteKeypadInputProps) {
   const [expresion, setExpresion] = useState(() => formatearMagnitud(value));
   const [abierto, setAbierto] = useState(false);
   const ultimoValorEmitido = useRef(value);
@@ -33,7 +34,7 @@ export function ImporteKeypadInput({ label, value, onChange, colorClassName = ''
 
   function commit(nuevaExpresion: string) {
     setExpresion(nuevaExpresion);
-    const resultado = evaluarExpresion(nuevaExpresion);
+    const resultado = evaluarExpresion(nuevaExpresion, decimales);
     if (resultado !== null) {
       const magnitud = Math.abs(resultado);
       ultimoValorEmitido.current = magnitud;
@@ -60,7 +61,7 @@ export function ImporteKeypadInput({ label, value, onChange, colorClassName = ''
   }
 
   function handleEquals() {
-    const resultado = evaluarExpresion(expresion);
+    const resultado = evaluarExpresion(expresion, decimales);
     if (resultado === null) return;
     commit(String(Math.abs(resultado)));
   }

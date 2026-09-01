@@ -16,8 +16,13 @@ describe('evaluarExpresion', () => {
     expect(evaluarExpresion('10-4/2')).toBe(8);
   });
 
-  it('redondea el resultado a 2 decimales', () => {
+  it('redondea el resultado a 2 decimales por defecto', () => {
     expect(evaluarExpresion('10/3')).toBe(3.33);
+  });
+
+  it('acepta una precision de redondeo distinta', () => {
+    expect(evaluarExpresion('10/3', 8)).toBe(3.33333333);
+    expect(evaluarExpresion('10/3', 0)).toBe(3);
   });
 
   it('devuelve null para expresiones incompletas o invalidas', () => {

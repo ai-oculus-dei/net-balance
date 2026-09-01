@@ -71,7 +71,7 @@ function resolverSumasYRestas(tokens: Token[]): number {
   return resultado;
 }
 
-export function evaluarExpresion(expresion: string): number | null {
+export function evaluarExpresion(expresion: string, decimales = 2): number | null {
   const limpia = expresion.trim();
   if (limpia === '') return null;
   try {
@@ -81,7 +81,8 @@ export function evaluarExpresion(expresion: string): number | null {
     }
     const valor = resolverSumasYRestas(resolverMultiplicacionesYDivisiones(tokens));
     if (!Number.isFinite(valor)) return null; // p.ej. division entre 0
-    return Math.round(valor * 100) / 100;
+    const factor = 10 ** decimales;
+    return Math.round(valor * factor) / factor;
   } catch {
     return null;
   }

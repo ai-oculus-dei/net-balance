@@ -243,12 +243,10 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
             ))}
           </Select>
           {objetivoDestino && (
-            <Input
+            <ImporteKeypadInput
               label="Cantidad destinada (€)"
-              type="text"
-              inputMode="decimal"
-              value={importeAportacion || ''}
-              onChange={(e) => setImporteAportacion(Math.min(Number(e.target.value.replace(',', '.')), magnitud))}
+              value={importeAportacion}
+              onChange={(v) => setImporteAportacion(Math.min(v, magnitud))}
             />
           )}
         </div>

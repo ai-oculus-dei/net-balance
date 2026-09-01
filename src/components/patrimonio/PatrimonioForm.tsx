@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Input } from '../ui/Input';
+import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../lib/auth/useAuth';
@@ -170,16 +171,7 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
         </div>
       )}
 
-      {unitario && (
-        <Input
-          label="Cantidad"
-          type="text"
-          inputMode="decimal"
-          required
-          value={cantidad || ''}
-          onChange={(e) => setCantidad(Number(e.target.value.replace(',', '.')))}
-        />
-      )}
+      {unitario && <ImporteKeypadInput label="Cantidad" value={cantidad} onChange={setCantidad} decimales={8} />}
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
@@ -203,13 +195,7 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
             </div>
           )}
         </div>
-        <Input
-          type="text"
-          inputMode="decimal"
-          required
-          value={precioCompraInput || ''}
-          onChange={(e) => setPrecioCompraInput(Number(e.target.value.replace(',', '.')))}
-        />
+        <ImporteKeypadInput label="" value={precioCompraInput} onChange={setPrecioCompraInput} decimales={2} />
       </div>
 
       {puedeUsarTae && (
@@ -226,14 +212,7 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
 
       {usarTae ? (
         <div className="flex flex-col gap-1.5">
-          <Input
-            label="TAE (%)"
-            type="text"
-            inputMode="decimal"
-            required
-            value={tae || ''}
-            onChange={(e) => setTae(Number(e.target.value.replace(',', '.')))}
-          />
+          <ImporteKeypadInput label="TAE (%)" value={tae} onChange={setTae} decimales={2} />
           {valorActualConTaePreview !== null && (
             <p className="text-xs text-[var(--color-text-muted)]">
               Valor actual calculado: {valorActualConTaePreview.toFixed(2)} €
@@ -263,13 +242,7 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
               </div>
             )}
           </div>
-          <Input
-            type="text"
-            inputMode="decimal"
-            required
-            value={precioActualInput || ''}
-            onChange={(e) => setPrecioActualInput(Number(e.target.value.replace(',', '.')))}
-          />
+          <ImporteKeypadInput label="" value={precioActualInput} onChange={setPrecioActualInput} decimales={2} />
         </div>
       )}
 

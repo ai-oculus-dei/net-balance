@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Input } from '../ui/Input';
+import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../lib/auth/useAuth';
@@ -70,14 +71,7 @@ export function ObjetivoForm({ initialValues, onSubmit, onCancel }: ObjetivoForm
 
       {!esRecurrente && (
         <>
-          <Input
-            label="Meta (€)"
-            type="text"
-            inputMode="decimal"
-            required
-            value={meta || ''}
-            onChange={(e) => setMeta(Number(e.target.value.replace(',', '.')))}
-          />
+          <ImporteKeypadInput label="Meta (€)" value={meta} onChange={setMeta} />
           <Select label="Modo de aportación" value={modoAportacion} onChange={(e) => setModoAportacion(e.target.value as ModoAportacion)}>
             <option value="automatico">Automático (calcula el % necesario)</option>
             <option value="manual">Manual (fijo tú el %)</option>
@@ -95,14 +89,7 @@ export function ObjetivoForm({ initialValues, onSubmit, onCancel }: ObjetivoForm
       )}
 
       {esManual && (
-        <Input
-          label="% de ingreso real / mes"
-          type="text"
-          inputMode="decimal"
-          required
-          value={porcentaje || ''}
-          onChange={(e) => setPorcentaje(Number(e.target.value.replace(',', '.')))}
-        />
+        <ImporteKeypadInput label="% de ingreso real / mes" value={porcentaje} onChange={setPorcentaje} decimales={1} />
       )}
 
       {error && <p className="text-sm text-[var(--color-loss)]">{error}</p>}

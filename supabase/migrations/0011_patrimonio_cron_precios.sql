@@ -6,13 +6,9 @@
 --
 -- IMPORTANTE — pasos manuales antes de ejecutar este archivo:
 --
--- 1. Desplegar la funcion (una vez, desde tu terminal en la raiz del repo):
---      npx supabase link --project-ref <TU_PROJECT_REF>
---      npx supabase functions deploy actualizar-precios-patrimonio
---      npx supabase secrets set TWELVE_DATA_API_KEY=<tu_clave_de_twelvedata>
+-- 1. Funcion ya desplegada y clave de Twelve Data ya configurada (paso hecho via CLI).
 --
--- 2. Sustituir <PROJECT_REF> por el project ref real en la URL de mas abajo (Supabase Dashboard
---    -> Settings -> General -> Reference ID).
+-- 2. Project ref ya sustituido en la URL de mas abajo (koyvpbsnrxqheaugkxbu).
 --
 -- 3. Guardar la service_role key como ajuste de la base de datos (Supabase Dashboard ->
 --    Settings -> API -> Project API keys -> service_role — NUNCA la subas al repo). Ejecutar
@@ -31,7 +27,7 @@ select cron.schedule(
   '0 8 * * *',
   $$
   select net.http_post(
-    url := 'https://<PROJECT_REF>.supabase.co/functions/v1/actualizar-precios-patrimonio',
+    url := 'https://koyvpbsnrxqheaugkxbu.supabase.co/functions/v1/actualizar-precios-patrimonio',
     headers := jsonb_build_object(
       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'),
       'Content-Type', 'application/json'
@@ -46,7 +42,7 @@ select cron.schedule(
   '0 18 * * *',
   $$
   select net.http_post(
-    url := 'https://<PROJECT_REF>.supabase.co/functions/v1/actualizar-precios-patrimonio',
+    url := 'https://koyvpbsnrxqheaugkxbu.supabase.co/functions/v1/actualizar-precios-patrimonio',
     headers := jsonb_build_object(
       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'),
       'Content-Type', 'application/json'

@@ -129,15 +129,23 @@ export function calcularPnL(p: PosicionValor, hoy: Date = new Date()): PnL {
   return { eur, pct };
 }
 
-// Identifica el "activo" al que pertenece una posicion: mismo ticker + mismo mercado (ver
-// seccion 15 de REQUIREMENTS.md — compras distintas del mismo activo, en fechas distintas, se
-// agrupan en una sola tarjeta). Sin ticker (posiciones "de saldo": cuentas, fondo monetario...)
-// no hay nada que agrupar, cada una es su propio activo. Se usa tanto para agrupar el listado
-// como para detectar duplicados al dar de alta una posicion nueva (PatrimonioForm).
+// Identifica el "activo" al que pertenece una posicion con ticker: mismo ticker + mismo mercado
+// (ver seccion 15 de REQUIREMENTS.md — compras distintas del mismo activo, en fechas distintas,
+// se agrupan en una sola tarjeta). Se usa tanto para agrupar el listado como para detectar
+// duplicados al escribir el ticker en el formulario (PatrimonioForm).
 export function claveActivo(ticker: string | null, mercado: string | null): string | null {
   const t = (ticker ?? '').trim().toLowerCase();
   if (t === '') return null;
   return `${t}|${(mercado ?? '').trim().toLowerCase()}`;
+}
+
+// Identifica la "cuenta" a la que pertenece una posicion "de saldo" (Cuenta Corriente, Cuenta de
+// Ahorro, Cuenta Remunerada, Fondo Monetario — sin ticker): mismo tipo + mismo nombre. Permite
+// que varias aportaciones a la misma cuenta, en fechas distintas, se agrupen en una sola tarjeta
+// igual que las compras de un mismo ticker — ver el desplegable "Cuenta" del formulario, que
+// ofrece sumar una aportacion nueva a una cuenta existente en vez de crear una sin relacion.
+export function claveCuenta(tipo: TipoPosicionPatrimonio, nombre: string): string {
+  return `${tipo}|${nombre.trim().toLowerCase()}`;
 }
 
 export interface ActivoAgrupado {
@@ -178,13 +186,14 @@ function construirActivo(lotes: PosicionPatrimonio[], hoy: Date): ActivoAgrupado
   };
 }
 
-// Agrupa las posiciones (compras individuales) en "activos": misma clave de claveActivo() se
-// funde en una unica tarjeta con precio medio de compra y P&L agregado, conservando cada compra
-// por separado en `lotes` para poder desplegarlas.
+// Agrupa las posiciones (compras/aportaciones individuales) en "activos": misma clave de
+// claveActivo() (con ticker) o claveCuenta() (sin ticker) se funde en una unica tarjeta con
+// precio medio de compra y P&L agregado, conservando cada compra por separado en `lotes` para
+// poder desplegarlas.
 export function agruparPorActivo(posiciones: PosicionPatrimonio[], hoy: Date = new Date()): ActivoAgrupado[] {
   const grupos = new Map<string, PosicionPatrimonio[]>();
   for (const p of posiciones) {
-    const clave = claveActivo(p.ticker, p.mercado) ?? `sola:${p.id}`;
+    const clave = claveActivo(p.ticker, p.mercado) ?? claveCuenta(p.tipo, p.nombre);
     const lista = grupos.get(clave);
     if (lista) lista.push(p);
     else grupos.set(clave, [p]);

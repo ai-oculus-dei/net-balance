@@ -7,6 +7,7 @@ import { useAuth } from '../../lib/auth/useAuth';
 import { toIsoDate } from '../../lib/finance/fechas';
 import {
   claveActivo,
+  claveCuenta,
   ETIQUETA_GRUPO,
   ETIQUETA_TIPO,
   esTipoConTae,
@@ -61,11 +62,13 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   const [precioActualInput, setPrecioActualInput] = useState(initialValues?.precio_actual_unitario ?? 0);
   const [usarTae, setUsarTae] = useState(initialValues?.tae != null);
   const [tae, setTae] = useState(initialValues?.tae ?? 0);
+  const [cuentaSeleccionada, setCuentaSeleccionada] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const unitario = esTipoPorUnidad(tipo);
   const puedeUsarTae = esTipoConTae(tipo);
+  const otrasPosiciones = posicionesExistentes.filter((p) => p.id !== initialValues?.id);
 
   // Al pasar a un tipo "de saldo" (sin unidades: cuentas, fondo monetario), fija cantidad=1 y
   // fuerza el modo de entrada a "total" — el toggle no tiene sentido si cantidad siempre es 1.
@@ -88,7 +91,7 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   // mismo activo.
   const claveNueva = claveActivo(ticker, mercado);
   const coincidencias = claveNueva
-    ? posicionesExistentes.filter((p) => p.id !== initialValues?.id && claveActivo(p.ticker, p.mercado) === claveNueva)
+    ? otrasPosiciones.filter((p) => claveActivo(p.ticker, p.mercado) === claveNueva)
     : [];
   const activoExistente =
     coincidencias.length > 0 ? [...coincidencias].sort((a, b) => a.fecha_compra.localeCompare(b.fecha_compra))[0] : null;
@@ -97,6 +100,29 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
     if (activoExistente) setNombre(activoExistente.nombre);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activoExistente?.id, activoExistente?.nombre]);
+
+  // Para los tipos "de saldo" (sin ticker: cuentas, fondo monetario...), el desplegable "Cuenta"
+  // ofrece sumar una aportacion nueva a una cuenta ya existente (mismo tipo+nombre) en vez de dar
+  // de alta una posicion sin relacion con el mismo nombre por casualidad.
+  const cuentasExistentes: string[] = [];
+  const clavesVistas = new Set<string>();
+  for (const p of otrasPosiciones) {
+    if (p.tipo !== tipo || p.ticker) continue;
+    const clave = claveCuenta(p.tipo, p.nombre);
+    if (!clavesVistas.has(clave)) {
+      clavesVistas.add(clave);
+      cuentasExistentes.push(p.nombre);
+    }
+  }
+
+  // Al cambiar de tipo, la cuenta elegida (si la habia) pertenecia al tipo anterior: se resetea.
+  useEffect(() => {
+    setCuentaSeleccionada('');
+  }, [tipo]);
+
+  useEffect(() => {
+    if (cuentaSeleccionada) setNombre(cuentaSeleccionada);
+  }, [cuentaSeleccionada]);
 
   const valorActualConTaePreview =
     usarTae && precioCompraInput > 0 ? valorConTae(precioCompraInput, tae, fechaCompra) : null;
@@ -165,13 +191,24 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
         ))}
       </Select>
 
+      {!unitario && cuentasExistentes.length > 0 && (
+        <Select label="Cuenta" value={cuentaSeleccionada} onChange={(e) => setCuentaSeleccionada(e.target.value)}>
+          <option value="">Nueva</option>
+          {cuentasExistentes.map((nombreCuenta) => (
+            <option key={nombreCuenta} value={nombreCuenta}>
+              {nombreCuenta}
+            </option>
+          ))}
+        </Select>
+      )}
+
       <Input
         label="Nombre"
         value={nombre}
         onChange={(e) => setNombre(e.target.value)}
         required
         placeholder="Apple Inc."
-        disabled={activoExistente !== null}
+        disabled={activoExistente !== null || cuentaSeleccionada !== ''}
       />
 
       {unitario && (

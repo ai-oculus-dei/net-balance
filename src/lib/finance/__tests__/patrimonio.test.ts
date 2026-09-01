@@ -3,6 +3,7 @@ import {
   agruparPorActivo,
   calcularPnL,
   claveActivo,
+  claveCuenta,
   esTipoConTae,
   esTipoPorUnidad,
   grupoDePosicion,
@@ -148,6 +149,16 @@ describe('claveActivo', () => {
   });
 });
 
+describe('claveCuenta', () => {
+  it('misma clave para el mismo tipo+nombre, sin distinguir mayusculas ni espacios', () => {
+    expect(claveCuenta('cuenta_remunerada', 'Sabadell')).toBe(claveCuenta('cuenta_remunerada', ' sabadell '));
+  });
+
+  it('distinta clave si cambia el tipo, aunque el nombre coincida', () => {
+    expect(claveCuenta('cuenta_remunerada', 'Principal')).not.toBe(claveCuenta('cuenta_corriente', 'Principal'));
+  });
+});
+
 describe('agruparPorActivo', () => {
   it('agrupa compras distintas del mismo ticker+mercado en un solo activo', () => {
     const posiciones = [
@@ -187,12 +198,23 @@ describe('agruparPorActivo', () => {
     expect(activo.pnl.pct).toBe(12.24); // 36 / 294 * 100
   });
 
-  it('no agrupa posiciones sin ticker, aunque tengan el mismo nombre', () => {
+  it('agrupa aportaciones sin ticker por tipo+nombre (misma cuenta)', () => {
     const posiciones = [
-      posicion({ id: 'a', tipo: 'cuenta_corriente', nombre: 'Cuenta', ticker: null, cantidad: 1, precio_actual_unitario: 100 }),
-      posicion({ id: 'b', tipo: 'cuenta_corriente', nombre: 'Cuenta', ticker: null, cantidad: 1, precio_actual_unitario: 200 }),
+      posicion({ id: 'a', tipo: 'cuenta_remunerada', nombre: 'Sabadell', ticker: null, cantidad: 1, precio_compra_unitario: 1000, precio_actual_unitario: 1000, fecha_compra: '2026-01-01' }),
+      posicion({ id: 'b', tipo: 'cuenta_remunerada', nombre: 'sabadell', ticker: null, cantidad: 1, precio_compra_unitario: 500, precio_actual_unitario: 500, fecha_compra: '2026-06-01' }),
     ];
-    expect(agruparPorActivo(posiciones)).toHaveLength(2);
+    const [activo] = agruparPorActivo(posiciones);
+    expect(activo.lotes.map((l) => l.id)).toEqual(['a', 'b']);
+    expect(activo.valorActualTotal).toBe(1500); // la aportacion nueva se suma a la existente
+  });
+
+  it('no agrupa cuentas sin ticker con distinto nombre o distinto tipo', () => {
+    const posiciones = [
+      posicion({ id: 'a', tipo: 'cuenta_corriente', nombre: 'Principal', ticker: null, cantidad: 1, precio_actual_unitario: 100 }),
+      posicion({ id: 'b', tipo: 'cuenta_corriente', nombre: 'Otra', ticker: null, cantidad: 1, precio_actual_unitario: 200 }),
+      posicion({ id: 'c', tipo: 'cuenta_ahorro', nombre: 'Principal', ticker: null, cantidad: 1, precio_actual_unitario: 300 }),
+    ];
+    expect(agruparPorActivo(posiciones)).toHaveLength(3);
   });
 });
 

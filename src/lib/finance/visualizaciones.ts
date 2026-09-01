@@ -36,9 +36,11 @@ export interface PuntoSerieLineas {
   valores: Record<string, number>; // lineaId -> neto del periodo
 }
 
+// Comparacion por instante exacto (no solo fecha): los limites de un periodo pueden tener hora
+// concreta cuando vienen de una nomina marcada a mitad de dia (ver periodos.ts).
 function fechaEnRango(fechaMovimiento: string, rango: { desde: string; hasta: string }): boolean {
-  const fechaSolo = fechaMovimiento.slice(0, 10); // "YYYY-MM-DD"
-  return fechaSolo >= rango.desde && fechaSolo < rango.hasta;
+  const instante = new Date(fechaMovimiento).getTime();
+  return instante >= new Date(rango.desde).getTime() && instante < new Date(rango.hasta).getTime();
 }
 
 // Serie temporal (un punto por periodo, ya resueltos con las anclas de mes personalizado del

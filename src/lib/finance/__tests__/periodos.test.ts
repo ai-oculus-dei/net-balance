@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  mesEtiquetaDelPeriodoActual,
   periodosEntre,
   resolverPeriodoActual,
   resolverRangoEntreMeses,
@@ -11,9 +10,10 @@ import {
 declare const process: { env: { TZ?: string } };
 
 // Ejemplo real usado para validar el diseño con el usuario: nomina marcada el 26 de agosto de
-// 2025 (etiqueta "Septiembre") y la siguiente el 28 de septiembre de 2025 (etiqueta "Octubre").
-const ancla26Ago: AnclaPeriodo = { fecha: '2025-08-26T09:00:00Z' };
-const ancla28Sep: AnclaPeriodo = { fecha: '2025-09-28T09:00:00Z' };
+// 2025 a mediodia (etiqueta "Septiembre") y la siguiente el 28 de septiembre de 2025 (etiqueta
+// "Octubre").
+const ancla26Ago: AnclaPeriodo = { fecha: '2025-08-26T12:00:00.000Z' };
+const ancla28Sep: AnclaPeriodo = { fecha: '2025-09-28T12:00:00.000Z' };
 
 describe('periodos de pago (zona horaria España, por delante de UTC)', () => {
   const tzOriginal = process.env.TZ;
@@ -27,137 +27,96 @@ describe('periodos de pago (zona horaria España, por delante de UTC)', () => {
   });
 
   describe('resolverRangoMes', () => {
-    it('sin anclas, cae al mes de calendario normal', () => {
+    it('sin anclas, cae al mes de calendario normal (medianoche local exacta)', () => {
       const rango = resolverRangoMes([], new Date(2025, 8, 15)); // 15 sept 2025
-      expect(rango).toEqual({ desde: '2025-09-01', hasta: '2025-10-01' });
+      expect(new Date(rango.desde).getTime()).toBe(new Date(2025, 8, 1).getTime());
+      expect(new Date(rango.hasta).getTime()).toBe(new Date(2025, 9, 1).getTime());
     });
 
-    it('una ancla sin siguiente: el periodo queda abierto (sin fecha limite real)', () => {
+    it('con ancla de inicio, el limite inferior es el instante exacto marcado (no medianoche)', () => {
       const rango = resolverRangoMes([ancla26Ago], new Date(2025, 8, 1)); // etiqueta "Septiembre"
-      expect(rango.desde).toBe('2025-08-26');
-      expect(rango.hasta).toBe('9999-12-31');
+      expect(rango.desde).toBe('2025-08-26T12:00:00.000Z');
     });
 
-    it('con dos anclas, el mes etiquetado por la primera va de una a la otra (caso del usuario)', () => {
+    it('sin ancla del mes siguiente, el cierre es el mes de calendario normal (dia 1 del mes siguiente)', () => {
+      const rango = resolverRangoMes([ancla26Ago], new Date(2025, 8, 1)); // "Septiembre", sin ancla en octubre
+      expect(new Date(rango.hasta).getTime()).toBe(new Date(2025, 9, 1).getTime());
+    });
+
+    it('caso completo del usuario: dos anclas consecutivas', () => {
       const rango = resolverRangoMes([ancla26Ago, ancla28Sep], new Date(2025, 8, 1)); // "Septiembre"
-      expect(rango).toEqual({ desde: '2025-08-26', hasta: '2025-09-28' });
+      expect(rango).toEqual({ desde: '2025-08-26T12:00:00.000Z', hasta: '2025-09-28T12:00:00.000Z' });
     });
 
-    it('el mes etiquetado por la segunda ancla queda abierto', () => {
+    it('el mes que marca la ancla siguiente empieza justo en ese instante', () => {
       const rango = resolverRangoMes([ancla26Ago, ancla28Sep], new Date(2025, 9, 1)); // "Octubre"
-      expect(rango.desde).toBe('2025-09-28');
-      expect(rango.hasta).toBe('9999-12-31');
+      expect(rango.desde).toBe('2025-09-28T12:00:00.000Z');
+      expect(new Date(rango.hasta).getTime()).toBe(new Date(2025, 10, 1).getTime());
     });
 
-    it('un mes muy anterior a cualquier ancla cae al mes de calendario normal', () => {
-      const rango = resolverRangoMes([ancla26Ago, ancla28Sep], new Date(2025, 5, 1)); // "Junio", antes de todo
-      expect(rango).toEqual({ desde: '2025-06-01', hasta: '2025-07-01' });
+    it('un mes sin marcar entre dos anclas se queda con sus limites de calendario normales, sin que el vecino se lo trague', () => {
+      // Nomina de agosto marcada el 26 de julio ("Agosto"), pero septiembre nunca se marca.
+      const ancla26Jul: AnclaPeriodo = { fecha: '2025-07-26T09:00:00.000Z' };
+      const rangoAgosto = resolverRangoMes([ancla26Jul], new Date(2025, 7, 1)); // "Agosto"
+      // Como no hay ancla en septiembre, Agosto cierra su mes de calendario normal (1 sept), no
+      // se extiende indefinidamente.
+      expect(rangoAgosto.desde).toBe('2025-07-26T09:00:00.000Z');
+      expect(new Date(rangoAgosto.hasta).getTime()).toBe(new Date(2025, 8, 1).getTime());
+
+      const rangoSeptiembre = resolverRangoMes([ancla26Jul], new Date(2025, 8, 1)); // "Septiembre"
+      expect(new Date(rangoSeptiembre.desde).getTime()).toBe(new Date(2025, 8, 1).getTime());
+      expect(new Date(rangoSeptiembre.hasta).getTime()).toBe(new Date(2025, 9, 1).getTime());
     });
 
-    it('un mes posterior a la ultima ancla, ya cubierto por su periodo abierto, no duplica: queda vacio', () => {
-      const rango = resolverRangoMes([ancla26Ago, ancla28Sep], new Date(2025, 11, 1)); // "Diciembre"
-      expect(rango.desde).toBe(rango.hasta);
-    });
-
-    it('no depende del orden de entrada de las anclas', () => {
-      const rango = resolverRangoMes([ancla28Sep, ancla26Ago], new Date(2025, 8, 1));
-      expect(rango).toEqual({ desde: '2025-08-26', hasta: '2025-09-28' });
-    });
-
-    describe('mes olvidado (sin ancla propia) entre dos anclas reales', () => {
-      // Ancla el 26 de julio (etiqueta "Agosto") y siguiente el 28 de septiembre (etiqueta
-      // "Octubre"): la nomina de "Septiembre" nunca se marco. El periodo de "Agosto" no tiene
-      // otra ancla que lo cierre hasta el 28 de septiembre, asi que ya cubre todo septiembre.
-      const ancla26Jul: AnclaPeriodo = { fecha: '2025-07-26T09:00:00Z' };
-
-      it('"Agosto" (con ancla) se extiende hasta la siguiente ancla real, sin recortar', () => {
-        const rango = resolverRangoMes([ancla26Jul, ancla28Sep], new Date(2025, 7, 1)); // "Agosto"
-        expect(rango).toEqual({ desde: '2025-07-26', hasta: '2025-09-28' });
-      });
-
-      it('"Septiembre" (sin ancla) no duplica lo que ya cubre "Agosto": queda vacio', () => {
-        const rango = resolverRangoMes([ancla26Jul, ancla28Sep], new Date(2025, 8, 1)); // "Septiembre"
-        expect(rango.desde).toBe(rango.hasta);
-      });
-
-      it('un mes olvidado tras la ultima ancla (periodo abierto) tambien queda vacio, no duplica', () => {
-        // Solo una ancla (26 jul, "Agosto"), abierta indefinidamente. "Octubre" ya esta cubierto
-        // por ese periodo abierto, no debe generar un fallback de calendario aparte.
-        const rango = resolverRangoMes([ancla26Jul], new Date(2025, 9, 1)); // "Octubre"
-        expect(rango.desde).toBe(rango.hasta);
-      });
-
-      it('un mes muy anterior a la primera ancla sigue cayendo al mes de calendario normal, sin recortar', () => {
-        const rango = resolverRangoMes([ancla26Jul, ancla28Sep], new Date(2025, 0, 1)); // "Enero", antes de todo
-        expect(rango).toEqual({ desde: '2025-01-01', hasta: '2025-02-01' });
-      });
+    it('con dos anclas para el mismo mes (marcado por error dos veces), usa la mas antigua', () => {
+      const anclaTemprana: AnclaPeriodo = { fecha: '2025-08-05T08:00:00.000Z' };
+      const anclaTardia: AnclaPeriodo = { fecha: '2025-08-20T08:00:00.000Z' };
+      const rango = resolverRangoMes([anclaTardia, anclaTemprana], new Date(2025, 8, 1)); // "Septiembre"
+      expect(rango.desde).toBe('2025-08-05T08:00:00.000Z');
     });
   });
 
   describe('resolverPeriodoActual', () => {
-    it('sin anclas anteriores a "hoy", cae al mes de calendario de hoy', () => {
-      const rango = resolverPeriodoActual([ancla26Ago], new Date(2025, 6, 15)); // 15 julio, antes del ancla
-      expect(rango).toEqual({ desde: '2025-07-01', hasta: '2025-08-01' });
+    it('sin anclas, resuelve al mes de calendario de hoy', () => {
+      const { rango, etiqueta } = resolverPeriodoActual([], new Date(2025, 8, 15));
+      expect(etiqueta).toEqual({ year: 2025, month: 8 });
+      expect(new Date(rango.desde).getTime()).toBe(new Date(2025, 8, 1).getTime());
     });
 
-    it('hoy dentro del periodo abierto de la unica ancla', () => {
-      const rango = resolverPeriodoActual([ancla26Ago], new Date(2025, 8, 10)); // 10 sept
-      expect(rango.desde).toBe('2025-08-26');
-      expect(rango.hasta).toBe('9999-12-31');
+    it('un instante justo antes de la nomina sigue perteneciendo al periodo anterior', () => {
+      const justoAntes = new Date('2025-09-28T11:59:59.999Z');
+      const { rango, etiqueta } = resolverPeriodoActual([ancla26Ago, ancla28Sep], justoAntes);
+      expect(etiqueta).toEqual({ year: 2025, month: 8 }); // "Septiembre"
+      expect(rango.hasta).toBe('2025-09-28T12:00:00.000Z');
     });
 
-    it('hoy justo el dia de una ancla: ese dia ya pertenece al periodo que empieza', () => {
-      const rango = resolverPeriodoActual([ancla26Ago, ancla28Sep], new Date(2025, 8, 28)); // 28 sept
-      expect(rango.desde).toBe('2025-09-28');
+    it('el instante exacto de la nomina ya pertenece al periodo que empieza', () => {
+      const { etiqueta, rango } = resolverPeriodoActual([ancla26Ago, ancla28Sep], new Date('2025-09-28T12:00:00.000Z'));
+      expect(etiqueta).toEqual({ year: 2025, month: 9 }); // "Octubre"
+      expect(rango.desde).toBe('2025-09-28T12:00:00.000Z');
     });
 
-    it('el dia antes de la siguiente ancla sigue perteneciendo al periodo anterior', () => {
-      const rango = resolverPeriodoActual([ancla26Ago, ancla28Sep], new Date(2025, 8, 27)); // 27 sept
-      expect(rango).toEqual({ desde: '2025-08-26', hasta: '2025-09-28' });
-    });
-
-    it('caso critico: "hoy" ya cruzo a un periodo con etiqueta de mes distinta a la de hoy en calendario', () => {
+    it('caso critico: "hoy" en calendario-septiembre pero ya dentro del periodo "Octubre"', () => {
       // Hoy calendario = 29 de septiembre, pero la nomina del 28 de septiembre ya empezo
-      // "Octubre" — resolverPeriodoActual debe devolver el periodo real (Octubre), no
-      // resolverRangoMes(anclas, hoy) que devolveria el rango etiquetado "Septiembre".
-      const rango = resolverPeriodoActual([ancla26Ago, ancla28Sep], new Date(2025, 8, 29));
-      expect(rango.desde).toBe('2025-09-28');
-      expect(rango.hasta).toBe('9999-12-31');
-    });
-  });
-
-  describe('mesEtiquetaDelPeriodoActual', () => {
-    it('sin ancla anterior, devuelve la propia fecha de hoy', () => {
-      const d = mesEtiquetaDelPeriodoActual([], new Date(2025, 8, 15));
-      expect(d.getFullYear()).toBe(2025);
-      expect(d.getMonth()).toBe(8); // septiembre
-    });
-
-    it('con ancla, devuelve el dia 1 del mes etiqueta (no el mes de calendario de hoy)', () => {
-      // Hoy = 29 sept, pero el periodo real ya es "Octubre".
-      const d = mesEtiquetaDelPeriodoActual([ancla26Ago, ancla28Sep], new Date(2025, 8, 29));
-      expect(d.getFullYear()).toBe(2025);
-      expect(d.getMonth()).toBe(9); // octubre
-    });
-
-    it('una ancla en diciembre etiqueta "Enero" del año siguiente', () => {
-      const anclaDic: AnclaPeriodo = { fecha: '2025-12-27T09:00:00Z' };
-      const d = mesEtiquetaDelPeriodoActual([anclaDic], new Date(2026, 0, 5));
-      expect(d.getFullYear()).toBe(2026);
-      expect(d.getMonth()).toBe(0); // enero
+      // "Octubre" — debe devolver el periodo real (Octubre), no el mes de calendario de hoy.
+      const { etiqueta, rango } = resolverPeriodoActual([ancla26Ago, ancla28Sep], new Date(2025, 8, 29));
+      expect(etiqueta).toEqual({ year: 2025, month: 9 });
+      expect(rango.desde).toBe('2025-09-28T12:00:00.000Z');
+      expect(new Date(rango.hasta).getTime()).toBe(new Date(2025, 10, 1).getTime());
     });
   });
 
   describe('resolverRangoEntreMeses', () => {
     it('resuelve cada extremo con las anclas del usuario', () => {
       const rango = resolverRangoEntreMeses([ancla26Ago, ancla28Sep], '2025-09', '2025-10');
-      expect(rango.desde).toBe('2025-08-26'); // inicio del periodo "Septiembre"
-      expect(rango.hasta).toBe('9999-12-31'); // "Octubre" queda abierto
+      expect(rango.desde).toBe('2025-08-26T12:00:00.000Z');
+      expect(new Date(rango.hasta).getTime()).toBe(new Date(2025, 10, 1).getTime());
     });
 
     it('sin anclas, coincide con el comportamiento de mes de calendario', () => {
       const rango = resolverRangoEntreMeses([], '2025-09', '2025-09');
-      expect(rango).toEqual({ desde: '2025-09-01', hasta: '2025-10-01' });
+      expect(new Date(rango.desde).getTime()).toBe(new Date(2025, 8, 1).getTime());
+      expect(new Date(rango.hasta).getTime()).toBe(new Date(2025, 9, 1).getTime());
     });
   });
 
@@ -165,9 +124,10 @@ describe('periodos de pago (zona horaria España, por delante de UTC)', () => {
     it('genera un periodo por mes de calendario, cada uno resuelto con las anclas', () => {
       const periodos = periodosEntre([ancla26Ago, ancla28Sep], '2025-08', '2025-10');
       expect(periodos).toHaveLength(3);
-      expect(periodos[0].rango).toEqual({ desde: '2025-08-01', hasta: '2025-08-26' }); // "Agosto": sin ancla, recortado por "Septiembre"
-      expect(periodos[1].rango).toEqual({ desde: '2025-08-26', hasta: '2025-09-28' }); // "Septiembre"
-      expect(periodos[2].rango).toEqual({ desde: '2025-09-28', hasta: '9999-12-31' }); // "Octubre"
+      expect(new Date(periodos[0].rango.desde).getTime()).toBe(new Date(2025, 7, 1).getTime()); // "Agosto": sin ancla propia, empieza el 1
+      expect(periodos[0].rango.hasta).toBe('2025-08-26T12:00:00.000Z'); // pero cierra justo antes de la nomina que abre "Septiembre"
+      expect(periodos[1].rango).toEqual({ desde: '2025-08-26T12:00:00.000Z', hasta: '2025-09-28T12:00:00.000Z' }); // "Septiembre"
+      expect(periodos[2].rango.desde).toBe('2025-09-28T12:00:00.000Z'); // "Octubre"
     });
   });
 });

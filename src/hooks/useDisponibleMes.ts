@@ -6,7 +6,7 @@ import { useAnclasPeriodo } from './useAnclasPeriodo';
 import { calcularDisponible, type AportacionDeseada } from '../lib/finance/calcularDisponible';
 import { calcularAportacionDeseada } from '../lib/finance/calcularAportacionDeseada';
 import { gastosFijosDelMes, indexarSubcategorias, ingresoRealDelMes } from '../lib/finance/taxonomia';
-import { mesEtiquetaDelPeriodoActual, resolverPeriodoActual } from '../lib/finance/periodos';
+import { resolverPeriodoActual } from '../lib/finance/periodos';
 
 export function useDisponibleMes(fecha: Date = new Date()) {
   // Clave estable (año-mes-dia) en vez de la referencia de `fecha`: si quien llama pasa un
@@ -17,8 +17,11 @@ export function useDisponibleMes(fecha: Date = new Date()) {
   // resuelto (ver resolverPeriodoActual).
   const claveDia = `${fecha.getFullYear()}-${fecha.getMonth()}-${fecha.getDate()}`;
   const { anclas, loading: loadingAnclas } = useAnclasPeriodo();
-  const rango = useMemo(() => resolverPeriodoActual(anclas, fecha), [anclas, claveDia]); // eslint-disable-line react-hooks/exhaustive-deps
-  const mesEtiqueta = useMemo(() => mesEtiquetaDelPeriodoActual(anclas, fecha), [anclas, claveDia]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { rango, mesEtiqueta } = useMemo(() => {
+    const { rango, etiqueta } = resolverPeriodoActual(anclas, fecha);
+    return { rango, mesEtiqueta: new Date(etiqueta.year, etiqueta.month, 1) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anclas, claveDia]);
   const { movimientos, loading: loadingMovimientos } = useMovimientos(rango);
   const { objetivos, loading: loadingObjetivos } = useObjetivos();
   const { subcategorias, loading: loadingTaxonomia } = useTaxonomia();

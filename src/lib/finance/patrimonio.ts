@@ -57,14 +57,58 @@ export function esTipoPorUnidad(tipo: TipoPosicionPatrimonio): boolean {
   return TIPOS_POR_UNIDAD.has(tipo);
 }
 
-type PosicionValor = Pick<PosicionPatrimonio, 'cantidad' | 'precio_compra_unitario' | 'precio_actual_unitario'>;
+// Tipos "de saldo" con rentabilidad conocida (TAE): el formulario ofrece fijar un % en vez de
+// tener que actualizar el precio actual a mano — ver valorConTae mas abajo.
+const TIPOS_CON_TAE = new Set<TipoPosicionPatrimonio>(['fondo_monetario', 'cuenta_remunerada', 'cuenta_ahorro']);
+
+export function esTipoConTae(tipo: TipoPosicionPatrimonio): boolean {
+  return TIPOS_CON_TAE.has(tipo);
+}
+
+const DIAS_ANIO = 365;
+
+// Dias naturales completos entre fechaCompra ("YYYY-MM-DD") y hoy, con los mismos componentes
+// locales que toIsoDate (fechas.ts) — nunca negativo. Coincide exactamente con la resta de
+// fechas `date - date` de Postgres usada en generar_snapshot_patrimonio.
+function diasEntre(fechaCompra: string, hoy: Date): number {
+  const [anio, mes, dia] = fechaCompra.split('-').map(Number);
+  const inicio = new Date(anio, mes - 1, dia);
+  const hoyTrunc = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const dias = Math.round((hoyTrunc.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(dias, 0);
+}
+
+// Interes simple anualizado: capital * (1 + tae% * dias/365). Usado por las posiciones "de
+// saldo" con rentabilidad conocida en vez de un precio actual que haya que actualizar a mano
+// (Fondo Monetario, Cuenta Remunerada, Cuenta de Ahorro) — sin depender de ninguna fuente
+// externa. Mismo calculo que generar_snapshot_patrimonio (SQL), para que la vista en vivo y el
+// historico coincidan.
+export function valorConTae(precioCompraUnitario: number, tae: number, fechaCompra: string, hoy: Date = new Date()): number {
+  const dias = diasEntre(fechaCompra, hoy);
+  return precioCompraUnitario * (1 + (tae / 100) * (dias / DIAS_ANIO));
+}
+
+type PosicionValor = Pick<
+  PosicionPatrimonio,
+  'cantidad' | 'precio_compra_unitario' | 'precio_actual_unitario' | 'fecha_compra' | 'tae'
+>;
 
 export function precioCompraTotal(p: Pick<PosicionValor, 'cantidad' | 'precio_compra_unitario'>): number {
   return round2(p.cantidad * p.precio_compra_unitario);
 }
 
-export function precioActualTotal(p: Pick<PosicionValor, 'cantidad' | 'precio_actual_unitario'>): number {
-  return round2(p.cantidad * p.precio_actual_unitario);
+// Precio unitario "en vivo": si la posicion tiene tae, se calcula por formula; si no, es el
+// precio actual guardado a mano.
+export function precioActualUnitarioEfectivo(
+  p: Pick<PosicionValor, 'precio_compra_unitario' | 'precio_actual_unitario' | 'fecha_compra' | 'tae'>,
+  hoy: Date = new Date()
+): number {
+  if (p.tae !== null) return valorConTae(p.precio_compra_unitario, p.tae, p.fecha_compra, hoy);
+  return p.precio_actual_unitario ?? 0;
+}
+
+export function precioActualTotal(p: Pick<PosicionValor, 'cantidad' | 'precio_compra_unitario' | 'precio_actual_unitario' | 'fecha_compra' | 'tae'>, hoy: Date = new Date()): number {
+  return round2(p.cantidad * precioActualUnitarioEfectivo(p, hoy));
 }
 
 export interface PnL {
@@ -72,22 +116,22 @@ export interface PnL {
   pct: number | null; // null si el coste de compra es 0 (no tiene sentido dividir)
 }
 
-export function calcularPnL(p: PosicionValor): PnL {
+export function calcularPnL(p: PosicionValor, hoy: Date = new Date()): PnL {
   const compra = precioCompraTotal(p);
-  const actual = precioActualTotal(p);
+  const actual = precioActualTotal(p, hoy);
   const eur = round2(actual - compra);
   const pct = compra > 0 ? round2((eur / compra) * 100) : null;
   return { eur, pct };
 }
 
-export function patrimonioTotalActual(posiciones: PosicionPatrimonio[]): number {
-  return round2(posiciones.reduce((suma, p) => suma + precioActualTotal(p), 0));
+export function patrimonioTotalActual(posiciones: PosicionPatrimonio[], hoy: Date = new Date()): number {
+  return round2(posiciones.reduce((suma, p) => suma + precioActualTotal(p, hoy), 0));
 }
 
-export function patrimonioPorGrupo(posiciones: PosicionPatrimonio[]): Record<GrupoPatrimonio, number> {
+export function patrimonioPorGrupo(posiciones: PosicionPatrimonio[], hoy: Date = new Date()): Record<GrupoPatrimonio, number> {
   const totales: Record<GrupoPatrimonio, number> = { renta_variable: 0, renta_fija: 0, efectivo: 0 };
   for (const p of posiciones) {
-    totales[grupoDePosicion(p.tipo)] += precioActualTotal(p);
+    totales[grupoDePosicion(p.tipo)] += precioActualTotal(p, hoy);
   }
   return {
     renta_variable: round2(totales.renta_variable),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   calcularPnL,
+  esTipoConTae,
   esTipoPorUnidad,
   grupoDePosicion,
   historicoPorPosicion,
@@ -8,9 +9,11 @@ import {
   patrimonioPorGrupo,
   patrimonioTotalActual,
   precioActualTotal,
+  precioActualUnitarioEfectivo,
   precioCompraTotal,
   totalDesdeUnitario,
   unitarioDesdeTotal,
+  valorConTae,
 } from '../patrimonio';
 import type { PatrimonioHistorico, PosicionPatrimonio, TipoPosicionPatrimonio } from '../../supabase/database.types';
 
@@ -23,6 +26,7 @@ function posicion(overrides: Partial<PosicionPatrimonio> & { id: string; tipo: T
     cantidad: 1,
     precio_compra_unitario: 0,
     precio_actual_unitario: 0,
+    tae: null,
     fecha_compra: '2026-01-01',
     activa: true,
     created_at: '2026-01-01',
@@ -140,6 +144,75 @@ describe('historicoPorPosicion', () => {
 
     expect(lineas.map((l) => l.id)).toEqual(['b', 'c']); // mayor valor primero, "a" queda fuera
     expect(puntos).toEqual([{ mes: '01 ene', valores: { b: 300, c: 200 } }]);
+  });
+});
+
+describe('esTipoConTae', () => {
+  it('true solo para las posiciones de saldo con rentabilidad conocida', () => {
+    expect(esTipoConTae('fondo_monetario')).toBe(true);
+    expect(esTipoConTae('cuenta_remunerada')).toBe(true);
+    expect(esTipoConTae('cuenta_ahorro')).toBe(true);
+  });
+
+  it('false para el resto (incluida Cuenta Corriente)', () => {
+    expect(esTipoConTae('cuenta_corriente')).toBe(false);
+    expect(esTipoConTae('stock')).toBe(false);
+  });
+});
+
+describe('valorConTae', () => {
+  it('interes simple anualizado: capital * (1 + tae% * dias/365)', () => {
+    // 1000€ al 3.65% durante 100 dias -> 1000 * (1 + 0.0365 * 100/365) = 1010
+    const hoy = new Date(2026, 0, 101); // dia 101 de enero = 1 de enero + 100 dias
+    const valor = valorConTae(1000, 3.65, '2026-01-01', hoy);
+    expect(valor).toBeCloseTo(1010, 2);
+  });
+
+  it('el mismo dia de compra, sin dias transcurridos, el valor es igual al capital', () => {
+    expect(valorConTae(1000, 5, '2026-01-01', new Date(2026, 0, 1))).toBe(1000);
+  });
+
+  it('nunca cuenta dias negativos si "hoy" es anterior a la fecha de compra', () => {
+    expect(valorConTae(1000, 5, '2026-06-01', new Date(2026, 0, 1))).toBe(1000);
+  });
+});
+
+describe('precioActualUnitarioEfectivo / precioActualTotal con tae', () => {
+  it('con tae, usa el valor calculado en vez del precio actual guardado', () => {
+    const p = posicion({
+      id: 'a',
+      tipo: 'cuenta_remunerada',
+      cantidad: 1,
+      precio_compra_unitario: 1000,
+      precio_actual_unitario: null,
+      tae: 3.65,
+      fecha_compra: '2026-01-01',
+    });
+    const hoy = new Date(2026, 0, 101); // +100 dias
+    expect(precioActualUnitarioEfectivo(p, hoy)).toBeCloseTo(1010, 2);
+    expect(precioActualTotal(p, hoy)).toBeCloseTo(1010, 2);
+  });
+
+  it('sin tae, usa el precio actual guardado tal cual', () => {
+    const p = posicion({ id: 'a', tipo: 'cuenta_remunerada', cantidad: 1, precio_actual_unitario: 500, tae: null });
+    expect(precioActualUnitarioEfectivo(p)).toBe(500);
+  });
+});
+
+describe('calcularPnL con tae', () => {
+  it('el P&L usa el valor calculado por tae como "actual"', () => {
+    const p = posicion({
+      id: 'a',
+      tipo: 'fondo_monetario',
+      cantidad: 1,
+      precio_compra_unitario: 1000,
+      precio_actual_unitario: null,
+      tae: 3.65,
+      fecha_compra: '2026-01-01',
+    });
+    const hoy = new Date(2026, 0, 101); // +100 dias
+    const pnl = calcularPnL(p, hoy);
+    expect(pnl.eur).toBeCloseTo(10, 2);
   });
 });
 

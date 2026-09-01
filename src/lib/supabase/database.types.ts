@@ -185,7 +185,10 @@ export interface PosicionPatrimonio {
   mercado: string | null;
   cantidad: number;
   precio_compra_unitario: number;
-  precio_actual_unitario: number;
+  // null cuando la posicion tiene una TAE: el valor actual se calcula por formula (ver
+  // src/lib/finance/patrimonio.ts) en vez de guardarse a mano. Nunca los dos a null a la vez.
+  precio_actual_unitario: number | null;
+  tae: number | null;
   fecha_compra: string;
   activa: boolean;
   created_at: string;
@@ -201,7 +204,8 @@ export interface PosicionPatrimonioInsert {
   mercado?: string | null;
   cantidad?: number;
   precio_compra_unitario: number;
-  precio_actual_unitario: number;
+  precio_actual_unitario?: number | null;
+  tae?: number | null;
   fecha_compra?: string;
   activa?: boolean;
   created_at?: string;
@@ -217,7 +221,8 @@ export interface PosicionPatrimonioUpdate {
   mercado?: string | null;
   cantidad?: number;
   precio_compra_unitario?: number;
-  precio_actual_unitario?: number;
+  precio_actual_unitario?: number | null;
+  tae?: number | null;
   fecha_compra?: string;
   activa?: boolean;
   created_at?: string;

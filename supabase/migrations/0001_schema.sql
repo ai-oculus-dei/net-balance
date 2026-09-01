@@ -270,11 +270,16 @@ create table posiciones_patrimonio (
   mercado                text,
   cantidad               numeric(18,8) not null default 1 check (cantidad > 0),
   precio_compra_unitario numeric(18,8) not null check (precio_compra_unitario >= 0),
-  precio_actual_unitario numeric(18,8) not null check (precio_actual_unitario >= 0),
+  -- precio_actual_unitario es opcional cuando hay una tae: en ese caso el valor actual se
+  -- calcula solo (interes simple anualizado, ver generar_snapshot_patrimonio). Nunca los dos a
+  -- la vez a null (chk_precio_actual_o_tae).
+  precio_actual_unitario numeric(18,8) check (precio_actual_unitario >= 0),
+  tae                    numeric(6,3) check (tae is null or tae >= 0),
   fecha_compra           date not null default current_date,
   activa                 boolean not null default true,
   created_at             timestamptz not null default now(),
-  updated_at             timestamptz not null default now()
+  updated_at             timestamptz not null default now(),
+  constraint chk_precio_actual_o_tae check (tae is not null or precio_actual_unitario is not null)
 );
 
 create index idx_posiciones_patrimonio_usuario on posiciones_patrimonio (usuario_id);
@@ -303,6 +308,7 @@ declare
   r record;
   fecha_cursor date;
   hoy date := current_date;
+  valor numeric(20,8);
 begin
   for r in
     select * from posiciones_patrimonio where usuario_id = auth.uid() and activa = true
@@ -311,8 +317,15 @@ begin
     from patrimonio_historico where posicion_id = r.id;
 
     while fecha_cursor <= hoy loop
+      if r.tae is not null then
+        valor := r.cantidad * r.precio_compra_unitario
+                 * (1 + (r.tae / 100) * ((fecha_cursor - r.fecha_compra)::numeric / 365));
+      else
+        valor := r.cantidad * r.precio_actual_unitario;
+      end if;
+
       insert into patrimonio_historico (posicion_id, fecha, valor_total)
-      values (r.id, fecha_cursor, r.cantidad * r.precio_actual_unitario)
+      values (r.id, fecha_cursor, valor)
       on conflict (posicion_id, fecha) do nothing;
       fecha_cursor := fecha_cursor + 1;
     end loop;

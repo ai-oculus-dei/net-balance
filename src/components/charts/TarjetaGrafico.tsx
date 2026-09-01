@@ -18,7 +18,10 @@ function useViewport() {
 
 interface TarjetaGraficoProps {
   titulo: string;
-  render: (altura: number) => ReactNode;
+  // Sin argumento en la vista normal (cada grafico usa su propia altura por defecto, que no es
+  // igual para todos: la tarta necesita mas alto que la serie temporal). Solo en pantalla grande
+  // se le pasa una altura explicita calculada a partir del viewport.
+  render: (altura?: number) => ReactNode;
 }
 
 // Card de grafico con boton "Pantalla grande": en un movil en vertical, la version ampliada se
@@ -59,7 +62,7 @@ export function TarjetaGrafico({ titulo, render }: TarjetaGraficoProps) {
             <IconExpandir className="w-4 h-4" />
           </button>
         </div>
-        {render(280)}
+        {render()}
       </Card>
 
       {expandido && (

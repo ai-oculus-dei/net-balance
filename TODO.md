@@ -16,7 +16,7 @@
 - [x] Ejecutar `supabase/migrations/0007_ingreso_condicional.sql` en el SQL Editor de Supabase (nueva columna `es_ingreso_condicional` en subcategorías; redefine "Ingreso real" — sección 5).
 - [ ] Ejecutar `supabase/migrations/0008_periodo_pago.sql` en el SQL Editor de Supabase (nueva columna `es_primer_dia_mes` en movimientos; redefine "mes" como periodo personal de nómina a nómina — sección 3).
 - [x] Ejecutar `supabase/migrations/0009_patrimonio.sql` en el SQL Editor de Supabase (nuevas tablas `posiciones_patrimonio`/`patrimonio_historico`, RLS y función `generar_snapshot_patrimonio` — nueva página "Patrimonio", sección 15).
-- [ ] Ejecutar `supabase/migrations/0010_patrimonio_tae.sql` en el SQL Editor de Supabase (columna `tae` en `posiciones_patrimonio`, `precio_actual_unitario` pasa a opcional; cálculo automático del valor actual por rentabilidad conocida para Fondo Monetario/Cuenta Remunerada/Cuenta de Ahorro — sección 15).
+- [x] Ejecutar `supabase/migrations/0010_patrimonio_tae.sql` en el SQL Editor de Supabase (columna `tae` en `posiciones_patrimonio`, `precio_actual_unitario` pasa a opcional; cálculo automático del valor actual por rentabilidad conocida para Fondo Monetario/Cuenta Remunerada/Cuenta de Ahorro — sección 15).
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)
 

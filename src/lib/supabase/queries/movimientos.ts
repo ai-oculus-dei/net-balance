@@ -17,6 +17,23 @@ export async function fetchMovimientos(rango: RangoFechas): Promise<Movimiento[]
   return data;
 }
 
+// Una "ancla": la fecha de un movimiento de Salario marcado con "Hacer primer dia del mes" —
+// define el inicio de un periodo personal (ver src/lib/finance/periodos.ts).
+export interface AnclaPeriodo {
+  fecha: string;
+}
+
+export async function fetchAnclasPeriodo(usuarioId: string): Promise<AnclaPeriodo[]> {
+  const { data, error } = await supabase
+    .from('movimientos')
+    .select('fecha')
+    .eq('usuario_id', usuarioId)
+    .eq('es_primer_dia_mes', true)
+    .order('fecha', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
 export type NuevoMovimiento = Omit<Movimiento, 'id' | 'created_at' | 'updated_at'>;
 
 export async function crearMovimiento(movimiento: NuevoMovimiento): Promise<Movimiento> {

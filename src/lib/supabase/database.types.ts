@@ -58,6 +58,7 @@ export interface Movimiento {
   creado_por: string;
   visibilidad: Visibilidad;
   nota: string | null;
+  es_primer_dia_mes: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +73,7 @@ export interface MovimientoInsert {
   creado_por: string;
   visibilidad?: Visibilidad;
   nota?: string | null;
+  es_primer_dia_mes?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -86,6 +88,7 @@ export interface MovimientoUpdate {
   creado_por?: string;
   visibilidad?: Visibilidad;
   nota?: string | null;
+  es_primer_dia_mes?: boolean;
   created_at?: string;
   updated_at?: string;
 }

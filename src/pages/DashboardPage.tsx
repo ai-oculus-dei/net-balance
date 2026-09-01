@@ -9,7 +9,13 @@ import { balancePorSubcategoria, indexarSubcategorias } from '../lib/finance/tax
 
 export function DashboardPage() {
   const hoy = useMemo(() => new Date(), []);
-  const { movimientos, objetivosActivos, aportacionesDeseadas, loading: loadingDisponible } = useDisponibleMes(hoy);
+  const {
+    movimientos,
+    objetivosActivos,
+    aportacionesDeseadas,
+    mesEtiqueta,
+    loading: loadingDisponible,
+  } = useDisponibleMes(hoy);
   const { categorias, subcategorias, loading: loadingTaxonomia } = useTaxonomia();
 
   const totalAhorroMensual = useMemo(
@@ -24,7 +30,10 @@ export function DashboardPage() {
     [movimientos, subcategoriasPorId, categorias]
   );
 
-  const etiquetaMes = useMemo(() => hoy.toLocaleDateString('es-ES', { month: 'long', year: '2-digit' }), [hoy]);
+  const etiquetaMes = useMemo(
+    () => mesEtiqueta.toLocaleDateString('es-ES', { month: 'long', year: '2-digit' }),
+    [mesEtiqueta]
+  );
 
   const loading = loadingDisponible || loadingTaxonomia;
 

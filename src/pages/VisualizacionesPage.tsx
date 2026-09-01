@@ -10,10 +10,11 @@ import { MetricasCard } from '../components/dashboard/MetricasCard';
 import { EsteMesCard, type SeleccionCategorias } from '../components/dashboard/EsteMesCard';
 import { useTaxonomia } from '../hooks/useTaxonomia';
 import { useMovimientos } from '../hooks/useMovimientos';
+import { useAnclasPeriodo } from '../hooks/useAnclasPeriodo';
 import { useTheme } from '../lib/theme/useTheme';
 import { useVisualizacionesState } from '../lib/visualizaciones/useVisualizacionesState';
-import { parseMes, rangoEntreMeses } from '../lib/finance/fechas';
 import { balancePorSubcategoria, indexarSubcategorias } from '../lib/finance/taxonomia';
+import { periodosEntre, resolverRangoEntreMeses } from '../lib/finance/periodos';
 import {
   etiquetaLinea,
   lineaEsValida,
@@ -38,7 +39,12 @@ export function VisualizacionesPage() {
 
   const { theme } = useTheme();
   const { categorias, subcategorias, loading: loadingTaxonomia } = useTaxonomia();
-  const rango = useMemo(() => rangoEntreMeses(desdeMes, hastaMes), [desdeMes, hastaMes]);
+  const { anclas, loading: loadingAnclas } = useAnclasPeriodo();
+  const rango = useMemo(
+    () => resolverRangoEntreMeses(anclas, desdeMes, hastaMes),
+    [anclas, desdeMes, hastaMes]
+  );
+  const periodos = useMemo(() => periodosEntre(anclas, desdeMes, hastaMes), [anclas, desdeMes, hastaMes]);
   const { movimientos, loading: loadingMovimientos } = useMovimientos(rango);
   const subcategoriasPorId = useMemo(() => indexarSubcategorias(subcategorias), [subcategorias]);
 
@@ -50,8 +56,8 @@ export function VisualizacionesPage() {
   const lineasValidas = useMemo(() => lineas.filter(lineaEsValida), [lineas]);
 
   const serieTemporal = useMemo(
-    () => serieTemporalPorLineas(movimientos, lineasValidas, subcategoriasPorId, parseMes(desdeMes), parseMes(hastaMes)),
-    [movimientos, lineasValidas, subcategoriasPorId, desdeMes, hastaMes]
+    () => serieTemporalPorLineas(movimientos, lineasValidas, subcategoriasPorId, periodos),
+    [movimientos, lineasValidas, subcategoriasPorId, periodos]
   );
 
   const totales = useMemo(
@@ -105,7 +111,7 @@ export function VisualizacionesPage() {
     onToggle: toggleSeleccion,
   };
 
-  const loading = loadingTaxonomia || loadingMovimientos;
+  const loading = loadingTaxonomia || loadingMovimientos || loadingAnclas;
 
   return (
     <div className="flex flex-col gap-4">

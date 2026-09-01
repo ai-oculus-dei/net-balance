@@ -1,5 +1,6 @@
 import type { Categoria, Movimiento, Subcategoria } from '../supabase/database.types';
 import type { SubcategoriasPorId } from './taxonomia';
+import type { PeriodoConEtiqueta } from './periodos';
 
 // Una "linea" comparada en la pagina de Visualizaciones: una categoria, y opcionalmente una
 // subcategoria concreta dentro de ella. `subcategoriaId: null` significa "Todas" — se suman
@@ -32,32 +33,30 @@ function movimientoPerteneceALinea(m: Movimiento, linea: LineaSeleccion, subcate
 
 export interface PuntoSerieLineas {
   mes: string;
-  valores: Record<string, number>; // lineaId -> neto del mes
+  valores: Record<string, number>; // lineaId -> neto del periodo
 }
 
-// Serie temporal mensual (uno o mas valores por mes, uno por linea) entre `desde` y `hasta`
-// (ambos primer dia de mes, `hasta` inclusive).
+function fechaEnRango(fechaMovimiento: string, rango: { desde: string; hasta: string }): boolean {
+  const fechaSolo = fechaMovimiento.slice(0, 10); // "YYYY-MM-DD"
+  return fechaSolo >= rango.desde && fechaSolo < rango.hasta;
+}
+
+// Serie temporal (un punto por periodo, ya resueltos con las anclas de mes personalizado del
+// usuario — ver src/lib/finance/periodos.ts). Cada punto agrupa uno o mas valores, uno por linea.
 export function serieTemporalPorLineas(
   movimientos: Movimiento[],
   lineas: LineaSeleccion[],
   subcategorias: SubcategoriasPorId,
-  desde: Date,
-  hasta: Date
+  periodos: PeriodoConEtiqueta[]
 ): PuntoSerieLineas[] {
-  const totalMeses = (hasta.getFullYear() - desde.getFullYear()) * 12 + (hasta.getMonth() - desde.getMonth()) + 1;
-  const puntos: PuntoSerieLineas[] = [];
-  for (let i = 0; i < Math.max(totalMeses, 0); i++) {
-    const d = new Date(desde.getFullYear(), desde.getMonth() + i, 1);
-    puntos.push({
-      mes: d.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' }),
-      valores: Object.fromEntries(lineas.map((l) => [l.id, 0])),
-    });
-  }
+  const puntos: PuntoSerieLineas[] = periodos.map((p) => ({
+    mes: p.etiquetaCorta,
+    valores: Object.fromEntries(lineas.map((l) => [l.id, 0])),
+  }));
 
   for (const m of movimientos) {
-    const fechaMov = new Date(m.fecha);
-    const indice = (fechaMov.getFullYear() - desde.getFullYear()) * 12 + (fechaMov.getMonth() - desde.getMonth());
-    if (indice < 0 || indice >= puntos.length) continue;
+    const indice = periodos.findIndex((p) => fechaEnRango(m.fecha, p.rango));
+    if (indice === -1) continue;
     for (const linea of lineas) {
       if (movimientoPerteneceALinea(m, linea, subcategorias)) {
         puntos[indice].valores[linea.id] += m.importe;

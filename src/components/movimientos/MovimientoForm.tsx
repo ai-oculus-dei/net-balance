@@ -19,6 +19,7 @@ export interface MovimientoFormValues {
   usuario_id: string;
   visibilidad: Visibilidad;
   nota: string;
+  esPrimerDiaMes: boolean;
   aportacion: { objetivoId: string; importe: number } | null;
 }
 
@@ -54,6 +55,7 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
   const [usuarioId, setUsuarioId] = useState(initialValues?.usuario_id ?? session?.user.id ?? '');
   const [visibilidad, setVisibilidad] = useState<Visibilidad>(initialValues?.visibilidad ?? 'privado');
   const [nota, setNota] = useState(initialValues?.nota ?? '');
+  const [esPrimerDiaMes, setEsPrimerDiaMes] = useState(initialValues?.es_primer_dia_mes ?? false);
   const [objetivoDestino, setObjetivoDestino] = useState(aportacionInicial?.objetivo_id ?? '');
   const [importeAportacion, setImporteAportacion] = useState(aportacionInicial?.importe ?? 0);
   const [guardando, setGuardando] = useState(false);
@@ -79,6 +81,13 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
   useEffect(() => {
     setImporteAportacion((actual) => (actual > magnitud ? magnitud : actual));
   }, [magnitud]);
+
+  // La casilla "primer dia del mes" solo tiene sentido en Salario: si se cambia a otra
+  // subcategoria, se desmarca para no dejar una marca fantasma en un movimiento que ya no la muestra.
+  useEffect(() => {
+    const esSalario = todasLasSubcategorias.find((s) => s.id === subcategoriaId)?.nombre === 'Salario';
+    if (!esSalario) setEsPrimerDiaMes(false);
+  }, [subcategoriaId, todasLasSubcategorias]);
 
   function handleSeleccionarObjetivo(id: string) {
     setObjetivoDestino(id);
@@ -111,6 +120,7 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
         usuario_id: usuarioId,
         visibilidad,
         nota,
+        esPrimerDiaMes,
         aportacion:
           puedeAsignarAObjetivo && objetivoDestino
             ? { objetivoId: objetivoDestino, importe: Math.min(importeAportacion, magnitud) }
@@ -195,6 +205,18 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
             />
           )}
         </div>
+      )}
+
+      {subcategoriaSeleccionada?.nombre === 'Salario' && (
+        <label className="flex items-center gap-2 text-sm border border-[var(--color-border)] rounded-md p-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={esPrimerDiaMes}
+            onChange={(e) => setEsPrimerDiaMes(e.target.checked)}
+            className="w-4 h-4 accent-[var(--color-accent)]"
+          />
+          Hacer primer día del mes
+        </label>
       )}
 
       <Input label="Fecha" type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} required />

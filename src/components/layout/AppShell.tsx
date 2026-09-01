@@ -39,6 +39,7 @@ export function AppShell() {
       creado_por: session.user.id,
       visibilidad: values.visibilidad,
       nota: values.nota || null,
+      es_primer_dia_mes: values.esPrimerDiaMes,
     });
     emitMovimientosChanged();
 

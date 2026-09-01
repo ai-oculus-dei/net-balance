@@ -177,6 +177,9 @@ create table movimientos (
   creado_por           uuid not null references profiles(id),        -- quien lo registro realmente
   visibilidad          text not null default 'privado' check (visibilidad in ('privado', 'compartido')),
   nota                 text,
+  -- true en un ingreso de Salario marca ese dia como el inicio de un "mes" personal (periodo
+  -- de nomina a nomina) para ese usuario_id, en vez del mes de calendario — ver 0008_periodo_pago.sql.
+  es_primer_dia_mes    boolean not null default false,
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );

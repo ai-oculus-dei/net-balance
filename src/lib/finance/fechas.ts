@@ -7,7 +7,7 @@ import type { RangoFechas } from '../supabase/queries/movimientos';
 // siguiente) se corria asi al ultimo dia del mes actual, y los movimientos de ese ultimo dia
 // quedaban fuera de su mes y se colaban en el mes siguiente. Se formatea con los getters
 // locales, sin pasar por UTC.
-function toIsoDate(d: Date): string {
+export function toIsoDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }

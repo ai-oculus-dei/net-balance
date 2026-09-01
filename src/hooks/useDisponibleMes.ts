@@ -2,17 +2,23 @@ import { useMemo } from 'react';
 import { useMovimientos } from './useMovimientos';
 import { useObjetivos } from './useObjetivos';
 import { useTaxonomia } from './useTaxonomia';
-import { rangoDelMes } from '../lib/finance/fechas';
+import { useAnclasPeriodo } from './useAnclasPeriodo';
 import { calcularDisponible, type AportacionDeseada } from '../lib/finance/calcularDisponible';
 import { calcularAportacionDeseada } from '../lib/finance/calcularAportacionDeseada';
 import { gastosFijosDelMes, indexarSubcategorias, ingresoRealDelMes } from '../lib/finance/taxonomia';
+import { mesEtiquetaDelPeriodoActual, resolverPeriodoActual } from '../lib/finance/periodos';
 
 export function useDisponibleMes(fecha: Date = new Date()) {
-  // Clave estable (año-mes) en vez de la referencia de `fecha`: si quien llama pasa un `new Date()`
-  // fresco en cada render (o usa el valor por defecto), esto evita que useMemo/useEffect de abajo
-  // detecten un "cambio" en cada render y entren en bucle de recarga infinita.
-  const claveMes = `${fecha.getFullYear()}-${fecha.getMonth()}`;
-  const rango = useMemo(() => rangoDelMes(fecha), [claveMes]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Clave estable (año-mes-dia) en vez de la referencia de `fecha`: si quien llama pasa un
+  // `new Date()` fresco en cada render (o usa el valor por defecto), esto evita que
+  // useMemo/useEffect de abajo detecten un "cambio" en cada render y entren en bucle de
+  // recarga infinita. Se incluye el dia (no solo año-mes como antes) porque ahora el rango
+  // depende de las anclas de periodo, y cual es "hoy" dentro del mes puede cambiar el periodo
+  // resuelto (ver resolverPeriodoActual).
+  const claveDia = `${fecha.getFullYear()}-${fecha.getMonth()}-${fecha.getDate()}`;
+  const { anclas, loading: loadingAnclas } = useAnclasPeriodo();
+  const rango = useMemo(() => resolverPeriodoActual(anclas, fecha), [anclas, claveDia]); // eslint-disable-line react-hooks/exhaustive-deps
+  const mesEtiqueta = useMemo(() => mesEtiquetaDelPeriodoActual(anclas, fecha), [anclas, claveDia]); // eslint-disable-line react-hooks/exhaustive-deps
   const { movimientos, loading: loadingMovimientos } = useMovimientos(rango);
   const { objetivos, loading: loadingObjetivos } = useObjetivos();
   const { subcategorias, loading: loadingTaxonomia } = useTaxonomia();
@@ -32,11 +38,12 @@ export function useDisponibleMes(fecha: Date = new Date()) {
 
     return { ingresoReal, gastosFijos, disponible, aportacionesDeseadas, aportacionesAplicadas, objetivosActivos };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [movimientos, objetivos, subcategorias, claveMes]);
+  }, [movimientos, objetivos, subcategorias, claveDia]);
 
   return {
     ...resultado,
     movimientos,
-    loading: loadingMovimientos || loadingObjetivos || loadingTaxonomia,
+    mesEtiqueta,
+    loading: loadingMovimientos || loadingObjetivos || loadingTaxonomia || loadingAnclas,
   };
 }

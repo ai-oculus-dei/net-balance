@@ -7,8 +7,10 @@ import { MovimientoRow } from '../components/movimientos/MovimientoRow';
 import { MovimientoForm, type MovimientoFormValues } from '../components/movimientos/MovimientoForm';
 import { useMovimientos } from '../hooks/useMovimientos';
 import { useTaxonomia } from '../hooks/useTaxonomia';
-import { formatearMes, parseMes, rangoDelMes } from '../lib/finance/fechas';
+import { useAnclasPeriodo } from '../hooks/useAnclasPeriodo';
+import { formatearMes, parseMes } from '../lib/finance/fechas';
 import { indexarSubcategorias } from '../lib/finance/taxonomia';
+import { resolverRangoMes } from '../lib/finance/periodos';
 import { fetchAportacionPorMovimiento, sincronizarAportacion } from '../lib/supabase/queries/aportaciones';
 import { emitObjetivosChanged } from '../lib/events/objetivosBus';
 import type { AportacionObjetivo, Movimiento } from '../lib/supabase/database.types';
@@ -16,7 +18,8 @@ import type { AportacionObjetivo, Movimiento } from '../lib/supabase/database.ty
 export function MovimientosPage() {
   const [mes, setMes] = useState(() => formatearMes(new Date()));
   const fechaBase = useMemo(() => parseMes(mes), [mes]);
-  const rango = useMemo(() => rangoDelMes(fechaBase), [fechaBase]);
+  const { anclas } = useAnclasPeriodo();
+  const rango = useMemo(() => resolverRangoMes(anclas, fechaBase), [anclas, fechaBase]);
 
   function cambiarMes(delta: number) {
     setMes(formatearMes(new Date(fechaBase.getFullYear(), fechaBase.getMonth() + delta, 1)));
@@ -67,6 +70,7 @@ export function MovimientosPage() {
       usuario_id: values.usuario_id,
       visibilidad: values.visibilidad,
       nota: values.nota || null,
+      es_primer_dia_mes: values.esPrimerDiaMes,
     });
     await sincronizarAportacion(editando.id, aportacionEditando, values.aportacion);
     emitObjetivosChanged();

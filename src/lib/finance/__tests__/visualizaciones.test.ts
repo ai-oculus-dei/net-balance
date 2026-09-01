@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { etiquetaLinea, serieTemporalPorLineas, totalesPorLinea, type LineaSeleccion } from '../visualizaciones';
 import { indexarSubcategorias } from '../taxonomia';
+import { periodosEntre } from '../periodos';
 import type { Categoria, Movimiento, Subcategoria } from '../../supabase/database.types';
 
 const categorias: Categoria[] = [
@@ -27,6 +28,7 @@ function mov(fecha: string, subcategoria_id: number, importe: number): Movimient
     creado_por: 'u1',
     visibilidad: 'privado',
     nota: null,
+    es_primer_dia_mes: false,
     created_at: fecha,
     updated_at: fecha,
   };
@@ -53,7 +55,8 @@ describe('serieTemporalPorLineas', () => {
       mov('2026-02-05', 20, -200), // Letra coche febrero (otra linea)
     ];
     const lineas: LineaSeleccion[] = [{ id: 'alquiler', colorIndex: 0, categoriaId: 1, subcategoriaId: 10 }];
-    const serie = serieTemporalPorLineas(movimientos, lineas, subcategoriasPorId, new Date(2026, 0, 1), new Date(2026, 1, 1));
+    const periodos = periodosEntre([], '2026-01', '2026-02');
+    const serie = serieTemporalPorLineas(movimientos, lineas, subcategoriasPorId, periodos);
     expect(serie).toEqual([
       { mes: 'ene 26', valores: { alquiler: -800 } },
       { mes: 'feb 26', valores: { alquiler: -800 } },
@@ -67,8 +70,25 @@ describe('serieTemporalPorLineas', () => {
       mov('2026-01-25', 11, 20), // reembolso de luz
     ];
     const lineas: LineaSeleccion[] = [{ id: 'vivienda', colorIndex: 0, categoriaId: 1, subcategoriaId: null }];
-    const serie = serieTemporalPorLineas(movimientos, lineas, subcategoriasPorId, new Date(2026, 0, 1), new Date(2026, 0, 1));
+    const periodos = periodosEntre([], '2026-01', '2026-01');
+    const serie = serieTemporalPorLineas(movimientos, lineas, subcategoriasPorId, periodos);
     expect(serie).toEqual([{ mes: 'ene 26', valores: { vivienda: -830 } }]);
+  });
+
+  it('agrupa por periodo personalizado (anclas de Salario) en vez de por mes de calendario', () => {
+    // Ancla el 26 de enero: "Febrero" (etiqueta) empieza ahi, no el dia 1.
+    const ancla26Ene = { fecha: '2026-01-26T09:00:00Z' };
+    const movimientos = [
+      mov('2026-01-20', 10, -800), // antes del ancla: cae en "Enero"
+      mov('2026-01-27', 10, -50), // despues del ancla: ya cae en "Febrero"
+    ];
+    const lineas: LineaSeleccion[] = [{ id: 'alquiler', colorIndex: 0, categoriaId: 1, subcategoriaId: 10 }];
+    const periodos = periodosEntre([ancla26Ene], '2026-01', '2026-02');
+    const serie = serieTemporalPorLineas(movimientos, lineas, subcategoriasPorId, periodos);
+    expect(serie).toEqual([
+      { mes: 'ene 26', valores: { alquiler: -800 } },
+      { mes: 'feb 26', valores: { alquiler: -50 } },
+    ]);
   });
 });
 

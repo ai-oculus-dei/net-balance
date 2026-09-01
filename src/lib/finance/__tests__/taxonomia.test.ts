@@ -26,6 +26,7 @@ function mov(subcategoria_id: number, importe: number): Movimiento {
     creado_por: 'u1',
     visibilidad: 'privado',
     nota: null,
+    es_primer_dia_mes: false,
     created_at: '2026-02-10',
     updated_at: '2026-02-10',
   };

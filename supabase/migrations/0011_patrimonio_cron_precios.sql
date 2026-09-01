@@ -4,19 +4,27 @@
 -- que no usan tae, consultando Twelve Data / CoinGecko en vivo — ver
 -- supabase/functions/actualizar-precios-patrimonio/index.ts.
 --
+-- La service_role key que necesita el cron para poder llamar a la funcion se guarda con Vault
+-- (extension de Supabase pensada exactamente para esto: secretos usados dentro de la base de
+-- datos, cifrados en reposo). NO se usa "alter database ... set" porque el SQL Editor no tiene
+-- permiso para cambiar parametros de la base de datos en el entorno gestionado de Supabase.
+--
 -- IMPORTANTE — pasos manuales antes de ejecutar este archivo:
 --
 -- 1. Funcion ya desplegada y clave de Twelve Data ya configurada (paso hecho via CLI).
 --
 -- 2. Project ref ya sustituido en la URL de mas abajo (koyvpbsnrxqheaugkxbu).
 --
--- 3. Guardar la service_role key como ajuste de la base de datos (Supabase Dashboard ->
---    Settings -> API -> Project API keys -> service_role — NUNCA la subas al repo). Ejecutar
---    esta linea aparte, sustituyendo el valor real, ANTES de las lineas de cron.schedule:
---      alter database postgres set app.settings.service_role_key = '<TU_SERVICE_ROLE_KEY>';
+-- 3. Guardar la service_role key en Vault (Supabase Dashboard -> Settings -> API -> Project API
+--    keys -> service_role — NUNCA la subas al repo). Ejecutar esta linea aparte, sustituyendo el
+--    valor real, ANTES de las lineas de cron.schedule:
+--      select vault.create_secret('<TU_SERVICE_ROLE_KEY>', 'service_role_key');
 --
--- 4. Recargar la configuracion de la sesion (o simplemente abrir una query nueva) y entonces
---    ejecutar el resto de este archivo.
+--    (Si ya la habias guardado antes con este mismo nombre y quieres cambiar el valor, usa en su
+--    lugar: select vault.update_secret((select id from vault.secrets where name =
+--    'service_role_key'), '<TU_SERVICE_ROLE_KEY>');)
+--
+-- 4. Ejecutar el resto de este archivo.
 -- ============================================================
 
 create extension if not exists pg_cron with schema extensions;
@@ -29,7 +37,9 @@ select cron.schedule(
   select net.http_post(
     url := 'https://koyvpbsnrxqheaugkxbu.supabase.co/functions/v1/actualizar-precios-patrimonio',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'),
+      'Authorization', 'Bearer ' || (
+        select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key'
+      ),
       'Content-Type', 'application/json'
     ),
     body := '{}'::jsonb
@@ -44,7 +54,9 @@ select cron.schedule(
   select net.http_post(
     url := 'https://koyvpbsnrxqheaugkxbu.supabase.co/functions/v1/actualizar-precios-patrimonio',
     headers := jsonb_build_object(
-      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key'),
+      'Authorization', 'Bearer ' || (
+        select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key'
+      ),
       'Content-Type', 'application/json'
     ),
     body := '{}'::jsonb

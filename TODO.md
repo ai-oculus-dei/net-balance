@@ -19,7 +19,7 @@
 - [x] Ejecutar `supabase/migrations/0010_patrimonio_tae.sql` en el SQL Editor de Supabase (columna `tae` en `posiciones_patrimonio`, `precio_actual_unitario` pasa a opcional; cálculo automático del valor actual por rentabilidad conocida para Fondo Monetario/Cuenta Remunerada/Cuenta de Ahorro — sección 15).
 - [ ] Registrarse en Twelve Data (https://twelvedata.com, gratis, solo email) y obtener una clave de API — para el paso siguiente.
 - [ ] Desplegar la Edge Function de precios automáticos (`npx supabase login`, `npx supabase link --project-ref <ref>`, `npx supabase functions deploy actualizar-precios-patrimonio`, luego `npx supabase secrets set TWELVE_DATA_API_KEY=...` con la clave del paso anterior — ver cabecera de `supabase/functions/actualizar-precios-patrimonio/index.ts`).
-- [ ] Ejecutar `supabase/migrations/0011_patrimonio_cron_precios.sql` en el SQL Editor de Supabase — leer los pasos previos indicados en la cabecera del archivo (sustituir `<PROJECT_REF>` por el ref real, y guardar la `service_role` key como ajuste de la base de datos) antes de ejecutar el resto.
+- [ ] Ejecutar `supabase/migrations/0011_patrimonio_cron_precios.sql` en el SQL Editor de Supabase — leer los pasos previos indicados en la cabecera del archivo (guardar la `service_role` key en Vault con `vault.create_secret`) antes de ejecutar el resto.
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)
 

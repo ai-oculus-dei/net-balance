@@ -5,15 +5,16 @@ import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
 import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
 import { PatrimonioStats } from '../components/patrimonio/PatrimonioStats';
-import { PosicionCard } from '../components/patrimonio/PosicionCard';
+import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
 import { usePosicionesPatrimonio } from '../hooks/usePosicionesPatrimonio';
 import { usePatrimonioHistorico } from '../hooks/usePatrimonioHistorico';
 import { useTheme } from '../lib/theme/useTheme';
 import {
   ETIQUETA_GRUPO,
+  agruparPorActivo,
   grupoDePosicion,
-  historicoPorPosicion,
+  historicoPorActivo,
   historicoTotalPorDia,
   type GrupoPatrimonio,
 } from '../lib/finance/patrimonio';
@@ -28,10 +29,11 @@ export function PatrimonioPage() {
   const [editando, setEditando] = useState<PosicionPatrimonio | null>(null);
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
+  const activos = useMemo(() => agruparPorActivo(posicionesActivas), [posicionesActivas]);
 
   const serieTotal = useMemo(() => historicoTotalPorDia(historico), [historico]);
   const { puntos: puntosPorPosicion, lineas: lineasPorPosicion } = useMemo(
-    () => historicoPorPosicion(posicionesActivas, historico, MAX_LINEAS),
+    () => historicoPorActivo(posicionesActivas, historico, MAX_LINEAS),
     [posicionesActivas, historico]
   );
 
@@ -86,7 +88,7 @@ export function PatrimonioPage() {
         </p>
       ) : (
         GRUPOS.map((grupo) => {
-          const deEsteGrupo = posicionesActivas.filter((p) => grupoDePosicion(p.tipo) === grupo);
+          const deEsteGrupo = activos.filter((a) => grupoDePosicion(a.tipo) === grupo);
           if (deEsteGrupo.length === 0) return null;
           return (
             <div key={grupo} className="flex flex-col gap-3">
@@ -94,8 +96,8 @@ export function PatrimonioPage() {
                 {ETIQUETA_GRUPO[grupo]}
               </h2>
               <div className="grid gap-3 sm:grid-cols-2">
-                {deEsteGrupo.map((p) => (
-                  <PosicionCard key={p.id} posicion={p} onClick={() => setEditando(p)} />
+                {deEsteGrupo.map((a) => (
+                  <ActivoCard key={a.id} activo={a} onEditarLote={setEditando} />
                 ))}
               </div>
             </div>
@@ -106,7 +108,12 @@ export function PatrimonioPage() {
       <Modal open={editando !== null} onClose={() => setEditando(null)} title="Editar posición">
         {editando && (
           <div className="flex flex-col gap-4">
-            <PatrimonioForm initialValues={editando} onSubmit={handleActualizar} onCancel={() => setEditando(null)} />
+            <PatrimonioForm
+              initialValues={editando}
+              posicionesExistentes={posicionesActivas}
+              onSubmit={handleActualizar}
+              onCancel={() => setEditando(null)}
+            />
             <Button
               variant="danger"
               onClick={async () => {

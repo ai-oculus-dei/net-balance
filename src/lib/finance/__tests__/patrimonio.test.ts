@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  agruparPorActivo,
   calcularPnL,
+  claveActivo,
   esTipoConTae,
   esTipoPorUnidad,
   grupoDePosicion,
-  historicoPorPosicion,
+  historicoPorActivo,
   historicoTotalPorDia,
   patrimonioPorGrupo,
   patrimonioTotalActual,
@@ -131,8 +133,84 @@ describe('historicoTotalPorDia', () => {
   });
 });
 
-describe('historicoPorPosicion', () => {
-  it('limita a maxLineas posiciones, eligiendo las de mayor valor actual', () => {
+describe('claveActivo', () => {
+  it('null sin ticker (posiciones de saldo no se agrupan)', () => {
+    expect(claveActivo(null, null)).toBeNull();
+    expect(claveActivo('', 'XETR')).toBeNull();
+  });
+
+  it('misma clave para el mismo ticker+mercado, sin distinguir mayusculas ni espacios', () => {
+    expect(claveActivo('NUKL', 'XETR')).toBe(claveActivo(' nukl ', ' xetr '));
+  });
+
+  it('distinta clave si cambia el mercado', () => {
+    expect(claveActivo('AF', 'Euronext')).not.toBe(claveActivo('AF', 'SET'));
+  });
+});
+
+describe('agruparPorActivo', () => {
+  it('agrupa compras distintas del mismo ticker+mercado en un solo activo', () => {
+    const posiciones = [
+      posicion({
+        id: 'lote1',
+        tipo: 'etf',
+        nombre: 'VanEck Uranium and Nuclear',
+        ticker: 'NUKL',
+        mercado: 'XETR',
+        cantidad: 3,
+        precio_compra_unitario: 50,
+        precio_actual_unitario: 55,
+        fecha_compra: '2026-01-23',
+      }),
+      posicion({
+        id: 'lote2',
+        tipo: 'etf',
+        nombre: 'NUKL (otro nombre, se ignora)',
+        ticker: 'nukl',
+        mercado: 'xetr',
+        cantidad: 3,
+        precio_compra_unitario: 48,
+        precio_actual_unitario: 55,
+        fecha_compra: '2026-06-05',
+      }),
+    ];
+
+    const [activo] = agruparPorActivo(posiciones);
+
+    expect(activo.id).toBe('lote1'); // primera compra por fecha
+    expect(activo.nombre).toBe('VanEck Uranium and Nuclear'); // hereda el nombre de la primera compra
+    expect(activo.lotes.map((l) => l.id)).toEqual(['lote1', 'lote2']); // ordenados por fecha
+    expect(activo.cantidadTotal).toBe(6);
+    expect(activo.precioCompraMedio).toBe(49); // (3*50 + 3*48) / 6
+    expect(activo.valorActualTotal).toBe(330); // 6 * 55
+    expect(activo.pnl.eur).toBe(36); // 330 - (150+144)
+    expect(activo.pnl.pct).toBe(12.24); // 36 / 294 * 100
+  });
+
+  it('no agrupa posiciones sin ticker, aunque tengan el mismo nombre', () => {
+    const posiciones = [
+      posicion({ id: 'a', tipo: 'cuenta_corriente', nombre: 'Cuenta', ticker: null, cantidad: 1, precio_actual_unitario: 100 }),
+      posicion({ id: 'b', tipo: 'cuenta_corriente', nombre: 'Cuenta', ticker: null, cantidad: 1, precio_actual_unitario: 200 }),
+    ];
+    expect(agruparPorActivo(posiciones)).toHaveLength(2);
+  });
+});
+
+describe('historicoPorActivo', () => {
+  it('suma el historico de los lotes de un mismo activo en una sola linea', () => {
+    const posiciones = [
+      posicion({ id: 'lote1', tipo: 'etf', nombre: 'NUKL', ticker: 'NUKL', mercado: 'XETR', cantidad: 3, precio_actual_unitario: 50, fecha_compra: '2026-01-23' }),
+      posicion({ id: 'lote2', tipo: 'etf', nombre: 'NUKL', ticker: 'NUKL', mercado: 'XETR', cantidad: 3, precio_actual_unitario: 50, fecha_compra: '2026-06-05' }),
+    ];
+    const hist = [historico('lote1', '2026-01-01', 100), historico('lote2', '2026-01-01', 80)];
+
+    const { lineas, puntos } = historicoPorActivo(posiciones, hist, 8);
+
+    expect(lineas).toEqual([{ id: 'lote1', colorIndex: 0, etiqueta: 'NUKL' }]);
+    expect(puntos).toEqual([{ mes: '01 ene', valores: { lote1: 180 } }]);
+  });
+
+  it('limita a maxLineas activos, eligiendo los de mayor valor actual', () => {
     const posiciones = [
       posicion({ id: 'a', tipo: 'stock', nombre: 'A', cantidad: 1, precio_actual_unitario: 100 }),
       posicion({ id: 'b', tipo: 'stock', nombre: 'B', cantidad: 1, precio_actual_unitario: 300 }),
@@ -140,7 +218,7 @@ describe('historicoPorPosicion', () => {
     ];
     const hist = [historico('a', '2026-01-01', 100), historico('b', '2026-01-01', 300), historico('c', '2026-01-01', 200)];
 
-    const { lineas, puntos } = historicoPorPosicion(posiciones, hist, 2);
+    const { lineas, puntos } = historicoPorActivo(posiciones, hist, 2);
 
     expect(lineas.map((l) => l.id)).toEqual(['b', 'c']); // mayor valor primero, "a" queda fuera
     expect(puntos).toEqual([{ mes: '01 ene', valores: { b: 300, c: 200 } }]);

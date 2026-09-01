@@ -1,8 +1,13 @@
 import type { PatrimonioHistorico, PosicionPatrimonio, TipoPosicionPatrimonio } from '../supabase/database.types';
 import type { PuntoSerieLineas } from './visualizaciones';
 
+function round(v: number, decimales: number): number {
+  const factor = 10 ** decimales;
+  return Math.round(v * factor) / factor;
+}
+
 function round2(v: number): number {
-  return Math.round(v * 100) / 100;
+  return round(v, 2);
 }
 
 export type GrupoPatrimonio = 'renta_variable' | 'renta_fija' | 'efectivo';
@@ -124,6 +129,69 @@ export function calcularPnL(p: PosicionValor, hoy: Date = new Date()): PnL {
   return { eur, pct };
 }
 
+// Identifica el "activo" al que pertenece una posicion: mismo ticker + mismo mercado (ver
+// seccion 15 de REQUIREMENTS.md — compras distintas del mismo activo, en fechas distintas, se
+// agrupan en una sola tarjeta). Sin ticker (posiciones "de saldo": cuentas, fondo monetario...)
+// no hay nada que agrupar, cada una es su propio activo. Se usa tanto para agrupar el listado
+// como para detectar duplicados al dar de alta una posicion nueva (PatrimonioForm).
+export function claveActivo(ticker: string | null, mercado: string | null): string | null {
+  const t = (ticker ?? '').trim().toLowerCase();
+  if (t === '') return null;
+  return `${t}|${(mercado ?? '').trim().toLowerCase()}`;
+}
+
+export interface ActivoAgrupado {
+  id: string; // id de la posicion de la primera compra (fecha_compra mas antigua)
+  tipo: TipoPosicionPatrimonio;
+  nombre: string; // nombre de la primera compra
+  ticker: string | null;
+  mercado: string | null;
+  lotes: PosicionPatrimonio[]; // cada compra individual, ordenadas por fecha_compra ascendente
+  cantidadTotal: number;
+  precioCompraMedio: number; // coste total / cantidad total (precio medio ponderado)
+  valorActualTotal: number;
+  pnl: PnL; // agregado: valor actual total - coste total (ponderado, no media simple de cada lote)
+}
+
+function construirActivo(lotes: PosicionPatrimonio[], hoy: Date): ActivoAgrupado {
+  const ordenados = [...lotes].sort((a, b) => a.fecha_compra.localeCompare(b.fecha_compra));
+  const primero = ordenados[0];
+  const cantidadTotal = round(
+    ordenados.reduce((s, p) => s + p.cantidad, 0),
+    8 // suficiente para cantidades fraccionarias de cripto sin perder precision visible
+  );
+  const costeTotal = round2(ordenados.reduce((s, p) => s + precioCompraTotal(p), 0));
+  const valorActualTotal = round2(ordenados.reduce((s, p) => s + precioActualTotal(p, hoy), 0));
+  const eur = round2(valorActualTotal - costeTotal);
+  const pct = costeTotal > 0 ? round2((eur / costeTotal) * 100) : null;
+  return {
+    id: primero.id,
+    tipo: primero.tipo,
+    nombre: primero.nombre,
+    ticker: primero.ticker,
+    mercado: primero.mercado,
+    lotes: ordenados,
+    cantidadTotal,
+    precioCompraMedio: cantidadTotal > 0 ? round2(costeTotal / cantidadTotal) : 0,
+    valorActualTotal,
+    pnl: { eur, pct },
+  };
+}
+
+// Agrupa las posiciones (compras individuales) en "activos": misma clave de claveActivo() se
+// funde en una unica tarjeta con precio medio de compra y P&L agregado, conservando cada compra
+// por separado en `lotes` para poder desplegarlas.
+export function agruparPorActivo(posiciones: PosicionPatrimonio[], hoy: Date = new Date()): ActivoAgrupado[] {
+  const grupos = new Map<string, PosicionPatrimonio[]>();
+  for (const p of posiciones) {
+    const clave = claveActivo(p.ticker, p.mercado) ?? `sola:${p.id}`;
+    const lista = grupos.get(clave);
+    if (lista) lista.push(p);
+    else grupos.set(clave, [p]);
+  }
+  return Array.from(grupos.values()).map((lotes) => construirActivo(lotes, hoy));
+}
+
 export function patrimonioTotalActual(posiciones: PosicionPatrimonio[], hoy: Date = new Date()): number {
   return round2(posiciones.reduce((suma, p) => suma + precioActualTotal(p, hoy), 0));
 }
@@ -145,6 +213,13 @@ function etiquetaFecha(fecha: string): string {
   // no arrastrar el mismo problema de zona horaria que toISOString (ver fechas.ts).
   const [anio, mes, dia] = fecha.split('-').map(Number);
   return new Date(anio, mes - 1, dia).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+}
+
+// Igual que etiquetaFecha pero con fecha completa (dd/mm/aaaa) — para el desplegable de compras
+// individuales de un activo (ActivoCard), donde el mes abreviado se queda corto.
+export function etiquetaFechaCompra(fecha: string): string {
+  const [anio, mes, dia] = fecha.split('-').map(Number);
+  return new Date(anio, mes - 1, dia).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 // Serie temporal del patrimonio total (todas las posiciones sumadas por fecha), shaped para
@@ -170,31 +245,42 @@ export interface HistoricoPorPosicion {
   lineas: LineaHistoricoPosicion[];
 }
 
-// Serie temporal multi-linea (una linea por posicion), limitada a como maximo `maxLineas`
-// posiciones — las de mayor valor actual — para no superar el techo de la paleta categorica
-// (colorsCategoricos.ts, 8 colores distinguibles por daltonismo).
-export function historicoPorPosicion(
+// Serie temporal multi-linea (una linea por activo, sumando todas sus compras/lotes), limitada
+// a como maximo `maxLineas` activos — los de mayor valor actual — para no superar el techo de
+// la paleta categorica (colorsCategoricos.ts, 8 colores distinguibles por daltonismo).
+export function historicoPorActivo(
   posiciones: PosicionPatrimonio[],
   historico: PatrimonioHistorico[],
-  maxLineas: number
+  maxLineas: number,
+  hoy: Date = new Date()
 ): HistoricoPorPosicion {
-  const elegidas = [...posiciones].sort((a, b) => precioActualTotal(b) - precioActualTotal(a)).slice(0, maxLineas);
-  const idsElegidos = new Set(elegidas.map((p) => p.id));
+  const activos = agruparPorActivo(posiciones, hoy);
+  const elegidos = [...activos].sort((a, b) => b.valorActualTotal - a.valorActualTotal).slice(0, maxLineas);
 
-  const fechas = Array.from(new Set(historico.filter((h) => idsElegidos.has(h.posicion_id)).map((h) => h.fecha))).sort();
+  const activoPorPosicionId = new Map<string, string>();
+  for (const activo of elegidos) {
+    for (const lote of activo.lotes) activoPorPosicionId.set(lote.id, activo.id);
+  }
+
+  const fechas = Array.from(
+    new Set(historico.filter((h) => activoPorPosicionId.has(h.posicion_id)).map((h) => h.fecha))
+  ).sort();
 
   const puntos: PuntoSerieLineas[] = fechas.map((fecha) => {
     const valores: Record<string, number> = {};
     for (const h of historico) {
-      if (h.fecha === fecha && idsElegidos.has(h.posicion_id)) valores[h.posicion_id] = h.valor_total;
+      if (h.fecha !== fecha) continue;
+      const activoId = activoPorPosicionId.get(h.posicion_id);
+      if (!activoId) continue;
+      valores[activoId] = round2((valores[activoId] ?? 0) + h.valor_total);
     }
     return { mes: etiquetaFecha(fecha), valores };
   });
 
-  const lineas: LineaHistoricoPosicion[] = elegidas.map((p, indice) => ({
-    id: p.id,
+  const lineas: LineaHistoricoPosicion[] = elegidos.map((a, indice) => ({
+    id: a.id,
     colorIndex: indice,
-    etiqueta: p.nombre,
+    etiqueta: a.nombre,
   }));
 
   return { puntos, lineas };

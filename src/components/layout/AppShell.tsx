@@ -13,6 +13,7 @@ import { emitMovimientosChanged } from '../../lib/events/movimientosBus';
 import { emitObjetivosChanged } from '../../lib/events/objetivosBus';
 import { emitPatrimonioChanged } from '../../lib/events/patrimonioBus';
 import { useAuth } from '../../lib/auth/useAuth';
+import { usePosicionesPatrimonio } from '../../hooks/usePosicionesPatrimonio';
 import { VisualizacionesProvider } from '../../lib/visualizaciones/VisualizacionesProvider';
 
 export function AppShell() {
@@ -20,6 +21,7 @@ export function AppShell() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { posiciones: posicionesPatrimonio } = usePosicionesPatrimonio();
 
   const enPatrimonio = location.pathname.startsWith('/patrimonio');
 
@@ -82,6 +84,7 @@ export function AppShell() {
       {enPatrimonio ? (
         <PatrimonioQuickAddSheet
           open={quickAddOpen}
+          posicionesExistentes={posicionesPatrimonio.filter((p) => p.activa)}
           onClose={() => setQuickAddOpen(false)}
           onCreated={handlePatrimonioCreated}
         />

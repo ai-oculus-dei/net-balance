@@ -6,6 +6,7 @@ import { Button } from '../ui/Button';
 import { useAuth } from '../../lib/auth/useAuth';
 import { toIsoDate } from '../../lib/finance/fechas';
 import {
+  claveActivo,
   ETIQUETA_GRUPO,
   ETIQUETA_TIPO,
   esTipoConTae,
@@ -33,6 +34,10 @@ export interface PatrimonioFormValues {
 
 interface PatrimonioFormProps {
   initialValues?: Partial<PosicionPatrimonio>;
+  // Resto de posiciones activas del usuario, para detectar si el ticker+mercado que se esta
+  // escribiendo ya corresponde a un activo existente (mismas compras agrupadas, ver
+  // agruparPorActivo en lib/finance/patrimonio.ts) y heredar su nombre.
+  posicionesExistentes?: PosicionPatrimonio[];
   onSubmit: (values: PatrimonioFormValues) => Promise<void>;
   onCancel: () => void;
 }
@@ -41,7 +46,7 @@ type ModoEntrada = 'total' | 'unitario';
 
 const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
 
-export function PatrimonioForm({ initialValues, onSubmit, onCancel }: PatrimonioFormProps) {
+export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSubmit, onCancel }: PatrimonioFormProps) {
   const { session } = useAuth();
 
   const [tipo, setTipo] = useState<TipoPosicionPatrimonio>(initialValues?.tipo ?? 'stock');
@@ -76,6 +81,22 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
   useEffect(() => {
     if (!puedeUsarTae) setUsarTae(false);
   }, [puedeUsarTae]);
+
+  // Mismo ticker+mercado que otra posicion ya existente (de otra compra distinta, o del mismo
+  // activo): se trata como el mismo activo (ver claveActivo/agruparPorActivo) y hereda el
+  // nombre de la compra mas antigua de ese grupo, en vez de dejar dos nombres distintos para el
+  // mismo activo.
+  const claveNueva = claveActivo(ticker, mercado);
+  const coincidencias = claveNueva
+    ? posicionesExistentes.filter((p) => p.id !== initialValues?.id && claveActivo(p.ticker, p.mercado) === claveNueva)
+    : [];
+  const activoExistente =
+    coincidencias.length > 0 ? [...coincidencias].sort((a, b) => a.fecha_compra.localeCompare(b.fecha_compra))[0] : null;
+
+  useEffect(() => {
+    if (activoExistente) setNombre(activoExistente.nombre);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activoExistente?.id, activoExistente?.nombre]);
 
   const valorActualConTaePreview =
     usarTae && precioCompraInput > 0 ? valorConTae(precioCompraInput, tae, fechaCompra) : null;
@@ -144,7 +165,14 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
         ))}
       </Select>
 
-      <Input label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required placeholder="Apple Inc." />
+      <Input
+        label="Nombre"
+        value={nombre}
+        onChange={(e) => setNombre(e.target.value)}
+        required
+        placeholder="Apple Inc."
+        disabled={activoExistente !== null}
+      />
 
       {unitario && (
         <div className="flex flex-col gap-1.5">
@@ -168,6 +196,11 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
               ? 'Usa el ID de CoinGecko, no el símbolo (p. ej. "bitcoin", no "BTC") — así se actualiza el precio solo.'
               : 'Símbolo de Twelve Data (Mercado es opcional, solo para desambiguar si hace falta) — así se actualiza el precio solo.'}
           </p>
+          {activoExistente && (
+            <p className="text-xs text-[var(--color-accent)]">
+              Este activo ya existe en el patrimonio, se heredará el nombre de la primera compra
+            </p>
+          )}
         </div>
       )}
 

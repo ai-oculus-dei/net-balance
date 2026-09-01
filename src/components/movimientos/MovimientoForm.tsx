@@ -3,12 +3,15 @@ import { Input } from '../ui/Input';
 import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 import { CategoriaSelect } from './CategoriaSelect';
 import { SubcategoriaSelect } from './SubcategoriaSelect';
 import { useTaxonomia } from '../../hooks/useTaxonomia';
 import { useProfiles } from '../../hooks/useProfiles';
 import { useObjetivos } from '../../hooks/useObjetivos';
+import { useAnclasPeriodo } from '../../hooks/useAnclasPeriodo';
 import { useAuth } from '../../lib/auth/useAuth';
+import { avisoCierreCorto, type AvisoCierreCorto } from '../../lib/finance/periodos';
 import type { AportacionObjetivo, Movimiento, Visibilidad } from '../../lib/supabase/database.types';
 
 export interface MovimientoFormValues {
@@ -61,6 +64,12 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mostrarMas, setMostrarMas] = useState(false);
+  const [valoresPendientes, setValoresPendientes] = useState<MovimientoFormValues | null>(null);
+  const [confirmacionCierre, setConfirmacionCierre] = useState<AvisoCierreCorto | null>(null);
+
+  // Anclas del usuario AL QUE se atribuye el movimiento (no necesariamente quien esta
+  // escribiendo): cada usuario tiene su propio calendario de "mes" personal.
+  const { anclas } = useAnclasPeriodo(usuarioId || undefined);
 
   const subcategorias = categoriaId !== null ? subcategoriasDe(categoriaId) : [];
   const subcategoriaSeleccionada = todasLasSubcategorias.find((s) => s.id === subcategoriaId);
@@ -83,8 +92,12 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
   }, [magnitud]);
 
   // La casilla "primer dia del mes" solo tiene sentido en Salario: si se cambia a otra
-  // subcategoria, se desmarca para no dejar una marca fantasma en un movimiento que ya no la muestra.
+  // subcategoria, se desmarca para no dejar una marca fantasma en un movimiento que ya no la
+  // muestra. Se espera a que la taxonomia termine de cargar (igual que el efecto de arriba):
+  // si no, en la primera pasada `todasLasSubcategorias` esta vacia, no encuentra "Salario" y
+  // desmarcaba la casilla aunque el movimiento editado sí la tuviera activada.
   useEffect(() => {
+    if (todasLasSubcategorias.length === 0) return;
     const esSalario = todasLasSubcategorias.find((s) => s.id === subcategoriaId)?.nombre === 'Salario';
     if (!esSalario) setEsPrimerDiaMes(false);
   }, [subcategoriaId, todasLasSubcategorias]);
@@ -93,6 +106,18 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
     setObjetivoDestino(id);
     if (id && importeAportacion <= 0) setImporteAportacion(magnitud);
     if (!id) setImporteAportacion(0);
+  }
+
+  async function guardar(values: MovimientoFormValues) {
+    setGuardando(true);
+    setError(null);
+    try {
+      await onSubmit(values);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar el movimiento.');
+    } finally {
+      setGuardando(false);
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -109,29 +134,54 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
       setError('Introduce cuánto destinas al objetivo.');
       return;
     }
-    setGuardando(true);
-    setError(null);
-    try {
-      await onSubmit({
-        nombre,
-        fecha: new Date(fecha).toISOString(),
-        importe: esGasto ? -Math.abs(magnitud) : Math.abs(magnitud),
-        subcategoria_id: subcategoriaId,
-        usuario_id: usuarioId,
-        visibilidad,
-        nota,
-        esPrimerDiaMes,
-        aportacion:
-          puedeAsignarAObjetivo && objetivoDestino
-            ? { objetivoId: objetivoDestino, importe: Math.min(importeAportacion, magnitud) }
-            : null,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al guardar el movimiento.');
-    } finally {
-      setGuardando(false);
+
+    const values: MovimientoFormValues = {
+      nombre,
+      fecha: new Date(fecha).toISOString(),
+      importe: esGasto ? -Math.abs(magnitud) : Math.abs(magnitud),
+      subcategoria_id: subcategoriaId,
+      usuario_id: usuarioId,
+      visibilidad,
+      nota,
+      esPrimerDiaMes,
+      aportacion:
+        puedeAsignarAObjetivo && objetivoDestino
+          ? { objetivoId: objetivoDestino, importe: Math.min(importeAportacion, magnitud) }
+          : null,
+    };
+
+    if (esPrimerDiaMes) {
+      const aviso = avisoCierreCorto(anclas, new Date(values.fecha));
+      if (aviso) {
+        setValoresPendientes(values);
+        setConfirmacionCierre(aviso);
+        return;
+      }
+    }
+
+    await guardar(values);
+  }
+
+  async function confirmarCierre() {
+    setConfirmacionCierre(null);
+    if (valoresPendientes) {
+      const values = valoresPendientes;
+      setValoresPendientes(null);
+      await guardar(values);
     }
   }
+
+  function cancelarCierre() {
+    setConfirmacionCierre(null);
+    setValoresPendientes(null);
+  }
+
+  const etiquetaMesCierre = confirmacionCierre
+    ? new Date(confirmacionCierre.etiqueta.year, confirmacionCierre.etiqueta.month, 1).toLocaleDateString('es-ES', {
+        month: 'long',
+        year: '2-digit',
+      })
+    : '';
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -261,6 +311,20 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
           {guardando ? 'Guardando...' : 'Guardar'}
         </Button>
       </div>
+
+      <Modal open={confirmacionCierre !== null} onClose={cancelarCierre} title="Confirmar cierre de mes">
+        <p className="text-sm mb-4">
+          Vas a cerrar el mes {etiquetaMesCierre} con {confirmacionCierre?.dias} días. ¿Quieres proceder a cerrarlo?
+        </p>
+        <div className="flex gap-2 justify-end">
+          <Button type="button" variant="secondary" onClick={cancelarCierre}>
+            No
+          </Button>
+          <Button type="button" onClick={confirmarCierre} disabled={guardando}>
+            Sí
+          </Button>
+        </div>
+      </Modal>
     </form>
   );
 }

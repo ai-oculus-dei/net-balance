@@ -58,6 +58,27 @@ export interface PeriodoResuelto {
   etiqueta: { year: number; month: number };
 }
 
+const DIAS_MINIMOS_SIN_AVISO = 20;
+
+export interface AvisoCierreCorto {
+  etiqueta: { year: number; month: number }; // mes que se cerraria
+  dias: number; // duracion resultante de ese mes, redondeada
+}
+
+// Si marcar una nomina en `fecha` (como "primer dia del mes") cerraria el mes que la contiene
+// con menos de 20 dias de duracion, devuelve el aviso a mostrar antes de guardar; si no, null.
+// El mes que se cierra es siempre el propio mes de calendario de `fecha` (ver resolverRangoMes:
+// una nomina fechada en D marca el inicio de la etiqueta D+1 mes, y automaticamente el cierre
+// del mes de D).
+export function avisoCierreCorto(anclas: AnclaPeriodo[], fecha: Date): AvisoCierreCorto | null {
+  const year = fecha.getFullYear();
+  const month = fecha.getMonth();
+  const inicioMesCierre = resolverRangoMes(anclas, new Date(year, month, 1)).desde;
+  const dias = (fecha.getTime() - new Date(inicioMesCierre).getTime()) / (1000 * 60 * 60 * 24);
+  if (dias >= DIAS_MINIMOS_SIN_AVISO) return null;
+  return { etiqueta: { year, month }, dias: Math.round(dias) };
+}
+
 // Resuelve el periodo que realmente contiene un instante concreto (normalmente "ahora mismo"):
 // parte del mes de calendario de esa fecha y se corrige un mes hacia atras o hacia adelante si
 // una nomina marcada ha desplazado el limite mas alla de ese instante. Distinto de

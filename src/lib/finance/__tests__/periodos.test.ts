@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  avisoCierreCorto,
   periodosEntre,
   resolverPeriodoActual,
   resolverRangoEntreMeses,
@@ -117,6 +118,36 @@ describe('periodos de pago (zona horaria España, por delante de UTC)', () => {
       const rango = resolverRangoEntreMeses([], '2025-09', '2025-09');
       expect(new Date(rango.desde).getTime()).toBe(new Date(2025, 8, 1).getTime());
       expect(new Date(rango.hasta).getTime()).toBe(new Date(2025, 9, 1).getTime());
+    });
+  });
+
+  describe('avisoCierreCorto', () => {
+    it('sin anclas, un mes recien empezado (menos de 20 dias) da aviso', () => {
+      const aviso = avisoCierreCorto([], new Date(2025, 8, 15)); // 15 sept, mes empieza el 1
+      expect(aviso).toEqual({ etiqueta: { year: 2025, month: 8 }, dias: 14 });
+    });
+
+    it('sin anclas, un mes ya avanzado (20 dias o mas) no da aviso', () => {
+      const aviso = avisoCierreCorto([], new Date(2025, 8, 25)); // 25 sept, 24 dias desde el 1
+      expect(aviso).toBeNull();
+    });
+
+    it('justo en el limite de 20 dias no da aviso', () => {
+      const aviso = avisoCierreCorto([], new Date(2025, 8, 21)); // 21 sept = 20 dias exactos desde el 1
+      expect(aviso).toBeNull();
+    });
+
+    it('con una ancla que ya adelanto el inicio del mes, cuenta los dias desde esa ancla', () => {
+      // "Septiembre" ya empieza el 26 de agosto (ancla). Marcar otra nomina el 5 de septiembre
+      // (10 dias despues) cerraria "Septiembre" con solo 10 dias.
+      const fechaNueva = new Date('2025-09-05T12:00:00.000Z');
+      const aviso = avisoCierreCorto([ancla26Ago], fechaNueva);
+      expect(aviso).toEqual({ etiqueta: { year: 2025, month: 8 }, dias: 10 });
+    });
+
+    it('el caso completo confirmado con el usuario (26 agosto a 28 septiembre, 33 dias) no da aviso', () => {
+      const aviso = avisoCierreCorto([ancla26Ago], new Date('2025-09-28T12:00:00.000Z'));
+      expect(aviso).toBeNull();
     });
   });
 

@@ -14,6 +14,13 @@
 // dos veces al dia via pg_cron + pg_net) con la service_role key, para poder actualizar las
 // posiciones de los dos usuarios sin depender de una sesion concreta.
 //
+// Seguridad: una Edge Function es una URL publica en internet. La verificacion de JWT que
+// Supabase aplica por defecto solo exige ALGUN token valido del proyecto — la propia clave
+// `anon` (publica, va en el bundle de la app) tambien lo es, asi que sin este chequeo
+// cualquiera podria invocarla. Por eso se exige aqui, ademas, que el Bearer token sea
+// exactamente la service_role key: solo el cron (o quien tenga esa clave, que nunca sale de
+// los secretos del proyecto) puede ejecutarla de verdad.
+//
 // Desplegar con: npx supabase functions deploy actualizar-precios-patrimonio
 // Config necesaria (una vez): npx supabase secrets set TWELVE_DATA_API_KEY=...
 // (SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase automaticamente, no hace
@@ -22,6 +29,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const TWELVE_DATA_API_KEY = Deno.env.get('TWELVE_DATA_API_KEY') ?? '';
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 interface PosicionAActualizar {
   id: string;
@@ -56,8 +64,18 @@ async function precioDe(p: PosicionAActualizar): Promise<number | null> {
   return p.tipo === 'criptomoneda' ? precioCoinGecko(p.ticker) : precioTwelveData(p.ticker, p.mercado);
 }
 
-Deno.serve(async () => {
-  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+Deno.serve(async (req) => {
+  // Solo el propio cron (o alguien con la service_role key, que nunca sale de los secretos del
+  // proyecto) puede ejecutar esto de verdad — ver nota de seguridad arriba.
+  const auth = req.headers.get('Authorization') ?? '';
+  if (auth !== `Bearer ${SERVICE_ROLE_KEY}`) {
+    return new Response(JSON.stringify({ error: 'No autorizado' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, SERVICE_ROLE_KEY);
 
   const { data: posiciones, error } = await supabase
     .from('posiciones_patrimonio')

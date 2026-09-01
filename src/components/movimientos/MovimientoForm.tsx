@@ -245,13 +245,10 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
           {objetivoDestino && (
             <Input
               label="Cantidad destinada (€)"
-              type="number"
+              type="text"
               inputMode="decimal"
-              step="0.01"
-              min="0.01"
-              max={magnitud}
               value={importeAportacion || ''}
-              onChange={(e) => setImporteAportacion(Math.min(Number(e.target.value), magnitud))}
+              onChange={(e) => setImporteAportacion(Math.min(Number(e.target.value.replace(',', '.')), magnitud))}
             />
           )}
         </div>

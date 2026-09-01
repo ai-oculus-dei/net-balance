@@ -72,12 +72,11 @@ export function ObjetivoForm({ initialValues, onSubmit, onCancel }: ObjetivoForm
         <>
           <Input
             label="Meta (€)"
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
+            inputMode="decimal"
             required
             value={meta || ''}
-            onChange={(e) => setMeta(Number(e.target.value))}
+            onChange={(e) => setMeta(Number(e.target.value.replace(',', '.')))}
           />
           <Select label="Modo de aportación" value={modoAportacion} onChange={(e) => setModoAportacion(e.target.value as ModoAportacion)}>
             <option value="automatico">Automático (calcula el % necesario)</option>
@@ -98,13 +97,11 @@ export function ObjetivoForm({ initialValues, onSubmit, onCancel }: ObjetivoForm
       {esManual && (
         <Input
           label="% de ingreso real / mes"
-          type="number"
-          step="0.1"
-          min="0"
-          max="100"
+          type="text"
+          inputMode="decimal"
           required
           value={porcentaje || ''}
-          onChange={(e) => setPorcentaje(Number(e.target.value))}
+          onChange={(e) => setPorcentaje(Number(e.target.value.replace(',', '.')))}
         />
       )}
 

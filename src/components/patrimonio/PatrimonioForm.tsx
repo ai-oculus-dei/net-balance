@@ -173,13 +173,11 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
       {unitario && (
         <Input
           label="Cantidad"
-          type="number"
+          type="text"
           inputMode="decimal"
-          step="any"
-          min="0"
           required
           value={cantidad || ''}
-          onChange={(e) => setCantidad(Number(e.target.value))}
+          onChange={(e) => setCantidad(Number(e.target.value.replace(',', '.')))}
         />
       )}
 
@@ -206,13 +204,11 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
           )}
         </div>
         <Input
-          type="number"
+          type="text"
           inputMode="decimal"
-          step="0.01"
-          min="0"
           required
           value={precioCompraInput || ''}
-          onChange={(e) => setPrecioCompraInput(Number(e.target.value))}
+          onChange={(e) => setPrecioCompraInput(Number(e.target.value.replace(',', '.')))}
         />
       </div>
 
@@ -232,13 +228,11 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
         <div className="flex flex-col gap-1.5">
           <Input
             label="TAE (%)"
-            type="number"
+            type="text"
             inputMode="decimal"
-            step="0.01"
-            min="0"
             required
             value={tae || ''}
-            onChange={(e) => setTae(Number(e.target.value))}
+            onChange={(e) => setTae(Number(e.target.value.replace(',', '.')))}
           />
           {valorActualConTaePreview !== null && (
             <p className="text-xs text-[var(--color-text-muted)]">
@@ -270,13 +264,11 @@ export function PatrimonioForm({ initialValues, onSubmit, onCancel }: Patrimonio
             )}
           </div>
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
-            step="0.01"
-            min="0"
             required
             value={precioActualInput || ''}
-            onChange={(e) => setPrecioActualInput(Number(e.target.value))}
+            onChange={(e) => setPrecioActualInput(Number(e.target.value.replace(',', '.')))}
           />
         </div>
       )}

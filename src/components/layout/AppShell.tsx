@@ -3,11 +3,15 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { QuickAddButton } from '../movimientos/QuickAddButton';
 import { QuickAddSheet } from '../movimientos/QuickAddSheet';
+import { PatrimonioQuickAddSheet } from '../patrimonio/PatrimonioQuickAddSheet';
 import type { MovimientoFormValues } from '../movimientos/MovimientoForm';
+import type { PatrimonioFormValues } from '../patrimonio/PatrimonioForm';
 import { crearMovimiento } from '../../lib/supabase/queries/movimientos';
 import { crearAportacion } from '../../lib/supabase/queries/aportaciones';
+import { crearPosicionPatrimonio } from '../../lib/supabase/queries/patrimonio';
 import { emitMovimientosChanged } from '../../lib/events/movimientosBus';
 import { emitObjetivosChanged } from '../../lib/events/objetivosBus';
+import { emitPatrimonioChanged } from '../../lib/events/patrimonioBus';
 import { useAuth } from '../../lib/auth/useAuth';
 import { VisualizacionesProvider } from '../../lib/visualizaciones/VisualizacionesProvider';
 
@@ -16,6 +20,8 @@ export function AppShell() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const enPatrimonio = location.pathname.startsWith('/patrimonio');
 
   // Permite un acceso directo instalado aparte en el movil (ver Ajustes) que abre la app
   // directamente sobre el alta rapida, sin pasar por el dashboard.
@@ -53,6 +59,12 @@ export function AppShell() {
     }
   }
 
+  async function handlePatrimonioCreated(values: PatrimonioFormValues) {
+    if (!session) return;
+    await crearPosicionPatrimonio(values);
+    emitPatrimonioChanged();
+  }
+
   return (
     <div className="min-h-svh flex flex-col pb-24 sm:pb-0">
       <BottomNav />
@@ -63,8 +75,19 @@ export function AppShell() {
         </VisualizacionesProvider>
       </main>
 
-      <QuickAddButton onClick={() => setQuickAddOpen(true)} />
-      <QuickAddSheet open={quickAddOpen} onClose={handleCloseQuickAdd} onCreated={handleCreated} />
+      <QuickAddButton
+        onClick={() => setQuickAddOpen(true)}
+        ariaLabel={enPatrimonio ? 'Añadir patrimonio' : 'Añadir movimiento'}
+      />
+      {enPatrimonio ? (
+        <PatrimonioQuickAddSheet
+          open={quickAddOpen}
+          onClose={() => setQuickAddOpen(false)}
+          onCreated={handlePatrimonioCreated}
+        />
+      ) : (
+        <QuickAddSheet open={quickAddOpen} onClose={handleCloseQuickAdd} onCreated={handleCreated} />
+      )}
     </div>
   );
 }

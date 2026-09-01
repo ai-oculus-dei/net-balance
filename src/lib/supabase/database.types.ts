@@ -165,3 +165,72 @@ export interface AportacionObjetivoUpdate {
   updated_at?: string;
 }
 
+export type TipoPosicionPatrimonio =
+  | 'stock'
+  | 'etf'
+  | 'fondo_indexado'
+  | 'fondo_monetario'
+  | 'cuenta_remunerada'
+  | 'cuenta_ahorro'
+  | 'commodity'
+  | 'cuenta_corriente'
+  | 'criptomoneda';
+
+export interface PosicionPatrimonio {
+  id: string;
+  usuario_id: string;
+  tipo: TipoPosicionPatrimonio;
+  nombre: string;
+  ticker: string | null;
+  mercado: string | null;
+  cantidad: number;
+  precio_compra_unitario: number;
+  precio_actual_unitario: number;
+  fecha_compra: string;
+  activa: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PosicionPatrimonioInsert {
+  id?: string;
+  usuario_id: string;
+  tipo: TipoPosicionPatrimonio;
+  nombre: string;
+  ticker?: string | null;
+  mercado?: string | null;
+  cantidad?: number;
+  precio_compra_unitario: number;
+  precio_actual_unitario: number;
+  fecha_compra?: string;
+  activa?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PosicionPatrimonioUpdate {
+  id?: string;
+  usuario_id?: string;
+  tipo?: TipoPosicionPatrimonio;
+  nombre?: string;
+  ticker?: string | null;
+  mercado?: string | null;
+  cantidad?: number;
+  precio_compra_unitario?: number;
+  precio_actual_unitario?: number;
+  fecha_compra?: string;
+  activa?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// patrimonio_historico solo se escribe desde el RPC generar_snapshot_patrimonio (RLS no
+// permite insert/update/delete al cliente) — no hace falta un tipo *Insert para esta tabla.
+export interface PatrimonioHistorico {
+  id: string;
+  posicion_id: string;
+  fecha: string;
+  valor_total: number;
+  created_at: string;
+}
+

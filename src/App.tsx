@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './lib/auth/useAuth';
 import { AppShell } from './components/layout/AppShell';
@@ -6,10 +7,36 @@ import { DashboardPage } from './pages/DashboardPage';
 import { MovimientosPage } from './pages/MovimientosPage';
 import { ObjetivosPage } from './pages/ObjetivosPage';
 import { VisualizacionesPage } from './pages/VisualizacionesPage';
+import { PatrimonioPage } from './pages/PatrimonioPage';
 import { AjustesPage } from './pages/AjustesPage';
+import { generarSnapshotPatrimonio } from './lib/supabase/queries/patrimonio';
+import { emitPatrimonioChanged } from './lib/events/patrimonioBus';
+
+const ULTIMO_SNAPSHOT_KEY = 'net-balance-ultimo-snapshot-patrimonio';
+
+// Genera (una vez al dia como mucho, comprobado por clave de fecha en localStorage) el
+// snapshot diario de las posiciones de Patrimonio del usuario en sesion — ver
+// generar_snapshot_patrimonio en supabase/migrations/0009_patrimonio.sql. Idempotente y con
+// backfill de dias saltados, asi que basta con intentarlo en cada carga de la app.
+function useGenerarSnapshotPatrimonioAlEntrar(activo: boolean) {
+  useEffect(() => {
+    if (!activo) return;
+    const hoy = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    if (localStorage.getItem(ULTIMO_SNAPSHOT_KEY) === hoy) return;
+    generarSnapshotPatrimonio()
+      .then(() => {
+        localStorage.setItem(ULTIMO_SNAPSHOT_KEY, hoy);
+        emitPatrimonioChanged();
+      })
+      .catch(() => {
+        // Si falla (sin conexion, etc.), se reintenta en la siguiente carga de la app.
+      });
+  }, [activo]);
+}
 
 function App() {
   const { session, loading } = useAuth();
+  useGenerarSnapshotPatrimonioAlEntrar(Boolean(session));
 
   if (loading) {
     return <div className="min-h-svh flex items-center justify-center text-sm text-[var(--color-text-muted)]">Cargando...</div>;
@@ -28,6 +55,7 @@ function App() {
           <Route path="movimientos" element={<MovimientosPage />} />
           <Route path="objetivos" element={<ObjetivosPage />} />
           <Route path="visualizaciones" element={<VisualizacionesPage />} />
+          <Route path="patrimonio" element={<PatrimonioPage />} />
           <Route path="ajustes" element={<AjustesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

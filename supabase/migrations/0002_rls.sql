@@ -95,6 +95,32 @@ create policy aportaciones_delete on aportaciones_objetivo
   );
 
 -- ============================================================
+-- posiciones_patrimonio / patrimonio_historico (individuales — nunca compartidas, ver
+-- 0009_patrimonio.sql). patrimonio_historico solo se lee por el cliente: solo la funcion
+-- security definer generar_snapshot_patrimonio puede escribir en ella.
+-- ============================================================
+alter table posiciones_patrimonio enable row level security;
+
+create policy posiciones_patrimonio_select on posiciones_patrimonio
+  for select using (usuario_id = auth.uid());
+
+create policy posiciones_patrimonio_insert on posiciones_patrimonio
+  for insert with check (usuario_id = auth.uid());
+
+create policy posiciones_patrimonio_update on posiciones_patrimonio
+  for update using (usuario_id = auth.uid()) with check (usuario_id = auth.uid());
+
+create policy posiciones_patrimonio_delete on posiciones_patrimonio
+  for delete using (usuario_id = auth.uid());
+
+alter table patrimonio_historico enable row level security;
+
+create policy patrimonio_historico_select on patrimonio_historico
+  for select using (
+    exists (select 1 from posiciones_patrimonio p where p.id = posicion_id and p.usuario_id = auth.uid())
+  );
+
+-- ============================================================
 -- Paso operativo fuera de SQL (Supabase Dashboard):
 --   1. Authentication -> Providers -> Email -> desactivar "Allow new users to sign up".
 --   2. Authentication -> Users -> Add user, para amda.97@gmail.com y lauraplaza403@gmail.com.

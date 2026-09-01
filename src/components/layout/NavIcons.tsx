@@ -51,6 +51,15 @@ export function IconVisualizaciones(props: IconProps) {
   );
 }
 
+export function IconPatrimonio(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 16l5-5 4 4 7-8" />
+      <path d="M15 6h5v5" />
+    </svg>
+  );
+}
+
 export function IconExpandir(props: IconProps) {
   return (
     <svg {...base} {...props}>

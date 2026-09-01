@@ -255,6 +255,74 @@ create trigger trg_aportacion_objetivo_update after update on aportaciones_objet
 create trigger trg_aportacion_objetivo_delete after delete on aportaciones_objetivo for each row execute function aplicar_aportacion_objetivo();
 
 -- ============================================================
+-- PATRIMONIO (posiciones de inversion/activos, individuales — ver 0009_patrimonio.sql)
+-- ============================================================
+create table posiciones_patrimonio (
+  id                     uuid primary key default gen_random_uuid(),
+  usuario_id             uuid not null references profiles(id),
+  tipo                   text not null check (tipo in (
+                           'stock', 'etf', 'fondo_indexado', 'fondo_monetario',
+                           'cuenta_remunerada', 'cuenta_ahorro', 'commodity',
+                           'cuenta_corriente', 'criptomoneda'
+                         )),
+  nombre                 text not null check (char_length(trim(nombre)) > 0),
+  ticker                 text,
+  mercado                text,
+  cantidad               numeric(18,8) not null default 1 check (cantidad > 0),
+  precio_compra_unitario numeric(18,8) not null check (precio_compra_unitario >= 0),
+  precio_actual_unitario numeric(18,8) not null check (precio_actual_unitario >= 0),
+  fecha_compra           date not null default current_date,
+  activa                 boolean not null default true,
+  created_at             timestamptz not null default now(),
+  updated_at             timestamptz not null default now()
+);
+
+create index idx_posiciones_patrimonio_usuario on posiciones_patrimonio (usuario_id);
+create index idx_posiciones_patrimonio_activa  on posiciones_patrimonio (usuario_id, activa);
+
+create table patrimonio_historico (
+  id          uuid primary key default gen_random_uuid(),
+  posicion_id uuid not null references posiciones_patrimonio(id) on delete cascade,
+  fecha       date not null,
+  valor_total numeric(18,2) not null,
+  created_at  timestamptz not null default now(),
+  unique (posicion_id, fecha)
+);
+
+create index idx_patrimonio_historico_posicion_fecha on patrimonio_historico (posicion_id, fecha);
+
+-- Genera (y rellena hacia atras, idempotente) el snapshot diario de las posiciones del usuario
+-- que llama — ver comentario completo en 0009_patrimonio.sql.
+create or replace function generar_snapshot_patrimonio()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  r record;
+  fecha_cursor date;
+  hoy date := current_date;
+begin
+  for r in
+    select * from posiciones_patrimonio where usuario_id = auth.uid() and activa = true
+  loop
+    select coalesce(max(fecha) + 1, r.fecha_compra) into fecha_cursor
+    from patrimonio_historico where posicion_id = r.id;
+
+    while fecha_cursor <= hoy loop
+      insert into patrimonio_historico (posicion_id, fecha, valor_total)
+      values (r.id, fecha_cursor, r.cantidad * r.precio_actual_unitario)
+      on conflict (posicion_id, fecha) do nothing;
+      fecha_cursor := fecha_cursor + 1;
+    end loop;
+  end loop;
+end;
+$$;
+
+grant execute on function generar_snapshot_patrimonio() to authenticated;
+
+-- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================
 create or replace function set_updated_at()
@@ -268,3 +336,4 @@ $$;
 create trigger trg_movimientos_updated_at   before update on movimientos          for each row execute function set_updated_at();
 create trigger trg_objetivos_updated_at     before update on objetivos_ahorro     for each row execute function set_updated_at();
 create trigger trg_aportaciones_updated_at  before update on aportaciones_objetivo for each row execute function set_updated_at();
+create trigger trg_posiciones_patrimonio_updated_at before update on posiciones_patrimonio for each row execute function set_updated_at();

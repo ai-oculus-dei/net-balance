@@ -148,7 +148,6 @@ Antes de montar el proyecto, pedir al usuario lo siguiente (no asumir ni generar
 
 ## 13. Fuera de alcance (v1)
 
-- Cálculo de patrimonio neto (retirado del alcance).
 - Sincronización bancaria automática / open banking.
 - Liquidación de saldos entre usuarios (tipo Splitwise).
 - Gestión de altas/bajas de categorías desde la interfaz.
@@ -162,3 +161,26 @@ Antes de montar el proyecto, pedir al usuario lo siguiente (no asumir ni generar
 - Nivel de agregación de las series temporales (semana/mes/año).
 - Edición/borrado de movimientos históricos (asumir CRUD estándar salvo que se indique lo contrario).
 - Backup/exportación de la base de datos.
+
+## 15. Patrimonio (posiciones de inversión)
+
+Página aparte ("Patrimonio"), completamente independiente del flujo de caja de Movimientos: no crea ni depende de ningún movimiento.
+
+**Posiciones**: cada una tiene Tipo (uno de 9 fijos: Stock, ETFs, Fondo Indexado, Fondo Monetario, Cuenta Remunerada, Cuenta de Ahorro, Commodity, Cuenta Corriente, Criptomoneda), Nombre, Tickr y Mercado (solo relevantes para los tipos "por unidad", ver abajo), Cantidad, Precio de compra, Precio actual, y Fecha de compra. P&L € y P&L % son siempre calculados (nunca almacenados): `P&L € = Precio actual total − Precio de compra total`, `P&L % = P&L € / Precio de compra total × 100` (null si el coste de compra es 0).
+
+**Grupo de agrupación** — calculado siempre a partir del Tipo, nunca un campo propio:
+- Renta Variable = Stock + ETFs + Fondo Indexado + Commodity + Criptomoneda
+- Renta Fija = Fondo Monetario + Cuenta Remunerada + Cuenta de Ahorro
+- Efectivo = Cuenta Corriente
+
+**Tipos "por unidad" vs "de saldo"**: Stock, ETFs, Fondo Indexado, Commodity y Criptomoneda tienen Cantidad real y Tickr/Mercado con sentido — el formulario permite introducir el precio de compra y el precio actual como Total o Por unidad (toggle), convirtiendo internamente entre ambos. Fondo Monetario, Cuenta Remunerada, Cuenta de Ahorro y Cuenta Corriente son posiciones "de saldo": Cantidad fija en 1, sin Tickr/Mercado, un único valor (el total).
+
+**Precio actual — manual por ahora**: se actualiza a mano editando la posición. Sin integración de datos de mercado en tiempo real (arquitectura estática sin servidor propio — ver sección 12); automatizarlo en el futuro requeriría una Edge Function de Supabase con despliegue manual aparte, deliberadamente pospuesto.
+
+**Visibilidad**: las posiciones son siempre privadas por usuario, igual que los Objetivos de ahorro (sección 7) — nunca compartidas entre Alvaro y Lauri.
+
+**Histórico diario**: una vez al día se guarda un snapshot del valor de cada posición activa (tabla `patrimonio_historico`, solo escribible por la función `generar_snapshot_patrimonio`, nunca por el cliente). Se genera al abrir la app (como mucho una vez al día, comprobado por `localStorage`), rellenando hacia atrás cualquier día saltado desde el último snapshot (o desde la fecha de compra si no tiene ninguno) — cada día rellenado hacia atrás usa el precio actual vigente en el momento de generar el backfill, no el valor real que tuviera ese día pasado (limitación conocida, ya que no se guarda un histórico de precios independiente). El snapshot de "hoy", una vez generado, no se reescribe aunque el precio actual cambie después ese mismo día — se actualizará en el snapshot de mañana.
+
+**"Borrar" una posición la archiva** (no la elimina): conserva su histórico ya generado, pero deja de contar en los totales y en el snapshot diario.
+
+**Página**: patrimonio total y desglose por grupo, histórico total del patrimonio (gráfico de una línea), histórico por posición (gráfico multilínea, limitado a las 8 posiciones de mayor valor actual — mismo techo que Visualizaciones, sección 9), y las posiciones agrupadas por Renta Variable/Renta Fija/Efectivo. El botón **+** global abre "Añadir Patrimonio" en vez de "Nuevo movimiento" cuando se está en esta página.

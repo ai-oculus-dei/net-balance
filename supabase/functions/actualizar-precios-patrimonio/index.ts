@@ -1,7 +1,14 @@
 // Edge Function: actualiza precio_actual_unitario de las posiciones de Patrimonio que tengan
 // un ticker y NO usen tae (esas se calculan solas, ver src/lib/finance/patrimonio.ts).
 //
-// Sin lista intermedia que mantener a mano: cada posicion se consulta en vivo por su propio
+// Se consulta UNA VEZ por cada ticker+mercado+tipo distinto, no una vez por posicion: varias
+// compras del mismo activo (p.ej. 5 compras de Bitcoin en fechas distintas) comparten una sola
+// consulta a la API y esa misma respuesta se aplica a todas — igual que se agrupan visualmente
+// en una sola tarjeta (ver claveActivo/agruparPorActivo en src/lib/finance/patrimonio.ts).
+// Consultar una vez por posicion en vez de una vez por activo agotaba el limite de peticiones
+// por minuto de Twelve Data/CoinGecko sin necesidad, incluso con pocos activos distintos.
+//
+// Sin lista intermedia que mantener a mano: cada activo se consulta en vivo por su propio
 // ticker en el momento de ejecutarse, contra:
 //   - CoinGecko (gratis, sin clave) para tipo = 'criptomoneda'. El ticker debe ser el ID de
 //     CoinGecko (p.ej. "bitcoin", no "BTC" — ver https://api.coingecko.com/api/v3/coins/list).
@@ -98,6 +105,20 @@ async function precioDe(p: PosicionAActualizar): Promise<ResultadoPrecio> {
   return p.tipo === 'criptomoneda' ? precioCoinGecko(p.ticker) : precioTwelveData(p.ticker, p.mercado);
 }
 
+// Agrupa las posiciones por tipo+ticker+mercado (normalizado): mismo criterio que claveActivo()
+// en src/lib/finance/patrimonio.ts, para que varias compras del mismo activo compartan una sola
+// consulta a la API en vez de una por posicion.
+function agruparPorActivo(posiciones: PosicionAActualizar[]): PosicionAActualizar[][] {
+  const grupos = new Map<string, PosicionAActualizar[]>();
+  for (const p of posiciones) {
+    const clave = `${p.tipo}|${p.ticker.trim().toLowerCase()}|${(p.mercado ?? '').trim().toLowerCase()}`;
+    const lista = grupos.get(clave);
+    if (lista) lista.push(p);
+    else grupos.set(clave, [p]);
+  }
+  return Array.from(grupos.values());
+}
+
 Deno.serve(async (req) => {
   // Solo el propio cron (o alguien con la service_role key, que nunca sale de los secretos del
   // proyecto) puede ejecutar esto de verdad — ver nota de seguridad arriba.
@@ -126,30 +147,36 @@ Deno.serve(async (req) => {
   }
 
   const resultados = [];
+  const grupos = agruparPorActivo((posiciones ?? []) as PosicionAActualizar[]);
 
-  for (const p of (posiciones ?? []) as PosicionAActualizar[]) {
+  for (const grupo of grupos) {
+    const ids = grupo.map((p) => p.id);
+    const representante = grupo[0]; // mismo tipo+ticker+mercado para todo el grupo
+
     try {
-      const { precio, error: errorPrecio } = await precioDe(p);
+      const { precio, error: errorPrecio } = await precioDe(representante);
       if (precio === null) {
-        await supabase.from('posiciones_patrimonio').update({ error_precio: errorPrecio }).eq('id', p.id);
-        resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: errorPrecio });
+        await supabase.from('posiciones_patrimonio').update({ error_precio: errorPrecio }).in('id', ids);
+        for (const p of grupo) resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: errorPrecio });
         continue;
       }
 
       const { error: updateError } = await supabase
         .from('posiciones_patrimonio')
         .update({ precio_actual_unitario: precio, error_precio: null })
-        .eq('id', p.id);
+        .in('id', ids);
 
-      resultados.push(
-        updateError
-          ? { id: p.id, ticker: p.ticker, ok: false, error: updateError.message }
-          : { id: p.id, ticker: p.ticker, ok: true, precio }
-      );
+      for (const p of grupo) {
+        resultados.push(
+          updateError
+            ? { id: p.id, ticker: p.ticker, ok: false, error: updateError.message }
+            : { id: p.id, ticker: p.ticker, ok: true, precio }
+        );
+      }
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : String(err);
-      await supabase.from('posiciones_patrimonio').update({ error_precio: mensaje }).eq('id', p.id);
-      resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: mensaje });
+      await supabase.from('posiciones_patrimonio').update({ error_precio: mensaje }).in('id', ids);
+      for (const p of grupo) resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: mensaje });
     }
   }
 

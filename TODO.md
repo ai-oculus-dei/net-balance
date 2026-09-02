@@ -22,7 +22,7 @@
 - [x] Ejecutar `supabase/migrations/0011_patrimonio_cron_precios.sql` en el SQL Editor de Supabase (guardando la `service_role` key en Vault con `vault.create_secret`) — sustituido por `0012_patrimonio_cron_horario.sql`, ver siguiente punto.
 - [x] Redesplegar la Edge Function (`npx supabase functions deploy actualizar-precios-patrimonio`, ya registra la hora del cron).
 - [x] Ejecutar `supabase/migrations/0012_patrimonio_cron_horario.sql` en el SQL Editor de Supabase (desprograma los 2 jobs de la 0011 y programa uno nuevo cada hora, UTC 6:00-22:00 — cubre siempre las 8:00-23:00 de España sin depender de `cron.timezone`, que dio error `55P02` al intentar fijarlo: solo se puede cambiar al arrancar el servidor, no vía SQL Editor). El secreto de Vault tenía guardado por error el JWT clásico de `service_role` en vez de la clave nueva `sb_secret_...` que la función recibe inyectada — corregido con `vault.update_secret`.
-- [ ] Ejecutar `supabase/migrations/0013_patrimonio_error_precio.sql` en el SQL Editor de Supabase (columna `error_precio` en `posiciones_patrimonio` — la Edge Function ya redesplegada la usa para guardar el motivo cuando no consigue actualizar un precio, en vez de fallar en silencio).
+- [x] Ejecutar `supabase/migrations/0013_patrimonio_error_precio.sql` en el SQL Editor de Supabase (columna `error_precio` en `posiciones_patrimonio` — la Edge Function ya redesplegada la usa para guardar el motivo cuando no consigue actualizar un precio, en vez de fallar en silencio).
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)
 

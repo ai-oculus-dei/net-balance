@@ -4,6 +4,7 @@ import {
   calcularPnL,
   claveActivo,
   claveCuenta,
+  crecimientoDesdeInicioAnio,
   esTipoConTae,
   esTipoPorUnidad,
   grupoDePosicion,
@@ -131,6 +132,28 @@ describe('historicoTotalPorDia', () => {
       { mes: '01 ene', valores: { total: 130 } },
       { mes: '02 ene', valores: { total: 150 } },
     ]);
+  });
+});
+
+describe('crecimientoDesdeInicioAnio', () => {
+  const hoy = new Date(2026, 8, 2); // 2 de septiembre de 2026
+
+  it('compara el total actual con el snapshot exacto del 1 de enero de este año', () => {
+    const hist = [historico('a', '2026-01-01', 900), historico('b', '2026-01-01', 100)];
+    const crecimiento = crecimientoDesdeInicioAnio(hist, 1300, hoy);
+    expect(crecimiento).toEqual({ eur: 300, pct: 30 });
+  });
+
+  it('si nada existia a 1 de enero, el total de partida es 0 y el % es null', () => {
+    const hist = [historico('a', '2026-06-01', 500)]; // posicion comprada despues de enero
+    const crecimiento = crecimientoDesdeInicioAnio(hist, 800, hoy);
+    expect(crecimiento).toEqual({ eur: 800, pct: null });
+  });
+
+  it('ignora snapshots de 1 de enero de otros años', () => {
+    const hist = [historico('a', '2025-01-01', 5000)];
+    const crecimiento = crecimientoDesdeInicioAnio(hist, 100, hoy);
+    expect(crecimiento).toEqual({ eur: 100, pct: null });
   });
 });
 

@@ -217,6 +217,29 @@ export function patrimonioPorGrupo(posiciones: PosicionPatrimonio[], hoy: Date =
   };
 }
 
+export interface CrecimientoAnual {
+  eur: number;
+  pct: number | null; // null si el patrimonio a 1 de enero era 0 (no tiene sentido un %)
+}
+
+// Crecimiento del patrimonio total desde el 1 de enero del año en curso: compara el total
+// actual con la suma del historico de ESE dia exacto. Si ninguna posicion existia todavia el 1
+// de enero (todas con fecha_compra posterior), el total de partida es 0 de forma natural — no
+// hace falta buscar el dato mas cercano ni tratarlo como un caso especial.
+export function crecimientoDesdeInicioAnio(
+  historico: PatrimonioHistorico[],
+  totalActual: number,
+  hoy: Date = new Date()
+): CrecimientoAnual {
+  const fechaInicioAnio = `${hoy.getFullYear()}-01-01`;
+  const totalInicioAnio = round2(
+    historico.filter((h) => h.fecha === fechaInicioAnio).reduce((suma, h) => suma + h.valor_total, 0)
+  );
+  const eur = round2(totalActual - totalInicioAnio);
+  const pct = totalInicioAnio > 0 ? round2((eur / totalInicioAnio) * 100) : null;
+  return { eur, pct };
+}
+
 function etiquetaFecha(fecha: string): string {
   // fecha viene como "YYYY-MM-DD" (columna date); se parsea con los componentes locales para
   // no arrastrar el mismo problema de zona horaria que toISOString (ver fechas.ts).

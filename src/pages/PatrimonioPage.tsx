@@ -4,6 +4,7 @@ import { Modal } from '../components/ui/Modal';
 import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
 import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
+import { PatrimonioTotalCard } from '../components/patrimonio/PatrimonioTotalCard';
 import { PatrimonioStats } from '../components/patrimonio/PatrimonioStats';
 import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
@@ -49,6 +50,7 @@ export function PatrimonioPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PatrimonioTotalCard posiciones={posicionesActivas} historico={historico} loading={loading} />
       <PatrimonioStats posiciones={posicionesActivas} loading={loading} />
 
       <TarjetaGrafico

@@ -3,9 +3,9 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
+import { LineasPieChart } from '../components/charts/LineasPieChart';
 import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
 import { PatrimonioTotalCard } from '../components/patrimonio/PatrimonioTotalCard';
-import { PatrimonioStats } from '../components/patrimonio/PatrimonioStats';
 import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
 import { usePosicionesPatrimonio } from '../hooks/usePosicionesPatrimonio';
@@ -14,10 +14,12 @@ import { useUltimaActualizacionPrecios } from '../hooks/useUltimaActualizacionPr
 import { useTheme } from '../lib/theme/useTheme';
 import {
   ETIQUETA_GRUPO,
+  ETIQUETA_TIPO,
   agruparPorActivo,
   grupoDePosicion,
   historicoPorActivo,
   historicoTotalPorDia,
+  patrimonioPorTipo,
   type GrupoPatrimonio,
 } from '../lib/finance/patrimonio';
 import type { PosicionPatrimonio } from '../lib/supabase/database.types';
@@ -33,6 +35,12 @@ export function PatrimonioPage() {
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
   const activos = useMemo(() => agruparPorActivo(posicionesActivas), [posicionesActivas]);
+
+  const datosPorTipo = useMemo(() => {
+    return patrimonioPorTipo(posicionesActivas)
+      .slice(0, MAX_LINEAS)
+      .map((t, indice) => ({ id: t.tipo, colorIndex: indice, etiqueta: ETIQUETA_TIPO[t.tipo], neto: t.valor }));
+  }, [posicionesActivas]);
 
   const serieTotal = useMemo(() => historicoTotalPorDia(historico), [historico]);
   const { puntos: puntosPorPosicion, lineas: lineasPorPosicion } = useMemo(
@@ -51,7 +59,19 @@ export function PatrimonioPage() {
   return (
     <div className="flex flex-col gap-4">
       <PatrimonioTotalCard posiciones={posicionesActivas} historico={historico} loading={loading} />
-      <PatrimonioStats posiciones={posicionesActivas} loading={loading} />
+
+      <TarjetaGrafico
+        titulo="Por tipo de activo"
+        render={(altura) =>
+          loading ? (
+            <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+          ) : datosPorTipo.length === 0 ? (
+            <p className="text-sm text-[var(--color-text-muted)]">Todavía no tienes posiciones.</p>
+          ) : (
+            <LineasPieChart datos={datosPorTipo} theme={theme} altura={altura} />
+          )
+        }
+      />
 
       <TarjetaGrafico
         titulo="Histórico del patrimonio"

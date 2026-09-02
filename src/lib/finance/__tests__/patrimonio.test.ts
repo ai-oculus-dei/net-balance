@@ -11,6 +11,7 @@ import {
   historicoPorActivo,
   historicoTotalPorDia,
   patrimonioPorGrupo,
+  patrimonioPorTipo,
   patrimonioTotalActual,
   precioActualTotal,
   precioActualUnitarioEfectivo,
@@ -113,6 +114,25 @@ describe('patrimonioPorGrupo', () => {
       posicion({ id: 'd', tipo: 'cuenta_corriente', cantidad: 1, precio_actual_unitario: 50 }), // 50 Efectivo
     ];
     expect(patrimonioPorGrupo(posiciones)).toEqual({ renta_variable: 300, renta_fija: 300, efectivo: 50 });
+  });
+});
+
+describe('patrimonioPorTipo', () => {
+  it('agrupa por tipo exacto, suma varias posiciones del mismo tipo, y ordena de mayor a menor', () => {
+    const posiciones = [
+      posicion({ id: 'a', tipo: 'stock', cantidad: 10, precio_actual_unitario: 20 }), // 200
+      posicion({ id: 'b', tipo: 'criptomoneda', cantidad: 1, precio_actual_unitario: 500 }), // 500
+      posicion({ id: 'c', tipo: 'stock', cantidad: 5, precio_actual_unitario: 20 }), // 100 (mismo tipo que a)
+    ];
+    expect(patrimonioPorTipo(posiciones)).toEqual([
+      { tipo: 'criptomoneda', valor: 500 },
+      { tipo: 'stock', valor: 300 },
+    ]);
+  });
+
+  it('excluye tipos con valor 0', () => {
+    const posiciones = [posicion({ id: 'a', tipo: 'stock', cantidad: 1, precio_actual_unitario: 0 })];
+    expect(patrimonioPorTipo(posiciones)).toEqual([]);
   });
 });
 

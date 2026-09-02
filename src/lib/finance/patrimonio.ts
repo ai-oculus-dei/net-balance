@@ -217,6 +217,25 @@ export function patrimonioPorGrupo(posiciones: PosicionPatrimonio[], hoy: Date =
   };
 }
 
+export interface PatrimonioPorTipoPunto {
+  tipo: TipoPosicionPatrimonio;
+  valor: number;
+}
+
+// Desglose del patrimonio por tipo exacto (Stock, ETFs, Fondo Indexado, Criptomoneda...) en vez
+// del grupo amplio (Renta Variable/Fija/Efectivo) — para el grafico de sectores de la pagina.
+// Solo incluye tipos con valor > 0, de mayor a menor.
+export function patrimonioPorTipo(posiciones: PosicionPatrimonio[], hoy: Date = new Date()): PatrimonioPorTipoPunto[] {
+  const totales = new Map<TipoPosicionPatrimonio, number>();
+  for (const p of posiciones) {
+    totales.set(p.tipo, (totales.get(p.tipo) ?? 0) + precioActualTotal(p, hoy));
+  }
+  return Array.from(totales.entries())
+    .map(([tipo, valor]) => ({ tipo, valor: round2(valor) }))
+    .filter((t) => t.valor > 0)
+    .sort((a, b) => b.valor - a.valor);
+}
+
 export interface CrecimientoAnual {
   eur: number;
   pct: number | null; // null si el patrimonio a 1 de enero era 0 (no tiene sentido un %)

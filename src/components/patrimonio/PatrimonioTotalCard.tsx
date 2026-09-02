@@ -26,16 +26,15 @@ export function PatrimonioTotalCard({ posiciones, historico, loading }: Patrimon
           <p className="font-mono text-4xl font-bold text-[var(--color-accent)] text-center">
             {formatearImporte(total)} €
           </p>
-          <div className="flex justify-end items-baseline gap-1.5 mt-3">
-            <span className="text-xs text-[var(--color-text-muted)]">desde 1 ene</span>
-            <span className={`font-mono text-sm font-semibold ${claseColorPorSigno(crecimiento.eur)}`}>
-              {crecimiento.eur > 0 ? '+' : ''}
-              {formatearImporte(crecimiento.eur)} €
-              {crecimiento.pct !== null
-                ? ` (${crecimiento.pct > 0 ? '+' : ''}${formatearImporte(crecimiento.pct, 1)}%)`
-                : ''}
-            </span>
-          </div>
+          {crecimiento.pct !== null && (
+            <div className="flex justify-end mt-3">
+              <span className={`font-mono text-sm font-semibold ${claseColorPorSigno(crecimiento.eur)}`}>
+                {crecimiento.eur > 0 ? '+' : ''}
+                {formatearImporte(crecimiento.eur)} € ({crecimiento.pct > 0 ? '+' : ''}
+                {formatearImporte(crecimiento.pct, 1)}%)
+              </span>
+            </div>
+          )}
         </>
       )}
     </Card>

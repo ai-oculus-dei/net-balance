@@ -20,7 +20,8 @@
 - [x] Registrarse en Twelve Data (https://twelvedata.com, gratis, solo email) y obtener una clave de API — para el paso siguiente.
 - [x] Desplegar la Edge Function de precios automáticos (`npx supabase login`, `npx supabase link --project-ref <ref>`, `npx supabase functions deploy actualizar-precios-patrimonio`, luego `npx supabase secrets set TWELVE_DATA_API_KEY=...` con la clave del paso anterior — ver cabecera de `supabase/functions/actualizar-precios-patrimonio/index.ts`).
 - [x] Ejecutar `supabase/migrations/0011_patrimonio_cron_precios.sql` en el SQL Editor de Supabase (guardando la `service_role` key en Vault con `vault.create_secret`) — sustituido por `0012_patrimonio_cron_horario.sql`, ver siguiente punto.
-- [ ] Redesplegar la Edge Function (`npx supabase functions deploy actualizar-precios-patrimonio`, ya registra la hora del cron) y ejecutar `supabase/migrations/0012_patrimonio_cron_horario.sql` en el SQL Editor de Supabase — leer los pasos previos indicados en la cabecera del archivo (incluye fijar `cron.timezone` a `Europe/Madrid`, que puede dar el mismo "permission denied" que la service_role key si el entorno no lo permite).
+- [x] Redesplegar la Edge Function (`npx supabase functions deploy actualizar-precios-patrimonio`, ya registra la hora del cron).
+- [ ] Ejecutar `supabase/migrations/0012_patrimonio_cron_horario.sql` en el SQL Editor de Supabase (desprograma los 2 jobs de la 0011 y programa uno nuevo cada hora, UTC 6:00-22:00 — cubre siempre las 8:00-23:00 de España sin depender de `cron.timezone`, que dio error `55P02` al intentar fijarlo: solo se puede cambiar al arrancar el servidor, no vía SQL Editor).
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)
 

@@ -20,12 +20,14 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
     else onEditarLote(activo.lotes[0]);
   }
 
+  const precioActualUnitario = activo.cantidadTotal > 0 ? activo.valorActualTotal / activo.cantidadTotal : 0;
+
   return (
     <Card className="cursor-pointer hover:opacity-90 min-w-0" onClick={handleClick}>
+      {/* Fila 1: Ticker (o Nombre si no tiene) + aviso de error ... Tipo */}
       <div className="flex items-center justify-between mb-1 gap-2">
         <h3 className="font-semibold text-sm flex items-center gap-1 min-w-0">
-          {activo.ticker && <span className="text-[var(--color-text-muted)] shrink-0">({activo.ticker})</span>}
-          <span className="truncate min-w-0 flex-1">{activo.nombre}</span>
+          <span className="truncate min-w-0 flex-1">{activo.ticker || activo.nombre}</span>
           {loteConError && (
             <span
               title={`No se ha podido actualizar el precio: ${loteConError.error_precio}`}
@@ -38,21 +40,26 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
         <span className="text-xs text-[var(--color-text-muted)] shrink-0">{ETIQUETA_TIPO[activo.tipo]}</span>
       </div>
 
+      {/* Fila 2: Nombre (solo si la fila 1 ya se uso para el Ticker) */}
+      {activo.ticker && <p className="text-[13px] font-medium mb-1 truncate">{activo.nombre}</p>}
+
+      {/* Fila 3: cantidad x precio medio ... valor actual total (solo con ticker: sin ticker no
+          hay "unidades" que valgan la pena desglosar, se va directa a la fila 4) */}
       {activo.ticker && (
-        <p className="text-xs text-[var(--color-text-muted)] mb-1 truncate">
-          {activo.ticker}
-          {activo.mercado ? ` · ${activo.mercado}` : ''}
-        </p>
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <span className="text-xs text-[var(--color-text-muted)]">
+            {formatearCantidad(activo.cantidadTotal)} x {formatearImporte(activo.precioCompraMedio)} €/ea
+          </span>
+          <span className="font-mono text-sm font-semibold">{formatearImporte(activo.valorActualTotal)} €</span>
+        </div>
       )}
 
-      {activo.ticker && (
-        <p className="text-xs text-[var(--color-text-muted)] mb-1">
-          {formatearCantidad(activo.cantidadTotal)} uds · Precio medio {formatearImporte(activo.precioCompraMedio)} €
-        </p>
-      )}
-
+      {/* Fila 4: con ticker, precio actual por unidad (el total ya salio en la fila 3); sin
+          ticker, el valor actual total (no hay fila 3 que lo muestre) ... P&L */}
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-sm font-semibold">{formatearImporte(activo.valorActualTotal)} €</span>
+        <span className="font-mono text-sm font-semibold">
+          {activo.ticker ? `${formatearImporte(precioActualUnitario)} €/ea` : `${formatearImporte(activo.valorActualTotal)} €`}
+        </span>
         <span className={`font-mono text-xs font-semibold ${claseColorPorSigno(activo.pnl.eur)}`}>
           {activo.pnl.eur > 0 ? '+' : ''}
           {formatearImporte(activo.pnl.eur)} €{activo.pnl.pct !== null ? ` (${activo.pnl.pct > 0 ? '+' : ''}${formatearImporte(activo.pnl.pct, 1)}%)` : ''}

@@ -1,5 +1,5 @@
 import { supabase } from '../client';
-import type { PatrimonioHistorico, PosicionPatrimonio } from '../database.types';
+import type { PatrimonioHistorico, PatrimonioPreciosActualizacion, PosicionPatrimonio } from '../database.types';
 
 export async function fetchPosicionesPatrimonio(): Promise<PosicionPatrimonio[]> {
   const { data, error } = await supabase
@@ -42,4 +42,11 @@ export async function fetchPatrimonioHistorico(): Promise<PatrimonioHistorico[]>
 export async function generarSnapshotPatrimonio(): Promise<void> {
   const { error } = await supabase.rpc('generar_snapshot_patrimonio');
   if (error) throw error;
+}
+
+// null si el cron todavia no se ha ejecutado nunca (tabla vacia).
+export async function fetchUltimaActualizacionPrecios(): Promise<string | null> {
+  const { data, error } = await supabase.from('patrimonio_precios_actualizacion').select('actualizado_en').maybeSingle();
+  if (error) throw error;
+  return (data as Pick<PatrimonioPreciosActualizacion, 'actualizado_en'> | null)?.actualizado_en ?? null;
 }

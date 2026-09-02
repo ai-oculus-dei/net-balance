@@ -9,6 +9,7 @@ import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
 import { usePosicionesPatrimonio } from '../hooks/usePosicionesPatrimonio';
 import { usePatrimonioHistorico } from '../hooks/usePatrimonioHistorico';
+import { useUltimaActualizacionPrecios } from '../hooks/useUltimaActualizacionPrecios';
 import { useTheme } from '../lib/theme/useTheme';
 import {
   ETIQUETA_GRUPO,
@@ -26,6 +27,7 @@ export function PatrimonioPage() {
   const { theme } = useTheme();
   const { posiciones, loading: loadingPosiciones, actualizar, archivar } = usePosicionesPatrimonio();
   const { historico, loading: loadingHistorico } = usePatrimonioHistorico();
+  const ultimaActualizacionPrecios = useUltimaActualizacionPrecios();
   const [editando, setEditando] = useState<PosicionPatrimonio | null>(null);
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
@@ -126,6 +128,19 @@ export function PatrimonioPage() {
           </div>
         )}
       </Modal>
+
+      {ultimaActualizacionPrecios && (
+        <p className="text-center text-xs text-[var(--color-text-muted)]">
+          Precios actualizados: {formatearUltimaActualizacion(ultimaActualizacionPrecios)}
+        </p>
+      )}
     </div>
   );
+}
+
+function formatearUltimaActualizacion(iso: string): string {
+  const fecha = new Date(iso);
+  const hora = fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const esHoy = fecha.toDateString() === new Date().toDateString();
+  return esHoy ? hora : `${fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })} ${hora}`;
 }

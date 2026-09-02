@@ -296,6 +296,14 @@ create table patrimonio_historico (
 
 create index idx_patrimonio_historico_posicion_fecha on patrimonio_historico (posicion_id, fecha);
 
+-- Fila unica con la hora del ultimo cron de precios ejecutado (ver 0012_patrimonio_cron_horario.sql
+-- y supabase/functions/actualizar-precios-patrimonio) — se muestra al pie de la pagina de
+-- Patrimonio. La escribe solo la Edge Function (service_role); el cliente solo la lee.
+create table patrimonio_precios_actualizacion (
+  id             boolean primary key default true check (id),
+  actualizado_en timestamptz not null
+);
+
 -- Genera (y rellena hacia atras, idempotente) el snapshot diario de las posiciones del usuario
 -- que llama — ver comentario completo en 0009_patrimonio.sql.
 create or replace function generar_snapshot_patrimonio()

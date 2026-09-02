@@ -10,9 +10,13 @@
 //     "XAU/EUR" para materias primas); si hay varias bolsas para el mismo simbolo, el campo
 //     "mercado" de la posicion se manda como parametro `exchange` para desambiguar.
 //
-// Se invoca por HTTP (ver supabase/migrations/0011_patrimonio_cron_precios.sql, que la programa
-// dos veces al dia via pg_cron + pg_net) con la service_role key, para poder actualizar las
-// posiciones de los dos usuarios sin depender de una sesion concreta.
+// Se invoca por HTTP (ver supabase/migrations/0012_patrimonio_cron_horario.sql, que la programa
+// cada hora de 8:00 a 23:00 hora de España via pg_cron + pg_net) con la service_role key, para
+// poder actualizar las posiciones de los dos usuarios sin depender de una sesion concreta.
+//
+// Al terminar cada ejecucion (haya ido bien o mal alguna posicion suelta) se deja constancia de
+// la hora en patrimonio_precios_actualizacion, una tabla de una sola fila que el cliente lee para
+// mostrarla de forma discreta al pie de la pagina de Patrimonio.
 //
 // Seguridad: una Edge Function es una URL publica en internet. La verificacion de JWT que
 // Supabase aplica por defecto solo exige ALGUN token valido del proyecto — la propia clave
@@ -115,6 +119,10 @@ Deno.serve(async (req) => {
       resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: err instanceof Error ? err.message : String(err) });
     }
   }
+
+  await supabase
+    .from('patrimonio_precios_actualizacion')
+    .upsert({ id: true, actualizado_en: new Date().toISOString() });
 
   return new Response(JSON.stringify({ actualizadas: resultados }), {
     headers: { 'Content-Type': 'application/json' },

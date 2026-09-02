@@ -239,3 +239,10 @@ export interface PatrimonioHistorico {
   created_at: string;
 }
 
+// Fila unica (id siempre true): solo la escribe la Edge Function actualizar-precios-patrimonio
+// (service_role) — el cliente solo la lee, RLS no permite insert/update/delete.
+export interface PatrimonioPreciosActualizacion {
+  id: true;
+  actualizado_en: string;
+}
+

@@ -120,6 +120,14 @@ create policy patrimonio_historico_select on patrimonio_historico
     exists (select 1 from posiciones_patrimonio p where p.id = posicion_id and p.usuario_id = auth.uid())
   );
 
+-- patrimonio_precios_actualizacion: no es un dato de ningun usuario en concreto (es la hora del
+-- ultimo cron), asi que se puede leer sin filtrar por usuario. Solo la escribe la Edge Function
+-- (service_role, sin pasar por RLS) — sin policies de insert/update para `authenticated`.
+alter table patrimonio_precios_actualizacion enable row level security;
+
+create policy patrimonio_precios_actualizacion_select on patrimonio_precios_actualizacion
+  for select using (true);
+
 -- ============================================================
 -- Paso operativo fuera de SQL (Supabase Dashboard):
 --   1. Authentication -> Providers -> Email -> desactivar "Allow new users to sign up".

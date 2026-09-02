@@ -19,13 +19,14 @@ import {
   valorConTae,
   type GrupoPatrimonio,
 } from '../../lib/finance/patrimonio';
-import type { PosicionPatrimonio, TipoPosicionPatrimonio } from '../../lib/supabase/database.types';
+import type { MonedaPosicion, PosicionPatrimonio, TipoPosicionPatrimonio } from '../../lib/supabase/database.types';
 
 export interface PatrimonioFormValues {
   tipo: TipoPosicionPatrimonio;
   nombre: string;
   ticker: string | null;
   mercado: string | null;
+  moneda: MonedaPosicion;
   cantidad: number;
   precio_compra_unitario: number;
   precio_actual_unitario: number | null;
@@ -55,6 +56,7 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   const [nombre, setNombre] = useState(initialValues?.nombre ?? '');
   const [ticker, setTicker] = useState(initialValues?.ticker ?? '');
   const [mercado, setMercado] = useState(initialValues?.mercado ?? '');
+  const [moneda, setMoneda] = useState<MonedaPosicion>(initialValues?.moneda ?? 'EUR');
   const [cantidad, setCantidad] = useState(initialValues?.cantidad ?? 1);
   const [fechaCompra, setFechaCompra] = useState(initialValues?.fecha_compra ?? toIsoDate(new Date()));
   const [modoCompra, setModoCompra] = useState<ModoEntrada>('unitario');
@@ -91,6 +93,12 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   useEffect(() => {
     if (!puedeUsarTae) setUsarTae(false);
   }, [puedeUsarTae]);
+
+  // CoinGecko ya da el precio directamente en EUR (vs_currencies=eur): la divisa del ticker
+  // solo aplica a Yahoo Finance, no tiene sentido para Criptomoneda.
+  useEffect(() => {
+    if (tipo === 'criptomoneda') setMoneda('EUR');
+  }, [tipo]);
 
   // Mismo ticker+mercado que otra posicion ya existente (de otra compra distinta, o del mismo
   // activo): se trata como el mismo activo (ver claveActivo/agruparPorActivo) y hereda el
@@ -168,6 +176,7 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
         nombre,
         ticker: unitario && ticker ? ticker : null,
         mercado: unitario && mercado ? mercado : null,
+        moneda,
         cantidad: unitario ? cantidad : 1,
         precio_compra_unitario:
           modoCompra === 'total' ? unitarioDesdeTotal(precioCompraInput, cantidad) : precioCompraInput,
@@ -238,8 +247,37 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
           <p className="text-xs text-[var(--color-text-muted)]">
             {tipo === 'criptomoneda'
               ? 'Usa el ID de CoinGecko, no el símbolo (p. ej. "bitcoin", no "BTC") — así se actualiza el precio solo.'
-              : 'Símbolo de Yahoo Finance CON el sufijo de mercado incluido (p. ej. "AF.PA", "NUKL.DE"; sin sufijo para NASDAQ/NYSE) — así se actualiza el precio solo. Mercado es solo de referencia, ya no hace falta para buscar el precio.'}
+              : 'Escribe el ticker exactamente como aparece en Yahoo Finance, con el sufijo de mercado incluido (p. ej. "AF.PA", "NUKL.DE"; sin sufijo para NASDAQ/NYSE) — así se actualiza el precio solo. Mercado es solo de referencia, ya no hace falta para buscar el precio.'}
           </p>
+          {tipo !== 'criptomoneda' && (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-[var(--color-text-muted)]">Divisa del ticker</span>
+                <div className="flex rounded-md border border-[var(--color-border)] overflow-hidden text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setMoneda('EUR')}
+                    className={`px-2.5 py-1 ${moneda === 'EUR' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
+                  >
+                    EUR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMoneda('USD')}
+                    className={`px-2.5 py-1 ${moneda === 'USD' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
+                  >
+                    USD
+                  </button>
+                </div>
+              </div>
+              {moneda === 'USD' && (
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  El precio del ticker se pide en dólares y se convierte a euros automáticamente con el tipo de
+                  cambio EUR/USD del momento.
+                </p>
+              )}
+            </div>
+          )}
           {activoExistente && (
             <p className="text-xs text-[var(--color-accent)]">
               Este activo ya existe en el patrimonio, se heredará el nombre de la primera compra

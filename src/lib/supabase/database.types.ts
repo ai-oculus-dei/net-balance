@@ -176,6 +176,8 @@ export type TipoPosicionPatrimonio =
   | 'cuenta_corriente'
   | 'criptomoneda';
 
+export type MonedaPosicion = 'EUR' | 'USD';
+
 export interface PosicionPatrimonio {
   id: string;
   usuario_id: string;
@@ -183,6 +185,9 @@ export interface PosicionPatrimonio {
   nombre: string;
   ticker: string | null;
   mercado: string | null;
+  // En que divisa da el precio el Ticker de Yahoo Finance — con USD, la Edge Function aplica el
+  // tipo de cambio EUR/USD antes de guardar precio_actual_unitario (que siempre queda en EUR).
+  moneda: MonedaPosicion;
   cantidad: number;
   precio_compra_unitario: number;
   // null cuando la posicion tiene una TAE: el valor actual se calcula por formula (ver
@@ -205,6 +210,7 @@ export interface PosicionPatrimonioInsert {
   nombre: string;
   ticker?: string | null;
   mercado?: string | null;
+  moneda?: MonedaPosicion;
   cantidad?: number;
   precio_compra_unitario: number;
   precio_actual_unitario?: number | null;
@@ -223,6 +229,7 @@ export interface PosicionPatrimonioUpdate {
   nombre?: string;
   ticker?: string | null;
   mercado?: string | null;
+  moneda?: MonedaPosicion;
   cantidad?: number;
   precio_compra_unitario?: number;
   precio_actual_unitario?: number | null;

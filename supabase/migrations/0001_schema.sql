@@ -268,6 +268,9 @@ create table posiciones_patrimonio (
   nombre                 text not null check (char_length(trim(nombre)) > 0),
   ticker                 text,
   mercado                text,
+  -- en que divisa da el precio el Ticker de Yahoo Finance: con USD, la Edge Function aplica el
+  -- tipo de cambio EUR/USD antes de guardar precio_actual_unitario (que siempre queda en EUR).
+  moneda                 text not null default 'EUR' check (moneda in ('EUR', 'USD')),
   cantidad               numeric(18,8) not null default 1 check (cantidad > 0),
   precio_compra_unitario numeric(18,8) not null check (precio_compra_unitario >= 0),
   -- precio_actual_unitario es opcional cuando hay una tae: en ese caso el valor actual se

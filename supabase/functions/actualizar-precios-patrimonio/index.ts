@@ -23,6 +23,12 @@
 //     sufijo para NASDAQ/NYSE) — el campo "mercado" de la posicion ya NO se usa para esta
 //     consulta (Yahoo no necesita un parametro aparte, el sufijo del ticker ya lo identifica).
 //
+// Divisa del ticker (columna moneda, EUR o USD): si es USD, ademas del precio del ticker se
+// pide el tipo de cambio EUR/USD (ticker "EURUSD=X" de Yahoo, tambien gratis) UNA SOLA VEZ por
+// ejecucion (no una vez por posicion en USD) y se divide el precio en USD entre ese tipo de
+// cambio antes de guardar — precio_actual_unitario siempre queda en EUR, sea cual sea la
+// divisa nativa del ticker.
+//
 // El plan de pago de Twelve Data se descarto por precio/beneficio para un puñado de posiciones
 // personales — ver REQUIREMENTS.md seccion 15 para el historial de por que se probo y se dejo.
 //
@@ -67,6 +73,7 @@ interface PosicionAActualizar {
   tipo: string;
   ticker: string;
   mercado: string | null;
+  moneda: string;
 }
 
 interface ResultadoPrecio {
@@ -114,10 +121,26 @@ async function precioCoinGecko(coinId: string): Promise<ResultadoPrecio> {
 // si toca CoinGecko o Yahoo Finance, basta con que ALGUNA posicion del grupo este marcada como
 // criptomoneda: ya sabemos que ese ticker es una cripto, y esa clasificacion "hereda" a todas
 // las demas posiciones del grupo aunque tengan otro tipo puesto por error.
-async function precioDelGrupo(grupo: PosicionAActualizar[]): Promise<ResultadoPrecio> {
+//
+// tipoCambioEurUsd/errorTipoCambio se calculan una unica vez por ejecucion (ver mas abajo) y se
+// pasan ya resueltos: solo se usan si el grupo esta en USD y no es cripto (CoinGecko ya devuelve
+// el precio en EUR directamente, sin conversion).
+async function precioDelGrupo(
+  grupo: PosicionAActualizar[],
+  tipoCambioEurUsd: number | null,
+  errorTipoCambio: string | null
+): Promise<ResultadoPrecio> {
   const [representante] = grupo;
   const esCripto = grupo.some((p) => p.tipo === 'criptomoneda');
-  return esCripto ? precioCoinGecko(representante.ticker) : precioYahoo(representante.ticker);
+  if (esCripto) return precioCoinGecko(representante.ticker);
+
+  const resultado = await precioYahoo(representante.ticker);
+  if (resultado.precio === null || representante.moneda !== 'USD') return resultado;
+
+  if (tipoCambioEurUsd === null) {
+    return { precio: null, error: `No se pudo convertir de USD a EUR: ${errorTipoCambio ?? 'tipo de cambio no disponible'}` };
+  }
+  return { precio: resultado.precio / tipoCambioEurUsd, error: null };
 }
 
 function agruparPorActivo(posiciones: PosicionAActualizar[]): PosicionAActualizar[][] {
@@ -146,7 +169,7 @@ Deno.serve(async (req) => {
 
   const { data: posiciones, error } = await supabase
     .from('posiciones_patrimonio')
-    .select('id, tipo, ticker, mercado')
+    .select('id, tipo, ticker, mercado, moneda')
     .eq('activa', true)
     .is('tae', null)
     .not('ticker', 'is', null);
@@ -161,11 +184,24 @@ Deno.serve(async (req) => {
   const resultados = [];
   const grupos = agruparPorActivo((posiciones ?? []) as PosicionAActualizar[]);
 
+  // El tipo de cambio EUR/USD se pide como mucho una vez por ejecucion, no una vez por cada
+  // posicion en USD — mismo motivo que agrupar por ticker: no gastar peticiones de mas.
+  const necesitaDolar = grupos.some(
+    (g) => !g.some((p) => p.tipo === 'criptomoneda') && g[0].moneda === 'USD'
+  );
+  let tipoCambioEurUsd: number | null = null;
+  let errorTipoCambio: string | null = null;
+  if (necesitaDolar) {
+    const resultado = await precioYahoo('EURUSD=X');
+    tipoCambioEurUsd = resultado.precio;
+    errorTipoCambio = resultado.error;
+  }
+
   for (const grupo of grupos) {
     const ids = grupo.map((p) => p.id);
 
     try {
-      const { precio, error: errorPrecio } = await precioDelGrupo(grupo);
+      const { precio, error: errorPrecio } = await precioDelGrupo(grupo, tipoCambioEurUsd, errorTipoCambio);
       if (precio === null) {
         await supabase.from('posiciones_patrimonio').update({ error_precio: errorPrecio }).in('id', ids);
         for (const p of grupo) resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: errorPrecio });

@@ -28,6 +28,7 @@ function posicion(overrides: Partial<PosicionPatrimonio> & { id: string; tipo: T
     nombre: overrides.id,
     ticker: null,
     mercado: null,
+    moneda: 'EUR',
     cantidad: 1,
     precio_compra_unitario: 0,
     precio_actual_unitario: 0,

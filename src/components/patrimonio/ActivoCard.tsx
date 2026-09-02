@@ -27,7 +27,9 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
       {/* Fila 1: Ticker (o Nombre si no tiene) + aviso de error ... Tipo */}
       <div className="flex items-center justify-between mb-1 gap-2">
         <h3 className="font-semibold text-sm flex items-center gap-1 min-w-0">
-          <span className="truncate min-w-0 flex-1">{activo.ticker || activo.nombre}</span>
+          <span className={`truncate min-w-0 flex-1 ${activo.ticker ? 'text-[var(--color-text-muted)]' : ''}`}>
+            {activo.ticker ? `[${activo.ticker}]` : activo.nombre}
+          </span>
           {loteConError && (
             <span
               title={`No se ha podido actualizar el precio: ${loteConError.error_precio}`}
@@ -41,7 +43,7 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
       </div>
 
       {/* Fila 2: Nombre (solo si la fila 1 ya se uso para el Ticker) */}
-      {activo.ticker && <p className="text-[13px] font-medium mb-1 truncate">{activo.nombre}</p>}
+      {activo.ticker && <p className="text-sm font-medium mb-1 truncate">{activo.nombre}</p>}
 
       {/* Fila 3: cantidad x precio medio ... valor actual total (solo con ticker: sin ticker no
           hay "unidades" que valgan la pena desglosar, se va directa a la fila 4) */}

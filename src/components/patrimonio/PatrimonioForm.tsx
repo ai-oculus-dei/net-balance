@@ -71,8 +71,8 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   const puedeUsarTae = esTipoConTae(tipo);
   const otrasPosiciones = posicionesExistentes.filter((p) => p.id !== initialValues?.id);
   // Con ticker puesto, el precio de cualquier tipo "por unidad" lo mantiene solo la Edge
-  // Function (Twelve Data/CoinGecko) cada hora — incluido Commodity: aunque el simbolo "de
-  // materia prima" no lo cubre Twelve Data gratis, un ETC/ETF que replique su precio si puede
+  // Function (Yahoo Finance/CoinGecko) cada hora — incluido Commodity: aunque el simbolo "de
+  // materia prima" no lo cubre Yahoo con ese formato, un ETC/ETF que replique su precio si puede
   // estar cubierto. No tiene sentido dejar editar el precio a mano: se sobrescribiria en la
   // siguiente ejecucion de todas formas.
   const precioAutomatico = unitario && ticker.trim() !== '' && !usarTae;
@@ -225,20 +225,20 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
               label="Ticker"
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
-              placeholder={tipo === 'criptomoneda' ? 'bitcoin' : 'AAPL'}
+              placeholder={tipo === 'criptomoneda' ? 'bitcoin' : 'AF.PA'}
             />
             <Input
               label="Mercado"
               value={mercado}
               onChange={(e) => setMercado(e.target.value)}
-              placeholder="NASDAQ"
+              placeholder="Euronext"
               disabled={tipo === 'criptomoneda'}
             />
           </div>
           <p className="text-xs text-[var(--color-text-muted)]">
             {tipo === 'criptomoneda'
               ? 'Usa el ID de CoinGecko, no el símbolo (p. ej. "bitcoin", no "BTC") — así se actualiza el precio solo.'
-              : 'Símbolo de Twelve Data (Mercado es opcional, solo para desambiguar si hace falta) — así se actualiza el precio solo.'}
+              : 'Símbolo de Yahoo Finance CON el sufijo de mercado incluido (p. ej. "AF.PA", "NUKL.DE"; sin sufijo para NASDAQ/NYSE) — así se actualiza el precio solo. Mercado es solo de referencia, ya no hace falta para buscar el precio.'}
           </p>
           {activoExistente && (
             <p className="text-xs text-[var(--color-accent)]">
@@ -309,7 +309,7 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
           <p className="text-xs text-[var(--color-text-muted)]">
             {initialValues?.error_precio
               ? `No se ha podido actualizar el precio: ${initialValues.error_precio}`
-              : 'Se actualiza solo con el precio de mercado (Twelve Data/CoinGecko) cada hora — no se puede editar a mano mientras tenga ticker.'}
+              : 'Se actualiza solo con el precio de mercado (Yahoo Finance/CoinGecko) cada hora — no se puede editar a mano mientras tenga ticker.'}
           </p>
         </div>
       ) : (

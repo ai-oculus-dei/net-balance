@@ -13,12 +13,18 @@
 // ticker en el momento de ejecutarse, contra:
 //   - CoinGecko (gratis, sin clave) para tipo = 'criptomoneda'. El ticker debe ser el ID de
 //     CoinGecko (p.ej. "bitcoin", no "BTC" — ver https://api.coingecko.com/api/v3/coins/list).
-//   - Twelve Data (clave gratuita, ver TWELVE_DATA_API_KEY mas abajo) para el resto, Commodity
-//     incluido: aunque el simbolo "de materia prima" (p.ej. "XAU/EUR") esta detras de un plan de
-//     pago de Twelve Data (ver REQUIREMENTS.md seccion 15), un ETC/ETF que replique el precio de
-//     esa materia prima (p.ej. Xetra-Gold, ticker "4GLD") SI esta cubierto por la clave gratuita
-//     — asi que no se excluye Commodity de nada, se intenta igual que el resto con el ticker que
-//     tenga la posicion.
+//   - Yahoo Finance (gratis, sin clave, endpoint interno NO oficial/NO documentado que usa la
+//     propia web de Yahoo — el mismo que usan proyectos como la libreria "yfinance" de Python
+//     desde hace años; puede dejar de funcionar sin aviso, pero es la unica fuente gratuita que
+//     cubre de verdad mercados europeos, algo que Twelve Data no hacia en su plan gratuito ni
+//     siquiera para ETFs/acciones) para el resto. El ticker tiene que ser el simbolo de Yahoo
+//     Finance CON el sufijo de mercado incluido (p.ej. "AF.PA" para Air France en Euronext
+//     Paris, "NUKL.DE" para un ETF en Xetra, "0P00011HBM.F" para un fondo en Frankfurt, sin
+//     sufijo para NASDAQ/NYSE) — el campo "mercado" de la posicion ya NO se usa para esta
+//     consulta (Yahoo no necesita un parametro aparte, el sufijo del ticker ya lo identifica).
+//
+// El plan de pago de Twelve Data se descarto por precio/beneficio para un puñado de posiciones
+// personales — ver REQUIREMENTS.md seccion 15 para el historial de por que se probo y se dejo.
 //
 // Si no se consigue un precio para una posicion (ticker no encontrado, simbolo no cubierto,
 // limite de peticiones...) se guarda el motivo en su columna error_precio (y NO se toca
@@ -49,13 +55,11 @@
 // no la funcion responde 401 aunque el cron mande "algo" en el Authorization.
 //
 // Desplegar con: npx supabase functions deploy actualizar-precios-patrimonio
-// Config necesaria (una vez): npx supabase secrets set TWELVE_DATA_API_KEY=...
-// (SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase automaticamente, no hace
-// falta configurarlos a mano.)
+// (No hace falta ninguna clave de API: CoinGecko y Yahoo Finance son ambas gratis y sin clave.
+// SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase automaticamente.)
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const TWELVE_DATA_API_KEY = Deno.env.get('TWELVE_DATA_API_KEY') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 interface PosicionAActualizar {
@@ -71,21 +75,22 @@ interface ResultadoPrecio {
   error: string | null;
 }
 
-async function precioTwelveData(ticker: string, mercado: string | null): Promise<ResultadoPrecio> {
-  const url = new URL('https://api.twelvedata.com/price');
-  url.searchParams.set('symbol', ticker);
-  if (mercado) url.searchParams.set('exchange', mercado);
-  url.searchParams.set('apikey', TWELVE_DATA_API_KEY);
-
-  const res = await fetch(url);
+async function precioYahoo(ticker: string): Promise<ResultadoPrecio> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`;
+  // Sin User-Agent, Yahoo responde 429/999 de forma sistematica: no distingue "cliente
+  // sospechoso" de "sin cabecera", asi que basta un UA de navegador generico.
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    return { precio: null, error: `Twelve Data (${res.status}): ${data?.message ?? 'error desconocido'}` };
+    return {
+      precio: null,
+      error: `Yahoo Finance (${res.status}): ${data?.chart?.error?.description ?? 'error desconocido'}`,
+    };
   }
-  const precio = Number(data?.price);
-  if (!Number.isFinite(precio)) {
-    return { precio: null, error: `Twelve Data: ${data?.message ?? 'precio no disponible para este ticker'}` };
+  const precio = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+  if (typeof precio !== 'number') {
+    return { precio: null, error: 'Yahoo Finance: precio no disponible para este ticker' };
   }
   return { precio, error: null };
 }
@@ -106,13 +111,13 @@ async function precioCoinGecko(coinId: string): Promise<ResultadoPrecio> {
 // agrupacion (a diferencia de claveActivo() en el cliente, que sí lo usa para el nombre/P&L
 // agregado): si el mismo ticker aparece en dos posiciones con un tipo distinto (p.ej. una mal
 // etiquetada a mano), siguen siendo el mismo activo real y deben consultarse juntas. Para saber
-// si toca CoinGecko o Twelve Data, basta con que ALGUNA posicion del grupo este marcada como
+// si toca CoinGecko o Yahoo Finance, basta con que ALGUNA posicion del grupo este marcada como
 // criptomoneda: ya sabemos que ese ticker es una cripto, y esa clasificacion "hereda" a todas
 // las demas posiciones del grupo aunque tengan otro tipo puesto por error.
 async function precioDelGrupo(grupo: PosicionAActualizar[]): Promise<ResultadoPrecio> {
   const [representante] = grupo;
   const esCripto = grupo.some((p) => p.tipo === 'criptomoneda');
-  return esCripto ? precioCoinGecko(representante.ticker) : precioTwelveData(representante.ticker, representante.mercado);
+  return esCripto ? precioCoinGecko(representante.ticker) : precioYahoo(representante.ticker);
 }
 
 function agruparPorActivo(posiciones: PosicionAActualizar[]): PosicionAActualizar[][] {

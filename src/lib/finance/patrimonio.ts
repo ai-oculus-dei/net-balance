@@ -62,6 +62,18 @@ export function esTipoPorUnidad(tipo: TipoPosicionPatrimonio): boolean {
   return TIPOS_POR_UNIDAD.has(tipo);
 }
 
+// Tipos "por unidad" cuyo precio SI se actualiza solo via la Edge Function (Twelve Data para
+// stock/etf/fondo_indexado, CoinGecko para criptomoneda) — todos menos Commodity, cuyo precio
+// en Twelve Data esta detras de un plan de pago (ver REQUIREMENTS.md seccion 15). El formulario
+// bloquea la edicion manual de "Precio actual" cuando aplica: si se dejara editar a mano, el
+// cron lo sobrescribiria de todas formas en la siguiente ejecucion (cada hora, 8h-23h), dejando
+// el valor manual desincronizado con el real hasta entonces.
+const TIPOS_CON_PRECIO_AUTOMATICO = new Set<TipoPosicionPatrimonio>(['stock', 'etf', 'fondo_indexado', 'criptomoneda']);
+
+export function esTipoConPrecioAutomatico(tipo: TipoPosicionPatrimonio): boolean {
+  return TIPOS_CON_PRECIO_AUTOMATICO.has(tipo);
+}
+
 // Tipos "de saldo" con rentabilidad conocida (TAE): el formulario ofrece fijar un % en vez de
 // tener que actualizar el precio actual a mano — ver valorConTae mas abajo.
 const TIPOS_CON_TAE = new Set<TipoPosicionPatrimonio>(['fondo_monetario', 'cuenta_remunerada', 'cuenta_ahorro']);

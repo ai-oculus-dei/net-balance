@@ -24,6 +24,7 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
     <Card className="cursor-pointer hover:opacity-90" onClick={handleClick}>
       <div className="flex items-center justify-between mb-1 gap-2">
         <h3 className="font-semibold text-sm truncate flex items-center gap-1">
+          {activo.ticker && <span className="text-[var(--color-text-muted)]">({activo.ticker})</span>}
           {activo.nombre}
           {loteConError && (
             <span title={`No se ha podido actualizar el precio: ${loteConError.error_precio}`} className="text-[var(--color-loss)]">

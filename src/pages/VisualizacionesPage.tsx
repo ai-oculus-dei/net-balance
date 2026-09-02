@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useDebounced } from '../hooks/useDebounced';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -56,9 +57,15 @@ export function VisualizacionesPage() {
 
   const lineasValidas = useMemo(() => lineas.filter(lineaEsValida), [lineas]);
 
+  // La seleccion (lista de "Categorías a comparar" y el resaltado en "Resumen Categorías") se
+  // mantiene instantanea sobre `lineas`. Los graficos, en cambio, son caros de recalcular y
+  // volver a pintar (Recharts) — se recalculan 4s despues del ultimo cambio de seleccion, para
+  // que pulsar varias categorias seguidas no se sienta lento.
+  const lineasValidasGrafico = useDebounced(lineasValidas, 4000);
+
   const serieTemporal = useMemo(
-    () => serieTemporalPorLineas(movimientos, lineasValidas, subcategoriasPorId, periodos),
-    [movimientos, lineasValidas, subcategoriasPorId, periodos]
+    () => serieTemporalPorLineas(movimientos, lineasValidasGrafico, subcategoriasPorId, periodos),
+    [movimientos, lineasValidasGrafico, subcategoriasPorId, periodos]
   );
 
   const totales = useMemo(
@@ -66,7 +73,12 @@ export function VisualizacionesPage() {
     [movimientos, lineasValidas, subcategoriasPorId]
   );
 
-  const lineasInfo = lineasValidas.map((linea) => ({
+  const totalesGrafico = useMemo(
+    () => totalesPorLinea(movimientos, lineasValidasGrafico, subcategoriasPorId),
+    [movimientos, lineasValidasGrafico, subcategoriasPorId]
+  );
+
+  const lineasInfo = lineasValidasGrafico.map((linea) => ({
     id: linea.id,
     colorIndex: linea.colorIndex,
     etiqueta: etiquetaLinea(linea, categorias, subcategorias),
@@ -74,8 +86,11 @@ export function VisualizacionesPage() {
 
   const datosPie = lineasInfo.map((info) => ({
     ...info,
-    neto: totales.find((t) => t.lineaId === info.id)?.total ?? 0,
+    neto: totalesGrafico.find((t) => t.lineaId === info.id)?.total ?? 0,
   }));
+
+  const totalSeleccion = totales.reduce((suma, t) => suma + t.total, 0);
+  const mediaMensualSeleccion = totalSeleccion / (periodos.length > 0 ? periodos.length : 1);
 
   function quitarLinea(id: string) {
     setLineas((actuales) => actuales.filter((l) => l.id !== id));
@@ -152,11 +167,15 @@ export function VisualizacionesPage() {
         </div>
 
         {lineas.length > 0 && (
-          <div className="flex flex-col gap-1.5 mb-3">
-            {lineas.map((linea) => {
-              const total = totales.find((t) => t.lineaId === linea.id)?.total ?? 0;
-              const mediaMensual = total / (periodos.length > 0 ? periodos.length : 1);
-              return (
+          <>
+            <div className="flex items-center justify-between mb-2 font-mono text-sm font-semibold">
+              <span className="text-[var(--color-text-muted)]">Total seleccionado</span>
+              <span className="text-right">
+                {formatearImporte(totalSeleccion)} € · {formatearImporte(mediaMensualSeleccion)} €/m
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5 mb-3">
+              {lineas.map((linea) => (
                 <div key={linea.id} className="flex items-center gap-2">
                   <span
                     className="w-3 h-3 rounded-full shrink-0"
@@ -164,10 +183,6 @@ export function VisualizacionesPage() {
                     aria-hidden="true"
                   />
                   <span className="flex-1 min-w-0 text-sm truncate">{etiquetaLinea(linea, categorias, subcategorias)}</span>
-                  <span className="shrink-0 text-right font-mono text-xs leading-tight text-[var(--color-text-muted)]">
-                    <span className="block">{formatearImporte(total)} €</span>
-                    <span className="block">{formatearImporte(mediaMensual)} €/mes</span>
-                  </span>
                   <button
                     type="button"
                     onClick={() => quitarLinea(linea.id)}
@@ -177,9 +192,9 @@ export function VisualizacionesPage() {
                     ×
                   </button>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          </>
         )}
 
         {modoSeleccion && (

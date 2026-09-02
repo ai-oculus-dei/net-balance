@@ -48,7 +48,7 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion, 
     }
     if (modo === 'promedio_mensual') {
       const promedio = neto / (mesesEnRango && mesesEnRango > 0 ? mesesEnRango : 1);
-      return `${promedio > 0 ? '+' : ''}${formatearImporte(promedio)} €/mes`;
+      return `${promedio > 0 ? '+' : ''}${formatearImporte(promedio)} €/m`;
     }
     // Gasto -> % del total gastado ese mes; ingreso -> % del total ingresado ese mes.
     const base = neto < 0 ? totalGastado : totalIngresado;
@@ -73,16 +73,6 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion, 
           >
             €
           </button>
-          {mesesEnRango !== undefined && (
-            <button
-              type="button"
-              onClick={() => setModo('promedio_mensual')}
-              aria-pressed={modo === 'promedio_mensual'}
-              className={`px-2.5 py-1 ${modo === 'promedio_mensual' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-            >
-              €/mes
-            </button>
-          )}
           <button
             type="button"
             onClick={() => setModo('porcentaje')}
@@ -91,6 +81,16 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion, 
           >
             %
           </button>
+          {mesesEnRango !== undefined && (
+            <button
+              type="button"
+              onClick={() => setModo('promedio_mensual')}
+              aria-pressed={modo === 'promedio_mensual'}
+              className={`px-2.5 py-1 ${modo === 'promedio_mensual' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
+            >
+              €/m
+            </button>
+          )}
         </div>
       </div>
 

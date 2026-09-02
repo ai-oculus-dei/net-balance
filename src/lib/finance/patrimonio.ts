@@ -275,13 +275,6 @@ function etiquetaFecha(fecha: string): string {
   return new Date(anio, mes - 1, dia).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
 }
 
-// Igual que etiquetaFecha pero con fecha completa dd/mm/aa (año en 2 digitos, para que quepa en
-// la fila estrecha del desplegable de compras individuales de un activo, ActivoCard).
-export function etiquetaFechaCompra(fecha: string): string {
-  const [anio, mes, dia] = fecha.split('-').map(Number);
-  return new Date(anio, mes - 1, dia).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' });
-}
-
 // Serie temporal del patrimonio total (todas las posiciones sumadas por fecha), shaped para
 // SerieTemporalLineasChart con una unica linea ('total').
 export function historicoTotalPorDia(historico: PatrimonioHistorico[]): PuntoSerieLineas[] {

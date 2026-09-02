@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatearCantidad, formatearImporte } from '../formato';
+import { formatearCantidad, formatearCantidadTruncada, formatearImporte, formatearImporteCorto } from '../formato';
 
 describe('formatearImporte', () => {
   it('separa los miles con coma y fija 2 decimales por defecto', () => {
@@ -32,5 +32,30 @@ describe('formatearCantidad', () => {
 
   it('redondea si supera el maximo de decimales', () => {
     expect(formatearCantidad(1.123456789)).toBe('1.12345679');
+  });
+});
+
+describe('formatearCantidadTruncada', () => {
+  it('trunca en vez de redondear, a 4 decimales por defecto', () => {
+    expect(formatearCantidadTruncada(1.123459)).toBe('1.1234'); // redondear daria 1.1235
+  });
+
+  it('sin decimales de mas si el valor no los tiene', () => {
+    expect(formatearCantidadTruncada(6)).toBe('6');
+  });
+
+  it('separa los miles', () => {
+    expect(formatearCantidadTruncada(1234.56789)).toBe('1,234.5678');
+  });
+});
+
+describe('formatearImporteCorto', () => {
+  it('por debajo de 1000 no abrevia', () => {
+    expect(formatearImporteCorto(50.25)).toBe('50.25');
+  });
+
+  it('abrevia en miles a partir de 1000', () => {
+    expect(formatearImporteCorto(1234.56)).toBe('1.23k');
+    expect(formatearImporteCorto(66277)).toBe('66.28k');
   });
 });

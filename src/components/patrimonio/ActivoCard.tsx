@@ -1,9 +1,26 @@
 import { useState } from 'react';
 import { Card } from '../ui/Card';
 import { claseColorPorSigno } from '../charts/colors';
-import { ETIQUETA_TIPO, calcularPnL, etiquetaFechaCompra, type ActivoAgrupado } from '../../lib/finance/patrimonio';
-import { formatearCantidad, formatearImporte } from '../../lib/finance/formato';
+import { ETIQUETA_TIPO, calcularPnL, type ActivoAgrupado } from '../../lib/finance/patrimonio';
+import {
+  formatearCantidad,
+  formatearCantidadTruncada,
+  formatearImporte,
+  formatearImporteCorto,
+} from '../../lib/finance/formato';
 import type { PosicionPatrimonio } from '../../lib/supabase/database.types';
+
+// Por encima de este numero de caracteres, "cantidad x precio €/ea" ya no suele caber en el
+// ancho de una tarjeta en movil (aproximado por longitud de texto: no hay forma de medir el
+// ancho real en pixeles sin montar el DOM) — en ese caso se abrevia el precio en miles.
+const UMBRAL_CARACTERES_LOTE = 20;
+
+function textoLote(lote: Pick<PosicionPatrimonio, 'cantidad' | 'precio_compra_unitario'>): string {
+  const cantidad = formatearCantidadTruncada(lote.cantidad, 4);
+  const completo = `${cantidad} x ${formatearImporte(lote.precio_compra_unitario)} €/ea`;
+  if (completo.length <= UMBRAL_CARACTERES_LOTE) return completo;
+  return `${cantidad} x ${formatearImporteCorto(lote.precio_compra_unitario)} €/ea`;
+}
 
 interface ActivoCardProps {
   activo: ActivoAgrupado;
@@ -99,10 +116,7 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
                       ⚠
                     </span>
                   )}
-                  <span className="truncate">
-                    {etiquetaFechaCompra(lote.fecha_compra)} · {formatearCantidad(lote.cantidad)}x
-                    {formatearImporte(lote.precio_compra_unitario)}
-                  </span>
+                  <span className="truncate">{textoLote(lote)}</span>
                 </span>
                 <span className={`font-mono font-semibold shrink-0 ${claseColorPorSigno(pnlLote.eur)}`}>
                   {pnlLote.eur > 0 ? '+' : ''}

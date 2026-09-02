@@ -168,12 +168,6 @@ export function VisualizacionesPage() {
 
         {lineas.length > 0 && (
           <>
-            <div className="flex items-center justify-between mb-2 font-mono text-sm font-semibold">
-              <span className="text-[var(--color-text-muted)]">Total seleccionado</span>
-              <span className="text-right">
-                {formatearImporte(totalSeleccion)} € · {formatearImporte(mediaMensualSeleccion)} €/m
-              </span>
-            </div>
             <div className="flex flex-col gap-1.5 mb-3">
               {lineas.map((linea) => (
                 <div key={linea.id} className="flex items-center gap-2">
@@ -193,6 +187,12 @@ export function VisualizacionesPage() {
                   </button>
                 </div>
               ))}
+            </div>
+            <div className="flex items-center justify-between gap-2 mb-2 font-mono text-sm font-semibold">
+              <span className="shrink-0 text-[var(--color-text-muted)]">Total</span>
+              <span className="shrink-0 whitespace-nowrap">
+                {formatearImporte(totalSeleccion)} € · {formatearImporte(mediaMensualSeleccion)} €/m
+              </span>
             </div>
           </>
         )}

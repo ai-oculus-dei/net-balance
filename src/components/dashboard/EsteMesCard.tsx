@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card } from '../ui/Card';
 import { claseColorPorSigno } from '../charts/colors';
 import { formatearImporte } from '../../lib/finance/formato';
+import { IconoCategoria, IconoSubcategoria } from '../icons/IconoTaxonomia';
 import type { BalanceSubcategoria } from '../../lib/finance/taxonomia';
 
 type ModoVista = 'neto' | 'porcentaje';
@@ -105,10 +106,12 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion }
                       {categoriaColor && (
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: categoriaColor }} aria-hidden="true" />
                       )}
+                      <IconoCategoria nombre={linea.categoria} />
                       {linea.categoria}
                     </button>
                   ) : (
-                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
+                      <IconoCategoria nombre={linea.categoria} />
                       {linea.categoria}
                     </p>
                   )}
@@ -129,10 +132,14 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion }
                     {subColor && (
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: subColor }} aria-hidden="true" />
                     )}
+                    <IconoSubcategoria nombre={linea.subcategoria} />
                     {linea.subcategoria}
                   </button>
                 ) : (
-                  <span className="text-sm">{linea.subcategoria}</span>
+                  <span className="flex items-center gap-1.5 text-sm">
+                    <IconoSubcategoria nombre={linea.subcategoria} />
+                    {linea.subcategoria}
+                  </span>
                 )}
                 <span className={`font-mono text-sm font-semibold ${claseColorPorSigno(linea.neto)}`}>
                   {valorMostrado(linea.neto)}

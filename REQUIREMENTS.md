@@ -58,6 +58,8 @@ Cada movimiento (gasto o ingreso) tiene:
 
 Categorías fijas, sin gestión de alta/baja desde la interfaz en la v1 (se editan directamente en código/config si hace falta cambiarlas).
 
+**Iconos**: cada categoría y subcategoría tiene un icono minimalista propio (mismo estilo que los iconos de navegación — trazo, 24×24, sin relleno) que precede a su nombre en Inicio (tarjeta "Este mes"), Movimientos (fila de cada movimiento, aviso de traspaso) y Visualizaciones (tarjeta "Resumen Categorías", que reutiliza el mismo componente que Inicio) — ver `src/components/icons/CategoriaIcons.tsx` (los 69 iconos) y `IconoTaxonomia.tsx` (mapa nombre → icono, por `nombre` ya que categorías/subcategorías no tienen un slug propio). Si se renombra o añade una categoría/subcategoría, hay que añadir su icono a mano en esos dos archivos — sin icono asignado, el nombre se sigue mostrando pero sin icono delante (no rompe). Los `<select>` nativos de categoría/subcategoría (formulario de movimiento, filtro de Movimientos) **no llevan icono**: es una limitación del HTML nativo, las opciones de un `<select>` solo pueden mostrar texto plano.
+
 ## 6. Gastos fijos
 
 No existe una lista de recurrentes que se generen solos ni una pantalla dedicada: **"gastos fijos" es el balance neto (gasto − ingreso) del mes de un conjunto cerrado de subcategorías**, marcadas de antemano en la taxonomía (columna `es_gasto_fijo` en `subcategorias`):

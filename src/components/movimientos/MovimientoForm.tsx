@@ -12,6 +12,7 @@ import { useObjetivos } from '../../hooks/useObjetivos';
 import { useAnclasPeriodo } from '../../hooks/useAnclasPeriodo';
 import { useAuth } from '../../lib/auth/useAuth';
 import { avisoCierreCorto, type AvisoCierreCorto } from '../../lib/finance/periodos';
+import { IconoSubcategoria } from '../icons/IconoTaxonomia';
 import type { AportacionObjetivo, Movimiento, Visibilidad } from '../../lib/supabase/database.types';
 
 export interface MovimientoFormValues {
@@ -223,7 +224,12 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
 
       {subcategoriaSeleccionada?.es_traspaso && (
         <p className="text-xs text-[var(--color-text-muted)] bg-black/5 dark:bg-white/5 rounded-md px-3 py-2">
-          Un movimiento en {subcategoriaSeleccionada.nombre} es un traspaso a otra cuenta tuya, no dinero perdido:
+          Un movimiento en{' '}
+          <span className="inline-flex items-center gap-1 align-text-bottom">
+            <IconoSubcategoria nombre={subcategoriaSeleccionada.nombre} className="w-3.5 h-3.5" />
+            {subcategoriaSeleccionada.nombre}
+          </span>{' '}
+          es un traspaso a otra cuenta tuya, no dinero perdido:
           aunque salga en rojo del balance, sigue siendo tuyo, solo que guardado en otro sitio.
         </p>
       )}

@@ -1,6 +1,7 @@
 import type { Movimiento, Subcategoria } from '../../lib/supabase/database.types';
 import { claseColorPorSigno } from '../charts/colors';
 import { formatearImporte } from '../../lib/finance/formato';
+import { IconoSubcategoria } from '../icons/IconoTaxonomia';
 
 interface MovimientoRowProps {
   movimiento: Movimiento;
@@ -18,8 +19,9 @@ export function MovimientoRow({ movimiento, subcategoria, onClick }: MovimientoR
     >
       <div className="min-w-0">
         <p className="truncate text-sm text-[var(--color-text)]">{movimiento.nombre}</p>
-        <p className="text-xs text-[var(--color-text-muted)]">
-          {fecha} · {subcategoria?.nombre ?? '—'}
+        <p className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+          {fecha} ·{subcategoria && <IconoSubcategoria nombre={subcategoria.nombre} className="w-3.5 h-3.5 shrink-0" />}
+          {subcategoria?.nombre ?? '—'}
           {movimiento.visibilidad === 'compartido' ? ' · compartido' : ''}
         </p>
       </div>

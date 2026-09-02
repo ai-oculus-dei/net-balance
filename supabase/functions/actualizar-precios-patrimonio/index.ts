@@ -1,12 +1,13 @@
 // Edge Function: actualiza precio_actual_unitario de las posiciones de Patrimonio que tengan
 // un ticker y NO usen tae (esas se calculan solas, ver src/lib/finance/patrimonio.ts).
 //
-// Se consulta UNA VEZ por cada ticker+mercado+tipo distinto, no una vez por posicion: varias
-// compras del mismo activo (p.ej. 5 compras de Bitcoin en fechas distintas) comparten una sola
-// consulta a la API y esa misma respuesta se aplica a todas — igual que se agrupan visualmente
-// en una sola tarjeta (ver claveActivo/agruparPorActivo en src/lib/finance/patrimonio.ts).
-// Consultar una vez por posicion en vez de una vez por activo agotaba el limite de peticiones
-// por minuto de Twelve Data/CoinGecko sin necesidad, incluso con pocos activos distintos.
+// Se consulta UNA VEZ por cada ticker+mercado distinto (el tipo no entra en la agrupacion, ver
+// precioDelGrupo mas abajo), no una vez por posicion: varias compras del mismo activo (p.ej. 5
+// compras de Bitcoin en fechas distintas) comparten una sola consulta a la API y esa misma
+// respuesta se aplica a todas — igual que se agrupan visualmente en una sola tarjeta (ver
+// claveActivo/agruparPorActivo en src/lib/finance/patrimonio.ts). Consultar una vez por posicion
+// en vez de una vez por activo agotaba el limite de peticiones por minuto de Twelve
+// Data/CoinGecko sin necesidad, incluso con pocos activos distintos.
 //
 // Sin lista intermedia que mantener a mano: cada activo se consulta en vivo por su propio
 // ticker en el momento de ejecutarse, contra:
@@ -101,17 +102,23 @@ async function precioCoinGecko(coinId: string): Promise<ResultadoPrecio> {
   return { precio, error: null };
 }
 
-async function precioDe(p: PosicionAActualizar): Promise<ResultadoPrecio> {
-  return p.tipo === 'criptomoneda' ? precioCoinGecko(p.ticker) : precioTwelveData(p.ticker, p.mercado);
+// El ticker+mercado es el codigo univoco del activo — el tipo NO entra en la clave de
+// agrupacion (a diferencia de claveActivo() en el cliente, que sí lo usa para el nombre/P&L
+// agregado): si el mismo ticker aparece en dos posiciones con un tipo distinto (p.ej. una mal
+// etiquetada a mano), siguen siendo el mismo activo real y deben consultarse juntas. Para saber
+// si toca CoinGecko o Twelve Data, basta con que ALGUNA posicion del grupo este marcada como
+// criptomoneda: ya sabemos que ese ticker es una cripto, y esa clasificacion "hereda" a todas
+// las demas posiciones del grupo aunque tengan otro tipo puesto por error.
+async function precioDelGrupo(grupo: PosicionAActualizar[]): Promise<ResultadoPrecio> {
+  const [representante] = grupo;
+  const esCripto = grupo.some((p) => p.tipo === 'criptomoneda');
+  return esCripto ? precioCoinGecko(representante.ticker) : precioTwelveData(representante.ticker, representante.mercado);
 }
 
-// Agrupa las posiciones por tipo+ticker+mercado (normalizado): mismo criterio que claveActivo()
-// en src/lib/finance/patrimonio.ts, para que varias compras del mismo activo compartan una sola
-// consulta a la API en vez de una por posicion.
 function agruparPorActivo(posiciones: PosicionAActualizar[]): PosicionAActualizar[][] {
   const grupos = new Map<string, PosicionAActualizar[]>();
   for (const p of posiciones) {
-    const clave = `${p.tipo}|${p.ticker.trim().toLowerCase()}|${(p.mercado ?? '').trim().toLowerCase()}`;
+    const clave = `${p.ticker.trim().toLowerCase()}|${(p.mercado ?? '').trim().toLowerCase()}`;
     const lista = grupos.get(clave);
     if (lista) lista.push(p);
     else grupos.set(clave, [p]);
@@ -151,10 +158,9 @@ Deno.serve(async (req) => {
 
   for (const grupo of grupos) {
     const ids = grupo.map((p) => p.id);
-    const representante = grupo[0]; // mismo tipo+ticker+mercado para todo el grupo
 
     try {
-      const { precio, error: errorPrecio } = await precioDe(representante);
+      const { precio, error: errorPrecio } = await precioDelGrupo(grupo);
       if (precio === null) {
         await supabase.from('posiciones_patrimonio').update({ error_precio: errorPrecio }).in('id', ids);
         for (const p of grupo) resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: errorPrecio });

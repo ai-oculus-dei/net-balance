@@ -168,7 +168,8 @@ export interface AportacionObjetivoUpdate {
 export type TipoPosicionPatrimonio =
   | 'stock'
   | 'etf'
-  | 'fondo_indexado'
+  | 'fondo_indexado_rv'
+  | 'fondo_indexado_rf'
   | 'fondo_monetario'
   | 'cuenta_remunerada'
   | 'cuenta_ahorro'

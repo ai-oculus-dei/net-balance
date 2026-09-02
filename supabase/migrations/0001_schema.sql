@@ -261,9 +261,9 @@ create table posiciones_patrimonio (
   id                     uuid primary key default gen_random_uuid(),
   usuario_id             uuid not null references profiles(id),
   tipo                   text not null check (tipo in (
-                           'stock', 'etf', 'fondo_indexado', 'fondo_monetario',
-                           'cuenta_remunerada', 'cuenta_ahorro', 'commodity',
-                           'cuenta_corriente', 'criptomoneda'
+                           'stock', 'etf', 'fondo_indexado_rv', 'fondo_indexado_rf',
+                           'fondo_monetario', 'cuenta_remunerada', 'cuenta_ahorro',
+                           'commodity', 'cuenta_corriente', 'criptomoneda'
                          )),
   nombre                 text not null check (char_length(trim(nombre)) > 0),
   ticker                 text,

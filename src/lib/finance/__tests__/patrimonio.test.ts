@@ -46,9 +46,10 @@ describe('grupoDePosicion', () => {
   it.each<[TipoPosicionPatrimonio, string]>([
     ['stock', 'renta_variable'],
     ['etf', 'renta_variable'],
-    ['fondo_indexado', 'renta_variable'],
+    ['fondo_indexado_rv', 'renta_variable'],
     ['commodity', 'renta_variable'],
     ['criptomoneda', 'renta_variable'],
+    ['fondo_indexado_rf', 'renta_fija'],
     ['fondo_monetario', 'renta_fija'],
     ['cuenta_remunerada', 'renta_fija'],
     ['cuenta_ahorro', 'renta_fija'],

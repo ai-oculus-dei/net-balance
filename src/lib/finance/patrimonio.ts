@@ -21,7 +21,8 @@ export const ETIQUETA_GRUPO: Record<GrupoPatrimonio, string> = {
 export const ETIQUETA_TIPO: Record<TipoPosicionPatrimonio, string> = {
   stock: 'Stock',
   etf: 'ETFs',
-  fondo_indexado: 'Fondo Indexado',
+  fondo_indexado_rv: 'Fondo Indexado RV',
+  fondo_indexado_rf: 'Fondo Indexado RF',
   fondo_monetario: 'Fondo Monetario',
   cuenta_remunerada: 'Cuenta Remunerada',
   cuenta_ahorro: 'Cuenta de Ahorro',
@@ -34,9 +35,10 @@ export const ETIQUETA_TIPO: Record<TipoPosicionPatrimonio, string> = {
 const GRUPO_POR_TIPO: Record<TipoPosicionPatrimonio, GrupoPatrimonio> = {
   stock: 'renta_variable',
   etf: 'renta_variable',
-  fondo_indexado: 'renta_variable',
+  fondo_indexado_rv: 'renta_variable',
   commodity: 'renta_variable',
   criptomoneda: 'renta_variable',
+  fondo_indexado_rf: 'renta_fija',
   fondo_monetario: 'renta_fija',
   cuenta_remunerada: 'renta_fija',
   cuenta_ahorro: 'renta_fija',
@@ -48,15 +50,22 @@ export function grupoDePosicion(tipo: TipoPosicionPatrimonio): GrupoPatrimonio {
 }
 
 export const TIPOS_POR_GRUPO: Record<GrupoPatrimonio, TipoPosicionPatrimonio[]> = {
-  renta_variable: ['stock', 'etf', 'fondo_indexado', 'commodity', 'criptomoneda'],
-  renta_fija: ['fondo_monetario', 'cuenta_remunerada', 'cuenta_ahorro'],
+  renta_variable: ['stock', 'etf', 'fondo_indexado_rv', 'commodity', 'criptomoneda'],
+  renta_fija: ['fondo_indexado_rf', 'fondo_monetario', 'cuenta_remunerada', 'cuenta_ahorro'],
   efectivo: ['cuenta_corriente'],
 };
 
 // Tipos con "unidades" reales (Qty + precio por unidad tiene sentido, y el formulario ofrece
 // el toggle total/por-unidad). El resto son posiciones "de saldo": cantidad fija en 1, un
 // unico valor total.
-const TIPOS_POR_UNIDAD = new Set<TipoPosicionPatrimonio>(['stock', 'etf', 'fondo_indexado', 'commodity', 'criptomoneda']);
+const TIPOS_POR_UNIDAD = new Set<TipoPosicionPatrimonio>([
+  'stock',
+  'etf',
+  'fondo_indexado_rv',
+  'fondo_indexado_rf',
+  'commodity',
+  'criptomoneda',
+]);
 
 export function esTipoPorUnidad(tipo: TipoPosicionPatrimonio): boolean {
   return TIPOS_POR_UNIDAD.has(tipo);

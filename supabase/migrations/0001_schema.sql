@@ -275,6 +275,10 @@ create table posiciones_patrimonio (
   -- la vez a null (chk_precio_actual_o_tae).
   precio_actual_unitario numeric(18,8) check (precio_actual_unitario >= 0),
   tae                    numeric(6,3) check (tae is null or tae >= 0),
+  -- mensaje corto de la Edge Function actualizar-precios-patrimonio cuando no consigue
+  -- actualizar el precio (ticker no encontrado, limite de peticiones...); null en cuanto vuelve
+  -- a funcionar. El cliente lo usa para mostrar "-" en vez de un precio que podria estar viejo.
+  error_precio           text,
   fecha_compra           date not null default current_date,
   activa                 boolean not null default true,
   created_at             timestamptz not null default now(),

@@ -10,10 +10,16 @@ export async function fetchPosicionesPatrimonio(): Promise<PosicionPatrimonio[]>
   return data;
 }
 
-export type NuevaPosicionPatrimonio = Omit<PosicionPatrimonio, 'id' | 'created_at' | 'updated_at' | 'activa'>;
+// error_precio la escribe solo la Edge Function: una posicion nueva nunca ha tenido un intento
+// de actualizacion todavia, asi que crearPosicionPatrimonio la fija a null directamente.
+export type NuevaPosicionPatrimonio = Omit<PosicionPatrimonio, 'id' | 'created_at' | 'updated_at' | 'activa' | 'error_precio'>;
 
 export async function crearPosicionPatrimonio(posicion: NuevaPosicionPatrimonio): Promise<PosicionPatrimonio> {
-  const { data, error } = await supabase.from('posiciones_patrimonio').insert(posicion).select().single();
+  const { data, error } = await supabase
+    .from('posiciones_patrimonio')
+    .insert({ ...posicion, error_precio: null })
+    .select()
+    .single();
   if (error) throw error;
   return data;
 }

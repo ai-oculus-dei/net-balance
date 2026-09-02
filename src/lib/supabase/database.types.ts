@@ -189,6 +189,9 @@ export interface PosicionPatrimonio {
   // src/lib/finance/patrimonio.ts) en vez de guardarse a mano. Nunca los dos a null a la vez.
   precio_actual_unitario: number | null;
   tae: number | null;
+  // Mensaje corto de la Edge Function actualizar-precios-patrimonio cuando no consigue
+  // actualizar el precio; null en cuanto vuelve a funcionar. Ver src/lib/finance/patrimonio.ts.
+  error_precio: string | null;
   fecha_compra: string;
   activa: boolean;
   created_at: string;
@@ -206,6 +209,7 @@ export interface PosicionPatrimonioInsert {
   precio_compra_unitario: number;
   precio_actual_unitario?: number | null;
   tae?: number | null;
+  error_precio?: string | null;
   fecha_compra?: string;
   activa?: boolean;
   created_at?: string;
@@ -223,6 +227,7 @@ export interface PosicionPatrimonioUpdate {
   precio_compra_unitario?: number;
   precio_actual_unitario?: number | null;
   tae?: number | null;
+  error_precio?: string | null;
   fecha_compra?: string;
   activa?: boolean;
   created_at?: string;

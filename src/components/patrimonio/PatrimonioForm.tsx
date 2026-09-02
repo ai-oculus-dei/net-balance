@@ -11,7 +11,6 @@ import {
   claveCuenta,
   ETIQUETA_GRUPO,
   ETIQUETA_TIPO,
-  esTipoConPrecioAutomatico,
   esTipoConTae,
   esTipoPorUnidad,
   TIPOS_POR_GRUPO,
@@ -71,10 +70,12 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   const unitario = esTipoPorUnidad(tipo);
   const puedeUsarTae = esTipoConTae(tipo);
   const otrasPosiciones = posicionesExistentes.filter((p) => p.id !== initialValues?.id);
-  // Con ticker puesto, el precio de este tipo lo mantiene solo la Edge Function (Twelve
-  // Data/CoinGecko) cada hora: no tiene sentido dejar editarlo a mano, se sobrescribiria en la
+  // Con ticker puesto, el precio de cualquier tipo "por unidad" lo mantiene solo la Edge
+  // Function (Twelve Data/CoinGecko) cada hora — incluido Commodity: aunque el simbolo "de
+  // materia prima" no lo cubre Twelve Data gratis, un ETC/ETF que replique su precio si puede
+  // estar cubierto. No tiene sentido dejar editar el precio a mano: se sobrescribiria en la
   // siguiente ejecucion de todas formas.
-  const precioAutomatico = esTipoConPrecioAutomatico(tipo) && ticker.trim() !== '' && !usarTae;
+  const precioAutomatico = unitario && ticker.trim() !== '' && !usarTae;
 
   // Al pasar a un tipo "de saldo" (sin unidades: cuentas, fondo monetario), fija cantidad=1 y
   // fuerza el modo de entrada a "total" — el toggle no tiene sentido si cantidad siempre es 1.
@@ -298,12 +299,17 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
       ) : precioAutomatico ? (
         <div className="flex flex-col gap-1.5">
           <span className="text-sm text-[var(--color-text-muted)]">Precio actual</span>
-          <p className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md px-3 py-2 font-mono text-lg text-[var(--color-text)]">
-            {formatearImporte(precioActualInput)} €
+          <p
+            className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md px-3 py-2 font-mono text-lg ${
+              initialValues?.error_precio ? 'text-[var(--color-loss)]' : 'text-[var(--color-text)]'
+            }`}
+          >
+            {initialValues?.error_precio ? '-' : `${formatearImporte(precioActualInput)} €`}
           </p>
           <p className="text-xs text-[var(--color-text-muted)]">
-            Se actualiza solo con el precio de mercado (Twelve Data/CoinGecko) cada hora — no se puede editar a mano
-            mientras tenga ticker.
+            {initialValues?.error_precio
+              ? `No se ha podido actualizar el precio: ${initialValues.error_precio}`
+              : 'Se actualiza solo con el precio de mercado (Twelve Data/CoinGecko) cada hora — no se puede editar a mano mientras tenga ticker.'}
           </p>
         </div>
       ) : (

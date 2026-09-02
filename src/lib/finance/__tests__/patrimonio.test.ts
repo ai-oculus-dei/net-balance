@@ -5,7 +5,6 @@ import {
   claveActivo,
   claveCuenta,
   crecimientoDesdeInicioAnio,
-  esTipoConPrecioAutomatico,
   esTipoConTae,
   esTipoPorUnidad,
   grupoDePosicion,
@@ -33,6 +32,7 @@ function posicion(overrides: Partial<PosicionPatrimonio> & { id: string; tipo: T
     precio_compra_unitario: 0,
     precio_actual_unitario: 0,
     tae: null,
+    error_precio: null,
     fecha_compra: '2026-01-01',
     activa: true,
     created_at: '2026-01-01',
@@ -301,21 +301,6 @@ describe('esTipoConTae', () => {
   it('false para el resto (incluida Cuenta Corriente)', () => {
     expect(esTipoConTae('cuenta_corriente')).toBe(false);
     expect(esTipoConTae('stock')).toBe(false);
-  });
-});
-
-describe('esTipoConPrecioAutomatico', () => {
-  it('true para los tipos que Twelve Data/CoinGecko sirven de verdad', () => {
-    expect(esTipoConPrecioAutomatico('stock')).toBe(true);
-    expect(esTipoConPrecioAutomatico('etf')).toBe(true);
-    expect(esTipoConPrecioAutomatico('fondo_indexado')).toBe(true);
-    expect(esTipoConPrecioAutomatico('criptomoneda')).toBe(true);
-  });
-
-  it('false para Commodity (Twelve Data lo tiene detras de un plan de pago) y para los tipos de saldo', () => {
-    expect(esTipoConPrecioAutomatico('commodity')).toBe(false);
-    expect(esTipoConPrecioAutomatico('cuenta_corriente')).toBe(false);
-    expect(esTipoConPrecioAutomatico('cuenta_remunerada')).toBe(false);
   });
 });
 

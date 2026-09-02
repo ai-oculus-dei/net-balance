@@ -13,6 +13,7 @@ interface ActivoCardProps {
 export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
   const [expandido, setExpandido] = useState(false);
   const variasCompras = activo.lotes.length > 1;
+  const loteConError = activo.lotes.find((l) => l.error_precio);
 
   function handleClick() {
     if (variasCompras) setExpandido((v) => !v);
@@ -22,7 +23,14 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
   return (
     <Card className="cursor-pointer hover:opacity-90" onClick={handleClick}>
       <div className="flex items-center justify-between mb-1 gap-2">
-        <h3 className="font-semibold text-sm truncate">{activo.nombre}</h3>
+        <h3 className="font-semibold text-sm truncate flex items-center gap-1">
+          {activo.nombre}
+          {loteConError && (
+            <span title={`No se ha podido actualizar el precio: ${loteConError.error_precio}`} className="text-[var(--color-loss)]">
+              ⚠
+            </span>
+          )}
+        </h3>
         <span className="text-xs text-[var(--color-text-muted)] shrink-0">{ETIQUETA_TIPO[activo.tipo]}</span>
       </div>
 
@@ -67,7 +75,12 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
                   onEditarLote(lote);
                 }}
               >
-                <span className="text-[var(--color-text-muted)]">
+                <span className="text-[var(--color-text-muted)] flex items-center gap-1">
+                  {lote.error_precio && (
+                    <span title={`No se ha podido actualizar el precio: ${lote.error_precio}`} className="text-[var(--color-loss)]">
+                      ⚠
+                    </span>
+                  )}
                   {etiquetaFechaCompra(lote.fecha_compra)} · {formatearCantidad(lote.cantidad)} uds
                 </span>
                 <span className={`font-mono font-semibold ${claseColorPorSigno(pnlLote.eur)}`}>

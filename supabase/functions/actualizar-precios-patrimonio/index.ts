@@ -5,10 +5,18 @@
 // ticker en el momento de ejecutarse, contra:
 //   - CoinGecko (gratis, sin clave) para tipo = 'criptomoneda'. El ticker debe ser el ID de
 //     CoinGecko (p.ej. "bitcoin", no "BTC" — ver https://api.coingecko.com/api/v3/coins/list).
-//   - Twelve Data (clave gratuita, ver TWELVE_DATA_API_KEY mas abajo) para el resto (stock, etf,
-//     fondo_indexado, commodity). El ticker es el simbolo de Twelve Data (p.ej. "AAPL", "AF",
-//     "XAU/EUR" para materias primas); si hay varias bolsas para el mismo simbolo, el campo
-//     "mercado" de la posicion se manda como parametro `exchange` para desambiguar.
+//   - Twelve Data (clave gratuita, ver TWELVE_DATA_API_KEY mas abajo) para el resto, Commodity
+//     incluido: aunque el simbolo "de materia prima" (p.ej. "XAU/EUR") esta detras de un plan de
+//     pago de Twelve Data (ver REQUIREMENTS.md seccion 15), un ETC/ETF que replique el precio de
+//     esa materia prima (p.ej. Xetra-Gold, ticker "4GLD") SI esta cubierto por la clave gratuita
+//     — asi que no se excluye Commodity de nada, se intenta igual que el resto con el ticker que
+//     tenga la posicion.
+//
+// Si no se consigue un precio para una posicion (ticker no encontrado, simbolo no cubierto,
+// limite de peticiones...) se guarda el motivo en su columna error_precio (y NO se toca
+// precio_actual_unitario, para no perder el ultimo precio bueno conocido) — el cliente lo usa
+// para mostrar "-" en vez de un numero que podria estar desactualizado. En cuanto una
+// actualizacion vuelve a funcionar, error_precio se limpia a null.
 //
 // Se invoca por HTTP (ver supabase/migrations/0012_patrimonio_cron_horario.sql, que la programa
 // cada hora de 8:00 a 23:00 hora de España via pg_cron + pg_net) con la service_role key, para
@@ -49,29 +57,44 @@ interface PosicionAActualizar {
   mercado: string | null;
 }
 
-async function precioTwelveData(ticker: string, mercado: string | null): Promise<number | null> {
+interface ResultadoPrecio {
+  precio: number | null;
+  // Motivo por el que no se pudo obtener el precio (null si precio no es null).
+  error: string | null;
+}
+
+async function precioTwelveData(ticker: string, mercado: string | null): Promise<ResultadoPrecio> {
   const url = new URL('https://api.twelvedata.com/price');
   url.searchParams.set('symbol', ticker);
   if (mercado) url.searchParams.set('exchange', mercado);
   url.searchParams.set('apikey', TWELVE_DATA_API_KEY);
 
   const res = await fetch(url);
-  if (!res.ok) return null;
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    return { precio: null, error: `Twelve Data (${res.status}): ${data?.message ?? 'error desconocido'}` };
+  }
   const precio = Number(data?.price);
-  return Number.isFinite(precio) ? precio : null;
+  if (!Number.isFinite(precio)) {
+    return { precio: null, error: `Twelve Data: ${data?.message ?? 'precio no disponible para este ticker'}` };
+  }
+  return { precio, error: null };
 }
 
-async function precioCoinGecko(coinId: string): Promise<number | null> {
+async function precioCoinGecko(coinId: string): Promise<ResultadoPrecio> {
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coinId)}&vs_currencies=eur`;
   const res = await fetch(url);
-  if (!res.ok) return null;
-  const data = await res.json();
+  if (!res.ok) return { precio: null, error: `CoinGecko (${res.status}): error desconocido` };
+  const data = await res.json().catch(() => null);
   const precio = data?.[coinId]?.eur;
-  return typeof precio === 'number' ? precio : null;
+  if (typeof precio !== 'number') {
+    return { precio: null, error: 'CoinGecko: precio no disponible (revisa que el ticker sea el ID de CoinGecko)' };
+  }
+  return { precio, error: null };
 }
 
-async function precioDe(p: PosicionAActualizar): Promise<number | null> {
+async function precioDe(p: PosicionAActualizar): Promise<ResultadoPrecio> {
   return p.tipo === 'criptomoneda' ? precioCoinGecko(p.ticker) : precioTwelveData(p.ticker, p.mercado);
 }
 
@@ -106,15 +129,16 @@ Deno.serve(async (req) => {
 
   for (const p of (posiciones ?? []) as PosicionAActualizar[]) {
     try {
-      const precio = await precioDe(p);
+      const { precio, error: errorPrecio } = await precioDe(p);
       if (precio === null) {
-        resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: 'precio no disponible' });
+        await supabase.from('posiciones_patrimonio').update({ error_precio: errorPrecio }).eq('id', p.id);
+        resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: errorPrecio });
         continue;
       }
 
       const { error: updateError } = await supabase
         .from('posiciones_patrimonio')
-        .update({ precio_actual_unitario: precio })
+        .update({ precio_actual_unitario: precio, error_precio: null })
         .eq('id', p.id);
 
       resultados.push(
@@ -123,7 +147,9 @@ Deno.serve(async (req) => {
           : { id: p.id, ticker: p.ticker, ok: true, precio }
       );
     } catch (err) {
-      resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: err instanceof Error ? err.message : String(err) });
+      const mensaje = err instanceof Error ? err.message : String(err);
+      await supabase.from('posiciones_patrimonio').update({ error_precio: mensaje }).eq('id', p.id);
+      resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: mensaje });
     }
   }
 

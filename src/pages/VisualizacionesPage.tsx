@@ -15,6 +15,7 @@ import { useTheme } from '../lib/theme/useTheme';
 import { useVisualizacionesState } from '../lib/visualizaciones/useVisualizacionesState';
 import { balancePorSubcategoria, indexarSubcategorias } from '../lib/finance/taxonomia';
 import { periodosEntre, resolverRangoEntreMeses } from '../lib/finance/periodos';
+import { formatearImporte } from '../lib/finance/formato';
 import {
   etiquetaLinea,
   lineaEsValida,
@@ -137,6 +138,7 @@ export function VisualizacionesPage() {
         balanceSubcategorias={balanceSubcategorias}
         loading={loading}
         seleccion={seleccion}
+        mesesEnRango={periodos.length}
       />
 
       <Card>
@@ -151,24 +153,32 @@ export function VisualizacionesPage() {
 
         {lineas.length > 0 && (
           <div className="flex flex-col gap-1.5 mb-3">
-            {lineas.map((linea) => (
-              <div key={linea.id} className="flex items-center gap-2">
-                <span
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{ backgroundColor: colorCategorico(linea.colorIndex, theme) }}
-                  aria-hidden="true"
-                />
-                <span className="flex-1 min-w-0 text-sm truncate">{etiquetaLinea(linea, categorias, subcategorias)}</span>
-                <button
-                  type="button"
-                  onClick={() => quitarLinea(linea.id)}
-                  aria-label="Quitar línea"
-                  className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+            {lineas.map((linea) => {
+              const total = totales.find((t) => t.lineaId === linea.id)?.total ?? 0;
+              const mediaMensual = total / (periodos.length > 0 ? periodos.length : 1);
+              return (
+                <div key={linea.id} className="flex items-center gap-2">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: colorCategorico(linea.colorIndex, theme) }}
+                    aria-hidden="true"
+                  />
+                  <span className="flex-1 min-w-0 text-sm truncate">{etiquetaLinea(linea, categorias, subcategorias)}</span>
+                  <span className="shrink-0 text-right font-mono text-xs leading-tight text-[var(--color-text-muted)]">
+                    <span className="block">{formatearImporte(total)} €</span>
+                    <span className="block">{formatearImporte(mediaMensual)} €/mes</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => quitarLinea(linea.id)}
+                    aria-label="Quitar línea"
+                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 

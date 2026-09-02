@@ -5,7 +5,7 @@ import { formatearImporte } from '../../lib/finance/formato';
 import { IconoCategoria, IconoSubcategoria } from '../icons/IconoTaxonomia';
 import type { BalanceSubcategoria } from '../../lib/finance/taxonomia';
 
-type ModoVista = 'neto' | 'porcentaje';
+type ModoVista = 'neto' | 'promedio_mensual' | 'porcentaje';
 
 export interface SeleccionCategorias {
   activa: boolean;
@@ -23,9 +23,13 @@ interface EsteMesCardProps {
   // color, sin seleccionar = atenuado. Sin esta prop (o con `activa: false`) la tarjeta es de
   // solo lectura, exactamente igual que en Inicio.
   seleccion?: SeleccionCategorias;
+  // Numero de meses del rango mostrado (Visualizaciones: puede ser mas de 1). Con esto puesto
+  // aparece un tercer modo "€/mes" (media mensual del rango). Sin el (Inicio, siempre 1 mes en
+  // curso) el modo €/mes no aporta nada distinto de €, asi que no se ofrece.
+  mesesEnRango?: number;
 }
 
-export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion }: EsteMesCardProps) {
+export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion, mesesEnRango }: EsteMesCardProps) {
   const [modo, setModo] = useState<ModoVista>('neto');
 
   const totalGastado = balanceSubcategorias
@@ -41,6 +45,10 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion }
   function valorMostrado(neto: number): string {
     if (modo === 'neto') {
       return `${neto > 0 ? '+' : ''}${formatearImporte(neto)} €`;
+    }
+    if (modo === 'promedio_mensual') {
+      const promedio = neto / (mesesEnRango && mesesEnRango > 0 ? mesesEnRango : 1);
+      return `${promedio > 0 ? '+' : ''}${formatearImporte(promedio)} €/mes`;
     }
     // Gasto -> % del total gastado ese mes; ingreso -> % del total ingresado ese mes.
     const base = neto < 0 ? totalGastado : totalIngresado;
@@ -65,6 +73,16 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion }
           >
             €
           </button>
+          {mesesEnRango !== undefined && (
+            <button
+              type="button"
+              onClick={() => setModo('promedio_mensual')}
+              aria-pressed={modo === 'promedio_mensual'}
+              className={`px-2.5 py-1 ${modo === 'promedio_mensual' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
+            >
+              €/mes
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setModo('porcentaje')}

@@ -1,5 +1,6 @@
 import type { Movimiento, Subcategoria } from '../../lib/supabase/database.types';
 import { claseColorPorSigno } from '../charts/colors';
+import { formatearImporte } from '../../lib/finance/formato';
 
 interface MovimientoRowProps {
   movimiento: Movimiento;
@@ -24,7 +25,7 @@ export function MovimientoRow({ movimiento, subcategoria, onClick }: MovimientoR
       </div>
       <span className={`shrink-0 font-mono text-sm font-semibold ${claseColorPorSigno(movimiento.importe)}`}>
         {movimiento.importe > 0 ? '+' : ''}
-        {movimiento.importe.toFixed(2)} €
+        {formatearImporte(movimiento.importe)} €
       </span>
     </button>
   );

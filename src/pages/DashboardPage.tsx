@@ -6,6 +6,7 @@ import { MetricasCard } from '../components/dashboard/MetricasCard';
 import { useDisponibleMes } from '../hooks/useDisponibleMes';
 import { useTaxonomia } from '../hooks/useTaxonomia';
 import { balancePorSubcategoria, indexarSubcategorias } from '../lib/finance/taxonomia';
+import { formatearImporte } from '../lib/finance/formato';
 
 export function DashboardPage() {
   const hoy = useMemo(() => new Date(), []);
@@ -67,7 +68,7 @@ export function DashboardPage() {
                 >
                   <span className="text-sm">{o.nombre}</span>
                   <span className="font-mono text-sm font-semibold text-[var(--color-accent)]">
-                    {importe.toFixed(2)} €
+                    {formatearImporte(importe)} €
                   </span>
                 </div>
               );
@@ -75,7 +76,7 @@ export function DashboardPage() {
             <div className="flex items-center justify-between pt-2 mt-1 border-t border-[var(--color-border)]">
               <span className="text-sm font-semibold">Total</span>
               <span className="font-mono text-sm font-semibold text-[var(--color-accent)]">
-                {totalAhorroMensual.toFixed(2)} €
+                {formatearImporte(totalAhorroMensual)} €
               </span>
             </div>
           </>

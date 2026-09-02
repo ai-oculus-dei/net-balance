@@ -1,5 +1,6 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { colorCategorico } from './colorsCategoricos';
+import { formatearImporte } from '../../lib/finance/formato';
 import type { Theme } from '../../lib/theme/ThemeProvider';
 
 export interface DatoPieLinea {
@@ -44,7 +45,7 @@ function EtiquetaPorcentaje({ cx = 0, cy = 0, midAngle = 0, outerRadius = 0, per
       textAnchor={x > cx ? 'start' : x < cx ? 'end' : 'middle'}
       dominantBaseline="central"
     >
-      {`${(percent * 100).toFixed(0)}%`}
+      {`${formatearImporte(percent * 100, 0)}%`}
     </text>
   );
 }
@@ -82,7 +83,7 @@ export function LineasPieChart({ datos, theme, altura = 420 }: LineasPieChartPro
           ))}
         </Pie>
         <Tooltip
-          formatter={(_value, _name, item) => [`${(item.payload as { neto: number }).neto.toFixed(2)} €`, item.payload.etiqueta]}
+          formatter={(_value, _name, item) => [`${formatearImporte((item.payload as { neto: number }).neto)} €`, item.payload.etiqueta]}
           contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: 12 }}
         />
         <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 12, lineHeight: '1.6em' }} />

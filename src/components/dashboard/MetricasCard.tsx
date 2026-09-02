@@ -13,6 +13,7 @@ import {
   tasaInversionDelMes,
 } from '../../lib/finance/metricas';
 import { gastosFijosDelMes, ingresoRealDelMes, type SubcategoriasPorId } from '../../lib/finance/taxonomia';
+import { formatearImporte } from '../../lib/finance/formato';
 import type { Movimiento } from '../../lib/supabase/database.types';
 
 // Tasa de ahorro: verde si se ahorra "bien" (>30%), roja si es baja (<20%), blanca en medio.
@@ -73,26 +74,26 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading 
         <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
       ) : (
         <div className="grid grid-cols-2 gap-4">
-          <StatTile label="Ingreso real" value={`${ingresoReal.toFixed(2)} €`} colorClassName="text-[var(--color-gain)]" />
-          <StatTile label="Gastos totales" value={`${gastoRealTotal.toFixed(2)} €`} colorClassName="text-[var(--color-loss)]" />
-          <StatTile label="Gastos fijos" value={`${gastosFijos.toFixed(2)} €`} colorClassName="text-[var(--color-loss)]" />
-          <StatTile label="Gastos variables" value={`${gastoVariable.toFixed(2)} €`} colorClassName={claseColorPorSigno(-gastoVariable)} />
-          <StatTile label="Balance neto" value={`${balanceNeto.toFixed(2)} €`} colorClassName={claseColorPorSigno(balanceNeto)} />
+          <StatTile label="Ingreso real" value={`${formatearImporte(ingresoReal)} €`} colorClassName="text-[var(--color-gain)]" />
+          <StatTile label="Gastos totales" value={`${formatearImporte(gastoRealTotal)} €`} colorClassName="text-[var(--color-loss)]" />
+          <StatTile label="Gastos fijos" value={`${formatearImporte(gastosFijos)} €`} colorClassName="text-[var(--color-loss)]" />
+          <StatTile label="Gastos variables" value={`${formatearImporte(gastoVariable)} €`} colorClassName={claseColorPorSigno(-gastoVariable)} />
+          <StatTile label="Balance neto" value={`${formatearImporte(balanceNeto)} €`} colorClassName={claseColorPorSigno(balanceNeto)} />
           <StatTile
             label="Operating margin"
-            value={margenOperativo === null ? '—' : `${margenOperativo.toFixed(0)} %`}
+            value={margenOperativo === null ? '—' : `${formatearImporte(margenOperativo, 0)} %`}
             colorClassName={margenOperativo === null ? '' : claseColorPorSigno(margenOperativo)}
           />
-          <StatTile label="Ahorro total" value={`${ahorroTotal.toFixed(2)} €`} colorClassName={claseColorPorSigno(ahorroTotal)} />
-          <StatTile label="Inversión total" value={`${inversionTotal.toFixed(2)} €`} colorClassName={claseColorPorSigno(inversionTotal)} />
+          <StatTile label="Ahorro total" value={`${formatearImporte(ahorroTotal)} €`} colorClassName={claseColorPorSigno(ahorroTotal)} />
+          <StatTile label="Inversión total" value={`${formatearImporte(inversionTotal)} €`} colorClassName={claseColorPorSigno(inversionTotal)} />
           <StatTile
             label="Tasa de ahorro"
-            value={tasaAhorro === null ? '—' : `${tasaAhorro.toFixed(0)} %`}
+            value={tasaAhorro === null ? '—' : `${formatearImporte(tasaAhorro, 0)} %`}
             colorClassName={claseColorTasaAhorro(tasaAhorro)}
           />
           <StatTile
             label="Tasa de inversión"
-            value={tasaInversion === null ? '—' : `${tasaInversion.toFixed(0)} %`}
+            value={tasaInversion === null ? '—' : `${formatearImporte(tasaInversion, 0)} %`}
             colorClassName={claseColorTasaInversion(tasaInversion)}
           />
         </div>

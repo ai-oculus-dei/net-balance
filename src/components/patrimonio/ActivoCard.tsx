@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card } from '../ui/Card';
 import { claseColorPorSigno } from '../charts/colors';
 import { ETIQUETA_TIPO, calcularPnL, etiquetaFechaCompra, precioActualTotal, type ActivoAgrupado } from '../../lib/finance/patrimonio';
+import { formatearCantidad, formatearImporte } from '../../lib/finance/formato';
 import type { PosicionPatrimonio } from '../../lib/supabase/database.types';
 
 interface ActivoCardProps {
@@ -34,15 +35,15 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
 
       {activo.ticker && (
         <p className="text-xs text-[var(--color-text-muted)] mb-1">
-          {activo.cantidadTotal} uds · Precio medio {activo.precioCompraMedio.toFixed(2)} €
+          {formatearCantidad(activo.cantidadTotal)} uds · Precio medio {formatearImporte(activo.precioCompraMedio)} €
         </p>
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-sm font-semibold">{activo.valorActualTotal.toFixed(2)} €</span>
+        <span className="font-mono text-sm font-semibold">{formatearImporte(activo.valorActualTotal)} €</span>
         <span className={`font-mono text-xs font-semibold ${claseColorPorSigno(activo.pnl.eur)}`}>
           {activo.pnl.eur > 0 ? '+' : ''}
-          {activo.pnl.eur.toFixed(2)} €{activo.pnl.pct !== null ? ` (${activo.pnl.pct > 0 ? '+' : ''}${activo.pnl.pct.toFixed(1)}%)` : ''}
+          {formatearImporte(activo.pnl.eur)} €{activo.pnl.pct !== null ? ` (${activo.pnl.pct > 0 ? '+' : ''}${formatearImporte(activo.pnl.pct, 1)}%)` : ''}
         </span>
       </div>
 
@@ -67,10 +68,10 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
                 }}
               >
                 <span className="text-[var(--color-text-muted)]">
-                  {etiquetaFechaCompra(lote.fecha_compra)} · {lote.cantidad} uds
+                  {etiquetaFechaCompra(lote.fecha_compra)} · {formatearCantidad(lote.cantidad)} uds
                 </span>
                 <span className={`font-mono font-semibold ${claseColorPorSigno(pnlLote.eur)}`}>
-                  {valorLote.toFixed(2)} €{pnlLote.pct !== null ? ` (${pnlLote.pct > 0 ? '+' : ''}${pnlLote.pct.toFixed(1)}%)` : ''}
+                  {formatearImporte(valorLote)} €{pnlLote.pct !== null ? ` (${pnlLote.pct > 0 ? '+' : ''}${formatearImporte(pnlLote.pct, 1)}%)` : ''}
                 </span>
               </div>
             );

@@ -5,6 +5,7 @@ import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { useAuth } from '../../lib/auth/useAuth';
 import { toIsoDate } from '../../lib/finance/fechas';
+import { formatearImporte } from '../../lib/finance/formato';
 import {
   claveActivo,
   claveCuenta,
@@ -285,7 +286,7 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
           <ImporteKeypadInput label="TAE (%)" value={tae} onChange={setTae} decimales={2} />
           {valorActualConTaePreview !== null && (
             <p className="text-xs text-[var(--color-text-muted)]">
-              Valor actual calculado: {valorActualConTaePreview.toFixed(2)} €
+              Valor actual calculado: {formatearImporte(valorActualConTaePreview)} €
             </p>
           )}
         </div>

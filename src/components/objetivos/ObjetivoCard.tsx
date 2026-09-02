@@ -1,5 +1,6 @@
 import { Card } from '../ui/Card';
 import { ProgressBar } from '../ui/ProgressBar';
+import { formatearImporte } from '../../lib/finance/formato';
 import type { ObjetivoAhorro } from '../../lib/supabase/database.types';
 
 interface ObjetivoCardProps {
@@ -25,7 +26,7 @@ export function ObjetivoCard({ objetivo, aportacionMensual, onClick }: ObjetivoC
         <>
           <ProgressBar value={progreso} />
           <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            {objetivo.acumulado.toFixed(2)} € / {(objetivo.meta ?? 0).toFixed(2)} €
+            {formatearImporte(objetivo.acumulado)} € / {formatearImporte(objetivo.meta ?? 0)} €
             {objetivo.modo_aportacion === 'automatico' ? ' · automático' : ` · manual (${objetivo.porcentaje}%)`}
           </p>
         </>
@@ -36,7 +37,7 @@ export function ObjetivoCard({ objetivo, aportacionMensual, onClick }: ObjetivoC
       {objetivo.activo ? (
         <p className="mt-2 pt-2 border-t border-[var(--color-border)] text-sm">
           <span className="text-[var(--color-text-muted)]">Ahorrar este mes: </span>
-          <span className="font-semibold text-[var(--color-accent)]">{aportacionMensual.toFixed(2)} €</span>
+          <span className="font-semibold text-[var(--color-accent)]">{formatearImporte(aportacionMensual)} €</span>
         </p>
       ) : (
         <p className="mt-2 pt-2 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">

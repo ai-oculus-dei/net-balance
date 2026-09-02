@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card } from '../ui/Card';
 import { claseColorPorSigno } from '../charts/colors';
+import { formatearImporte } from '../../lib/finance/formato';
 import type { BalanceSubcategoria } from '../../lib/finance/taxonomia';
 
 type ModoVista = 'neto' | 'porcentaje';
@@ -38,12 +39,12 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion }
 
   function valorMostrado(neto: number): string {
     if (modo === 'neto') {
-      return `${neto > 0 ? '+' : ''}${neto.toFixed(2)} €`;
+      return `${neto > 0 ? '+' : ''}${formatearImporte(neto)} €`;
     }
     // Gasto -> % del total gastado ese mes; ingreso -> % del total ingresado ese mes.
     const base = neto < 0 ? totalGastado : totalIngresado;
     if (base <= 0) return '—';
-    return `${((Math.abs(neto) / base) * 100).toFixed(0)}%`;
+    return `${formatearImporte((Math.abs(neto) / base) * 100, 0)}%`;
   }
 
   const modoSeleccion = seleccion?.activa ?? false;

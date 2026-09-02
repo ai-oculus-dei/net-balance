@@ -15,10 +15,14 @@
 --
 -- 2. Project ref ya sustituido en la URL de mas abajo (koyvpbsnrxqheaugkxbu).
 --
--- 3. Guardar la service_role key en Vault (Supabase Dashboard -> Settings -> API -> Project API
---    keys -> service_role — NUNCA la subas al repo). Ejecutar esta linea aparte, sustituyendo el
---    valor real, ANTES de las lineas de cron.schedule:
---      select vault.create_secret('<TU_SERVICE_ROLE_KEY>', 'service_role_key');
+-- 3. Guardar la service_role key en Vault (Supabase Dashboard -> Settings -> API -> API Keys ->
+--    la que empieza por `sb_secret_` — NO el JWT largo `eyJ...` de "service_role" clasico, son
+--    claves distintas y SUPABASE_SERVICE_ROLE_KEY (la que la funcion recibe inyectada) resuelve
+--    a la `sb_secret_...` en proyectos con el sistema nuevo de claves; si se guarda el JWT por
+--    error la funcion responde 401 aunque el cron mande "algo" en el Authorization. NUNCA subas
+--    esta clave al repo. Ejecutar esta linea aparte, sustituyendo el valor real, ANTES de las
+--    lineas de cron.schedule:
+--      select vault.create_secret('<TU_SB_SECRET_KEY>', 'service_role_key');
 --
 --    (Si ya la habias guardado antes con este mismo nombre y quieres cambiar el valor, usa en su
 --    lugar: select vault.update_secret((select id from vault.secrets where name =

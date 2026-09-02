@@ -25,6 +25,13 @@
 // exactamente la service_role key: solo el cron (o quien tenga esa clave, que nunca sale de
 // los secretos del proyecto) puede ejecutarla de verdad.
 //
+// OJO con cual es "la service_role key": en proyectos con el sistema nuevo de claves de
+// Supabase, SUPABASE_SERVICE_ROLE_KEY (inyectada aqui automaticamente) resuelve a la clave
+// corta `sb_secret_...` (Dashboard -> Settings -> API), NO al JWT largo clasico de
+// "service_role" (`eyJ...`) — son dos claves distintas. El secreto guardado en Vault
+// (0012_patrimonio_cron_horario.sql, `service_role_key`) tiene que ser el `sb_secret_...`, si
+// no la funcion responde 401 aunque el cron mande "algo" en el Authorization.
+//
 // Desplegar con: npx supabase functions deploy actualizar-precios-patrimonio
 // Config necesaria (una vez): npx supabase secrets set TWELVE_DATA_API_KEY=...
 // (SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase automaticamente, no hace

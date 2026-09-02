@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card } from '../ui/Card';
 import { claseColorPorSigno } from '../charts/colors';
-import { ETIQUETA_TIPO, calcularPnL, etiquetaFechaCompra, precioActualTotal, type ActivoAgrupado } from '../../lib/finance/patrimonio';
+import { ETIQUETA_TIPO, calcularPnL, etiquetaFechaCompra, type ActivoAgrupado } from '../../lib/finance/patrimonio';
 import { formatearCantidad, formatearImporte } from '../../lib/finance/formato';
 import type { PosicionPatrimonio } from '../../lib/supabase/database.types';
 
@@ -76,9 +76,11 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
 
       {variasCompras && expandido && (
         <div className="mt-2 flex flex-col gap-1 border-t border-[var(--color-border)] pt-2">
-          {activo.lotes.map((lote) => {
+          {/* Mas reciente primero: activo.lotes esta ordenado ascendente (necesario para saber
+              cual es "la primera compra", ver construirActivo en lib/finance/patrimonio.ts) —
+              se invierte solo para mostrar, sin tocar ese orden real. */}
+          {[...activo.lotes].reverse().map((lote) => {
             const pnlLote = calcularPnL(lote);
-            const valorLote = precioActualTotal(lote);
             return (
               <div
                 key={lote.id}
@@ -88,16 +90,23 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
                   onEditarLote(lote);
                 }}
               >
-                <span className="text-[var(--color-text-muted)] flex items-center gap-1">
+                <span className="text-[var(--color-text-muted)] flex items-center gap-1 min-w-0">
                   {lote.error_precio && (
-                    <span title={`No se ha podido actualizar el precio: ${lote.error_precio}`} className="text-[var(--color-loss)]">
+                    <span
+                      title={`No se ha podido actualizar el precio: ${lote.error_precio}`}
+                      className="text-[var(--color-loss)] shrink-0"
+                    >
                       ⚠
                     </span>
                   )}
-                  {etiquetaFechaCompra(lote.fecha_compra)} · {formatearCantidad(lote.cantidad)} uds
+                  <span className="truncate">
+                    {etiquetaFechaCompra(lote.fecha_compra)} · {formatearCantidad(lote.cantidad)}x
+                    {formatearImporte(lote.precio_compra_unitario)}
+                  </span>
                 </span>
-                <span className={`font-mono font-semibold ${claseColorPorSigno(pnlLote.eur)}`}>
-                  {formatearImporte(valorLote)} €{pnlLote.pct !== null ? ` (${pnlLote.pct > 0 ? '+' : ''}${formatearImporte(pnlLote.pct, 1)}%)` : ''}
+                <span className={`font-mono font-semibold shrink-0 ${claseColorPorSigno(pnlLote.eur)}`}>
+                  {pnlLote.eur > 0 ? '+' : ''}
+                  {formatearImporte(pnlLote.eur)} €{pnlLote.pct !== null ? ` (${pnlLote.pct > 0 ? '+' : ''}${formatearImporte(pnlLote.pct, 1)}%)` : ''}
                 </span>
               </div>
             );

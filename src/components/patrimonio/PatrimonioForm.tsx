@@ -57,7 +57,9 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   const [ticker, setTicker] = useState(initialValues?.ticker ?? '');
   const [mercado, setMercado] = useState(initialValues?.mercado ?? '');
   const [moneda, setMoneda] = useState<MonedaPosicion>(initialValues?.moneda ?? 'EUR');
-  const [cantidad, setCantidad] = useState(initialValues?.cantidad ?? 1);
+  // Sin valor por defecto al crear una posicion nueva: que el campo salga vacio (0 -> el
+  // keypad no muestra nada) en vez de un "1" que invita a dejarlo sin revisar.
+  const [cantidad, setCantidad] = useState(initialValues?.cantidad ?? 0);
   const [fechaCompra, setFechaCompra] = useState(initialValues?.fecha_compra ?? toIsoDate(new Date()));
   const [modoCompra, setModoCompra] = useState<ModoEntrada>('unitario');
   const [modoActual, setModoActual] = useState<ModoEntrada>('unitario');
@@ -310,7 +312,13 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
             </div>
           )}
         </div>
-        <ImporteKeypadInput label="" value={precioCompraInput} onChange={setPrecioCompraInput} decimales={2} />
+        <ImporteKeypadInput
+          label=""
+          value={precioCompraInput}
+          onChange={setPrecioCompraInput}
+          decimales={2}
+          sufijo=" €"
+        />
       </div>
 
       {puedeUsarTae && (

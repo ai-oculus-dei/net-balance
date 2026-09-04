@@ -14,6 +14,9 @@ export function PatrimonioPnLCard({ posiciones, loading }: PatrimonioPnLCardProp
 
   return (
     <Card>
+      <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-3 uppercase tracking-wide text-center">
+        P&amp;L total
+      </h2>
       {loading ? (
         <p className="text-sm text-[var(--color-text-muted)] text-center">Cargando...</p>
       ) : (

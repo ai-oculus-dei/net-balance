@@ -214,6 +214,16 @@ export function patrimonioTotalActual(posiciones: PosicionPatrimonio[], hoy: Dat
   return round2(posiciones.reduce((suma, p) => suma + precioActualTotal(p, hoy), 0));
 }
 
+// P&L agregado de todas las posiciones: suma de las P&L € de cada una, con el % calculado sobre
+// el coste de compra total (no la media de los % individuales, que pesaria igual una posicion
+// pequeña que una grande).
+export function patrimonioPnLTotal(posiciones: PosicionPatrimonio[], hoy: Date = new Date()): PnL {
+  const compra = round2(posiciones.reduce((suma, p) => suma + precioCompraTotal(p), 0));
+  const eur = round2(posiciones.reduce((suma, p) => suma + calcularPnL(p, hoy).eur, 0));
+  const pct = compra > 0 ? round2((eur / compra) * 100) : null;
+  return { eur, pct };
+}
+
 export function patrimonioPorGrupo(posiciones: PosicionPatrimonio[], hoy: Date = new Date()): Record<GrupoPatrimonio, number> {
   const totales: Record<GrupoPatrimonio, number> = { renta_variable: 0, renta_fija: 0, efectivo: 0 };
   for (const p of posiciones) {

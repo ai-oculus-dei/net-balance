@@ -6,6 +6,7 @@ import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLine
 import { LineasPieChart } from '../components/charts/LineasPieChart';
 import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
 import { PatrimonioTotalCard } from '../components/patrimonio/PatrimonioTotalCard';
+import { PatrimonioPnLCard } from '../components/patrimonio/PatrimonioPnLCard';
 import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
 import { usePosicionesPatrimonio } from '../hooks/usePosicionesPatrimonio';
@@ -59,6 +60,8 @@ export function PatrimonioPage() {
   return (
     <div className="flex flex-col gap-4">
       <PatrimonioTotalCard posiciones={posicionesActivas} historico={historico} loading={loading} />
+
+      <PatrimonioPnLCard posiciones={posicionesActivas} loading={loading} />
 
       <TarjetaGrafico
         titulo="Por tipo de activo"

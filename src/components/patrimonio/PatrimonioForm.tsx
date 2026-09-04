@@ -10,6 +10,7 @@ import {
   agruparPorActivo,
   claveActivo,
   claveCuenta,
+  esCuentaGastos,
   ETIQUETA_GRUPO,
   ETIQUETA_TIPO,
   esTipoConTae,
@@ -153,9 +154,11 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
 
   // Cuentas que se pueden elegir para financiar esta compra: solo al crear (nunca al editar), y
   // solo cuentas de un unico lote — retirar de una con varias aportaciones es ambiguo (¿de cual
-  // se descuenta?) y se deja fuera de esta primera version, se ajusta a mano.
+  // se descuenta?) y se deja fuera de esta primera version, se ajusta a mano. La cuenta "Gastos"
+  // tampoco se ofrece: se resincroniza sola con el balance neto del mes (useSincronizarCuentaGastos)
+  // y cualquier retirada manual se deshace en cuanto vuelva a sincronizarse.
   const cuentasOrigenElegibles = esCreacion
-    ? agruparPorActivo(otrasPosiciones).filter((a) => !esTipoPorUnidad(a.tipo) && a.lotes.length === 1)
+    ? agruparPorActivo(otrasPosiciones).filter((a) => !esTipoPorUnidad(a.tipo) && a.lotes.length === 1 && !esCuentaGastos(a))
     : [];
 
   const valorActualConTaePreview =

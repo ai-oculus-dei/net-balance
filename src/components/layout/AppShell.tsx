@@ -17,6 +17,7 @@ import { emitObjetivosChanged } from '../../lib/events/objetivosBus';
 import { emitPatrimonioChanged } from '../../lib/events/patrimonioBus';
 import { useAuth } from '../../lib/auth/useAuth';
 import { usePosicionesPatrimonio } from '../../hooks/usePosicionesPatrimonio';
+import { useSincronizarCuentaGastos } from '../../hooks/useSincronizarCuentaGastos';
 import { VisualizacionesProvider } from '../../lib/visualizaciones/VisualizacionesProvider';
 
 export function AppShell() {
@@ -24,7 +25,8 @@ export function AppShell() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { posiciones: posicionesPatrimonio } = usePosicionesPatrimonio();
+  const { posiciones: posicionesPatrimonio, loading: loadingPosicionesPatrimonio } = usePosicionesPatrimonio();
+  useSincronizarCuentaGastos(posicionesPatrimonio, loadingPosicionesPatrimonio);
 
   const enPatrimonio = location.pathname.startsWith('/patrimonio');
 

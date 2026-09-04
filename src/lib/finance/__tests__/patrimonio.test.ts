@@ -5,6 +5,7 @@ import {
   claveActivo,
   claveCuenta,
   crecimientoDesdeInicioAnio,
+  esCuentaGastos,
   esTipoConTae,
   esTipoPorUnidad,
   grupoDePosicion,
@@ -202,6 +203,18 @@ describe('claveCuenta', () => {
 
   it('distinta clave si cambia el tipo, aunque el nombre coincida', () => {
     expect(claveCuenta('cuenta_remunerada', 'Principal')).not.toBe(claveCuenta('cuenta_corriente', 'Principal'));
+  });
+});
+
+describe('esCuentaGastos', () => {
+  it('identifica la cuenta corriente "Gastos" sin distinguir mayusculas ni espacios', () => {
+    expect(esCuentaGastos({ tipo: 'cuenta_corriente', nombre: ' gastos ' })).toBe(true);
+    expect(esCuentaGastos({ tipo: 'cuenta_corriente', nombre: 'GASTOS' })).toBe(true);
+  });
+
+  it('no la confunde con otra cuenta corriente ni con otro tipo llamado igual', () => {
+    expect(esCuentaGastos({ tipo: 'cuenta_corriente', nombre: 'Nómina' })).toBe(false);
+    expect(esCuentaGastos({ tipo: 'cuenta_ahorro', nombre: 'Gastos' })).toBe(false);
   });
 });
 

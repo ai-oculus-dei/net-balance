@@ -157,6 +157,17 @@ export function claveCuenta(tipo: TipoPosicionPatrimonio, nombre: string): strin
   return `${tipo}|${nombre.trim().toLowerCase()}`;
 }
 
+// Nombre de la Cuenta Corriente que se mantiene siempre sincronizada con el balance neto del mes
+// en curso de Movimientos (ver useSincronizarCuentaGastos) — el puente entre el flujo de caja y
+// el patrimonio total. Se identifica por tipo+nombre (no hay ninguna otra marca en la fila) para
+// poder excluirla de los selectores de "financiar compra"/"cuenta destino de una venta": un
+// retiro o abono manual ahi se deshace en la siguiente sincronizacion.
+export const NOMBRE_CUENTA_GASTOS = 'Gastos';
+
+export function esCuentaGastos(a: Pick<PosicionPatrimonio, 'tipo' | 'nombre'>): boolean {
+  return a.tipo === 'cuenta_corriente' && a.nombre.trim().toLowerCase() === NOMBRE_CUENTA_GASTOS.toLowerCase();
+}
+
 export interface ActivoAgrupado {
   id: string; // id de la posicion de la primera compra (fecha_compra mas antigua)
   tipo: TipoPosicionPatrimonio;

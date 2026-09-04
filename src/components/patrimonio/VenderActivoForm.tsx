@@ -3,7 +3,7 @@ import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { claseColorPorSigno } from '../charts/colors';
-import { agruparPorActivo, esTipoPorUnidad, type ActivoAgrupado } from '../../lib/finance/patrimonio';
+import { agruparPorActivo, esCuentaGastos, esTipoPorUnidad, type ActivoAgrupado } from '../../lib/finance/patrimonio';
 import { calcularVentaFIFO } from '../../lib/finance/ventas';
 import { formatearCantidad, formatearImporte } from '../../lib/finance/formato';
 import type { PosicionPatrimonio } from '../../lib/supabase/database.types';
@@ -27,8 +27,11 @@ export function VenderActivoForm({ activo, posicionesExistentes, onSubmit, onCan
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // La cuenta "Gastos" no se ofrece como destino: se resincroniza sola con el balance neto del
+  // mes (useSincronizarCuentaGastos) y un abono manual ahi se deshace en cuanto vuelva a
+  // sincronizarse.
   const cuentasDestino = useMemo(
-    () => agruparPorActivo(posicionesExistentes).filter((a) => !esTipoPorUnidad(a.tipo)),
+    () => agruparPorActivo(posicionesExistentes).filter((a) => !esTipoPorUnidad(a.tipo) && !esCuentaGastos(a)),
     [posicionesExistentes]
   );
 

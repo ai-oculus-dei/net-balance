@@ -9,6 +9,9 @@ import type { PatrimonioFormValues } from '../patrimonio/PatrimonioForm';
 import { crearMovimiento } from '../../lib/supabase/queries/movimientos';
 import { crearAportacion } from '../../lib/supabase/queries/aportaciones';
 import { crearPosicionPatrimonio } from '../../lib/supabase/queries/patrimonio';
+import { crearPosicionFinanciada } from '../../lib/supabase/queries/ventas';
+import { retirarDeCuenta } from '../../lib/finance/ventas';
+import { precioCompraTotal } from '../../lib/finance/patrimonio';
 import { emitMovimientosChanged } from '../../lib/events/movimientosBus';
 import { emitObjetivosChanged } from '../../lib/events/objetivosBus';
 import { emitPatrimonioChanged } from '../../lib/events/patrimonioBus';
@@ -63,7 +66,16 @@ export function AppShell() {
 
   async function handlePatrimonioCreated(values: PatrimonioFormValues) {
     if (!session) return;
-    await crearPosicionPatrimonio(values);
+    const { cuentaOrigenId, ...posicion } = values;
+    if (cuentaOrigenId) {
+      const loteOrigen = posicionesPatrimonio.find((p) => p.id === cuentaOrigenId);
+      if (!loteOrigen) return;
+      const costeCompra = precioCompraTotal(posicion);
+      const resultadoOrigen = retirarDeCuenta(loteOrigen, costeCompra);
+      await crearPosicionFinanciada(posicion, cuentaOrigenId, resultadoOrigen);
+    } else {
+      await crearPosicionPatrimonio(posicion);
+    }
     emitPatrimonioChanged();
   }
 

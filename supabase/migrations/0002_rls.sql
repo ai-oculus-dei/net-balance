@@ -128,6 +128,22 @@ alter table patrimonio_precios_actualizacion enable row level security;
 create policy patrimonio_precios_actualizacion_select on patrimonio_precios_actualizacion
   for select using (true);
 
+-- ventas_patrimonio (individuales — ver 0016_patrimonio_ventas.sql). Solo la escribe el RPC
+-- registrar_venta_patrimonio, que NO es security definer: se apoya en estas mismas policies.
+alter table ventas_patrimonio enable row level security;
+
+create policy ventas_patrimonio_select on ventas_patrimonio
+  for select using (usuario_id = auth.uid());
+
+create policy ventas_patrimonio_insert on ventas_patrimonio
+  for insert with check (usuario_id = auth.uid());
+
+create policy ventas_patrimonio_update on ventas_patrimonio
+  for update using (usuario_id = auth.uid()) with check (usuario_id = auth.uid());
+
+create policy ventas_patrimonio_delete on ventas_patrimonio
+  for delete using (usuario_id = auth.uid());
+
 -- ============================================================
 -- Paso operativo fuera de SQL (Supabase Dashboard):
 --   1. Authentication -> Providers -> Email -> desactivar "Allow new users to sign up".

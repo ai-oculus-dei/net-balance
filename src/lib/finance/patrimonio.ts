@@ -6,7 +6,7 @@ function round(v: number, decimales: number): number {
   return Math.round(v * factor) / factor;
 }
 
-function round2(v: number): number {
+export function round2(v: number): number {
   return round(v, 2);
 }
 

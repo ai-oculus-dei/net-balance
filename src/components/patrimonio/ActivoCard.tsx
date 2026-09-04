@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card } from '../ui/Card';
 import { claseColorPorSigno } from '../charts/colors';
-import { ETIQUETA_TIPO, calcularPnL, type ActivoAgrupado } from '../../lib/finance/patrimonio';
+import { esTipoPorUnidad, ETIQUETA_TIPO, calcularPnL, type ActivoAgrupado } from '../../lib/finance/patrimonio';
 import {
   formatearCantidad,
   formatearCantidadTruncada,
@@ -25,9 +25,10 @@ function textoLote(lote: Pick<PosicionPatrimonio, 'cantidad' | 'precio_compra_un
 interface ActivoCardProps {
   activo: ActivoAgrupado;
   onEditarLote: (lote: PosicionPatrimonio) => void;
+  onVender: (activo: ActivoAgrupado) => void;
 }
 
-export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
+export function ActivoCard({ activo, onEditarLote, onVender }: ActivoCardProps) {
   const [expandido, setExpandido] = useState(false);
   const variasCompras = activo.lotes.length > 1;
   const loteConError = activo.lotes.find((l) => l.error_precio);
@@ -85,11 +86,27 @@ export function ActivoCard({ activo, onEditarLote }: ActivoCardProps) {
         </span>
       </div>
 
-      {variasCompras && (
-        <p className="text-xs text-[var(--color-accent)] mt-2">
-          {expandido ? '▾' : '▸'} {activo.lotes.length} compras
-        </p>
-      )}
+      <div className="flex items-center justify-between mt-2 gap-2">
+        {variasCompras ? (
+          <p className="text-xs text-[var(--color-accent)]">
+            {expandido ? '▾' : '▸'} {activo.lotes.length} compras
+          </p>
+        ) : (
+          <span />
+        )}
+        {esTipoPorUnidad(activo.tipo) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onVender(activo);
+            }}
+            className="text-xs font-semibold text-[var(--color-accent)] shrink-0"
+          >
+            Vender
+          </button>
+        )}
+      </div>
 
       {variasCompras && expandido && (
         <div className="mt-2 flex flex-col gap-1 border-t border-[var(--color-border)] pt-2">

@@ -259,3 +259,27 @@ export interface PatrimonioPreciosActualizacion {
   actualizado_en: string;
 }
 
+// Registro de cada venta (total o parcial) de un activo, con reparto FIFO entre sus lotes — ver
+// src/lib/finance/ventas.ts. Solo la escribe el RPC registrar_venta_patrimonio (ver
+// supabase/migrations/0016_patrimonio_ventas.sql). tipo/nombre/ticker/mercado son una copia del
+// activo en el momento de la venta, no una referencia viva (el lote origen puede archivarse
+// despues, o su nombre reutilizarse en otra posicion).
+export interface VentaPatrimonio {
+  id: string;
+  usuario_id: string;
+  fecha: string;
+  tipo: TipoPosicionPatrimonio;
+  nombre: string;
+  ticker: string | null;
+  mercado: string | null;
+  cantidad_vendida: number;
+  precio_venta_unitario: number;
+  importe_recibido: number;
+  coste_base_total: number;
+  ganancia_realizada: number;
+  // Lote nuevo creado en la cuenta destino, si se abono el importe en alguna. Null si el dinero
+  // no se metio en ninguna cuenta trackeada.
+  cuenta_destino_id: string | null;
+  created_at: string;
+}
+

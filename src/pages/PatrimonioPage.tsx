@@ -9,6 +9,7 @@ import { PatrimonioTotalCard } from '../components/patrimonio/PatrimonioTotalCar
 import { PatrimonioPnLCard } from '../components/patrimonio/PatrimonioPnLCard';
 import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
+import { VenderActivoForm } from '../components/patrimonio/VenderActivoForm';
 import { usePosicionesPatrimonio } from '../hooks/usePosicionesPatrimonio';
 import { usePatrimonioHistorico } from '../hooks/usePatrimonioHistorico';
 import { useUltimaActualizacionPrecios } from '../hooks/useUltimaActualizacionPrecios';
@@ -21,6 +22,7 @@ import {
   historicoPorActivo,
   historicoTotalPorDia,
   patrimonioPorTipo,
+  type ActivoAgrupado,
   type GrupoPatrimonio,
 } from '../lib/finance/patrimonio';
 import type { PosicionPatrimonio } from '../lib/supabase/database.types';
@@ -29,10 +31,11 @@ const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
 
 export function PatrimonioPage() {
   const { theme } = useTheme();
-  const { posiciones, loading: loadingPosiciones, actualizar, archivar } = usePosicionesPatrimonio();
+  const { posiciones, loading: loadingPosiciones, actualizar, archivar, vender } = usePosicionesPatrimonio();
   const { historico, loading: loadingHistorico } = usePatrimonioHistorico();
   const ultimaActualizacionPrecios = useUltimaActualizacionPrecios();
   const [editando, setEditando] = useState<PosicionPatrimonio | null>(null);
+  const [vendiendo, setVendiendo] = useState<ActivoAgrupado | null>(null);
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
   const activos = useMemo(() => agruparPorActivo(posicionesActivas), [posicionesActivas]);
@@ -53,8 +56,18 @@ export function PatrimonioPage() {
 
   async function handleActualizar(values: PatrimonioFormValues) {
     if (!editando) return;
-    await actualizar(editando.id, values);
+    // cuentaOrigenId no es una columna de posiciones_patrimonio (solo se usa al crear, ver
+    // AppShell.handlePatrimonioCreated) — nunca deberia venir informado desde el modo edicion,
+    // pero se descarta explicitamente para no enviarlo en el update.
+    const { cuentaOrigenId: _cuentaOrigenId, ...cambios } = values;
+    await actualizar(editando.id, cambios);
     setEditando(null);
+  }
+
+  async function handleVender(cantidad: number, precioVentaUnitario: number, cuentaDestinoId: string | null) {
+    if (!vendiendo) return;
+    await vender(vendiendo, cantidad, precioVentaUnitario, cuentaDestinoId);
+    setVendiendo(null);
   }
 
   return (
@@ -124,7 +137,7 @@ export function PatrimonioPage() {
               </h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {deEsteGrupo.map((a) => (
-                  <ActivoCard key={a.id} activo={a} onEditarLote={setEditando} />
+                  <ActivoCard key={a.id} activo={a} onEditarLote={setEditando} onVender={setVendiendo} />
                 ))}
               </div>
             </div>
@@ -151,6 +164,17 @@ export function PatrimonioPage() {
               Archivar posición
             </Button>
           </div>
+        )}
+      </Modal>
+
+      <Modal open={vendiendo !== null} onClose={() => setVendiendo(null)} title="Vender">
+        {vendiendo && (
+          <VenderActivoForm
+            activo={vendiendo}
+            posicionesExistentes={posicionesActivas}
+            onSubmit={handleVender}
+            onCancel={() => setVendiendo(null)}
+          />
         )}
       </Modal>
 

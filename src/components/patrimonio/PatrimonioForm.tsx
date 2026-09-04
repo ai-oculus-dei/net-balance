@@ -7,12 +7,14 @@ import { useAuth } from '../../lib/auth/useAuth';
 import { toIsoDate } from '../../lib/finance/fechas';
 import { formatearImporte } from '../../lib/finance/formato';
 import {
+  agruparPorActivo,
   claveActivo,
   claveCuenta,
   ETIQUETA_GRUPO,
   ETIQUETA_TIPO,
   esTipoConTae,
   esTipoPorUnidad,
+  precioCompraTotal,
   TIPOS_POR_GRUPO,
   totalDesdeUnitario,
   unitarioDesdeTotal,
@@ -33,6 +35,10 @@ export interface PatrimonioFormValues {
   tae: number | null;
   fecha_compra: string;
   usuario_id: string;
+  // Id del lote (cuenta de un unico lote) del que se descuenta el coste de esta compra, o null
+  // si no se financia con ninguna cuenta trackeada. No es una columna de posiciones_patrimonio:
+  // el llamante lo separa antes de insertar (ver crearPosicionFinanciada).
+  cuentaOrigenId: string | null;
 }
 
 interface PatrimonioFormProps {
@@ -68,8 +74,12 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   const [usarTae, setUsarTae] = useState(initialValues?.tae != null);
   const [tae, setTae] = useState(initialValues?.tae ?? 0);
   const [cuentaSeleccionada, setCuentaSeleccionada] = useState('');
+  const [cuentaOrigenId, setCuentaOrigenId] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // "Financiar con una cuenta" solo se ofrece al crear, nunca al editar (ver cuentasOrigenElegibles).
+  const esCreacion = !initialValues;
 
   const unitario = esTipoPorUnidad(tipo);
   const puedeUsarTae = esTipoConTae(tipo);
@@ -141,6 +151,13 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
     if (cuentaSeleccionada) setNombre(cuentaSeleccionada);
   }, [cuentaSeleccionada]);
 
+  // Cuentas que se pueden elegir para financiar esta compra: solo al crear (nunca al editar), y
+  // solo cuentas de un unico lote — retirar de una con varias aportaciones es ambiguo (¿de cual
+  // se descuenta?) y se deja fuera de esta primera version, se ajusta a mano.
+  const cuentasOrigenElegibles = esCreacion
+    ? agruparPorActivo(otrasPosiciones).filter((a) => !esTipoPorUnidad(a.tipo) && a.lotes.length === 1)
+    : [];
+
   const valorActualConTaePreview =
     usarTae && precioCompraInput > 0 ? valorConTae(precioCompraInput, tae, fechaCompra) : null;
 
@@ -170,6 +187,16 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
       setError('Introduce una cantidad.');
       return;
     }
+    const precioCompraUnitarioFinal =
+      modoCompra === 'total' ? unitarioDesdeTotal(precioCompraInput, cantidad) : precioCompraInput;
+    if (cuentaOrigenId) {
+      const cuentaElegida = cuentasOrigenElegibles.find((a) => a.lotes[0].id === cuentaOrigenId);
+      const costeCompra = precioCompraTotal({ cantidad: unitario ? cantidad : 1, precio_compra_unitario: precioCompraUnitarioFinal });
+      if (!cuentaElegida || costeCompra > cuentaElegida.valorActualTotal + 0.005) {
+        setError('Saldo insuficiente en la cuenta elegida para financiar esta compra.');
+        return;
+      }
+    }
     setGuardando(true);
     setError(null);
     try {
@@ -180,11 +207,11 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
         mercado: unitario && mercado ? mercado : null,
         moneda,
         cantidad: unitario ? cantidad : 1,
-        precio_compra_unitario:
-          modoCompra === 'total' ? unitarioDesdeTotal(precioCompraInput, cantidad) : precioCompraInput,
+        precio_compra_unitario: precioCompraUnitarioFinal,
         precio_actual_unitario:
           usarTae ? null : modoActual === 'total' ? unitarioDesdeTotal(precioActualInput, cantidad) : precioActualInput,
         tae: usarTae ? tae : null,
+        cuentaOrigenId: cuentaOrigenId || null,
         fecha_compra: fechaCompra,
         usuario_id: initialValues?.usuario_id ?? session!.user.id,
       });
@@ -392,6 +419,22 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
         onChange={(e) => setFechaCompra(e.target.value)}
         required
       />
+
+      {esCreacion && cuentasOrigenElegibles.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <Select label="Financiar con una cuenta" value={cuentaOrigenId} onChange={(e) => setCuentaOrigenId(e.target.value)}>
+            <option value="">Ninguna (dinero externo)</option>
+            {cuentasOrigenElegibles.map((a) => (
+              <option key={a.lotes[0].id} value={a.lotes[0].id}>
+                {a.nombre} ({formatearImporte(a.valorActualTotal)} €)
+              </option>
+            ))}
+          </Select>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            Al guardar, el coste de esta compra se descontará del saldo de esa cuenta.
+          </p>
+        </div>
+      )}
 
       {error && <p className="text-sm text-[var(--color-loss)]">{error}</p>}
 

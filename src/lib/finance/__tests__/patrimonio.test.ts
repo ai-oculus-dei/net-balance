@@ -31,6 +31,7 @@ function posicion(overrides: Partial<PosicionPatrimonio> & { id: string; tipo: T
     mercado: null,
     moneda: 'EUR',
     cantidad: 1,
+    cantidad_original: 1,
     precio_compra_unitario: 0,
     precio_actual_unitario: 0,
     tae: null,
@@ -157,6 +158,22 @@ describe('historicoTotalPorDia', () => {
       { mes: '02 ene', valores: { total: 150 } },
     ]);
   });
+
+  it('excluye del historico plano las posiciones con ticker y usa su precio real en su lugar', () => {
+    const posiciones = [
+      posicion({ id: 'cuenta', tipo: 'cuenta_corriente', ticker: null, cantidad: 1, cantidad_original: 1, precio_actual_unitario: 100, fecha_compra: '2026-01-01' }),
+      posicion({ id: 'accion', tipo: 'stock', ticker: 'AAPL', mercado: null, cantidad: 2, cantidad_original: 2, precio_actual_unitario: 50, fecha_compra: '2026-01-01' }),
+    ];
+    const historicoPlano = [
+      historico('cuenta', '2026-01-01', 100),
+      historico('accion', '2026-01-01', 999), // no deberia contar: se sustituye por el precio real
+    ];
+    const precios = [{ ticker: 'AAPL', mercado: '', fecha: '2026-01-01', precioUnitario: 30 }];
+    const hoy = new Date(2026, 0, 1);
+
+    const puntos = historicoTotalPorDia(historicoPlano, posiciones, precios, [], hoy);
+    expect(puntos).toEqual([{ mes: '01 ene', valores: { total: 160 } }]); // 100 (cuenta) + 2x30 (accion)
+  });
 });
 
 describe('crecimientoDesdeInicioAnio', () => {
@@ -278,16 +295,29 @@ describe('agruparPorActivo', () => {
 });
 
 describe('historicoPorActivo', () => {
-  it('suma el historico de los lotes de un mismo activo en una sola linea', () => {
+  it('un activo con ticker saca su historico del precio real diario, no de patrimonio_historico', () => {
     const posiciones = [
-      posicion({ id: 'lote1', tipo: 'etf', nombre: 'NUKL', ticker: 'NUKL', mercado: 'XETR', cantidad: 3, precio_actual_unitario: 50, fecha_compra: '2026-01-23' }),
-      posicion({ id: 'lote2', tipo: 'etf', nombre: 'NUKL', ticker: 'NUKL', mercado: 'XETR', cantidad: 3, precio_actual_unitario: 50, fecha_compra: '2026-06-05' }),
+      posicion({ id: 'lote1', tipo: 'etf', nombre: 'NUKL', ticker: 'NUKL', mercado: 'XETR', cantidad: 3, cantidad_original: 3, precio_actual_unitario: 50, fecha_compra: '2026-01-01' }),
+      posicion({ id: 'lote2', tipo: 'etf', nombre: 'NUKL', ticker: 'NUKL', mercado: 'XETR', cantidad: 3, cantidad_original: 3, precio_actual_unitario: 50, fecha_compra: '2026-01-01' }),
     ];
-    const hist = [historico('lote1', '2026-01-01', 100), historico('lote2', '2026-01-01', 80)];
+    const precios = [{ ticker: 'NUKL', mercado: 'XETR', fecha: '2026-01-01', precioUnitario: 30 }];
+    const hoy = new Date(2026, 0, 1);
+
+    const { lineas, puntos } = historicoPorActivo(posiciones, [], 8, posiciones, precios, [], hoy);
+
+    expect(lineas).toEqual([{ id: 'lote1', colorIndex: 0, etiqueta: 'NUKL' }]);
+    expect(puntos).toEqual([{ mes: '01 ene', valores: { lote1: 180 } }]); // (3+3) x 30
+  });
+
+  it('sin ticker, sigue usando patrimonio_historico como siempre', () => {
+    const posiciones = [
+      posicion({ id: 'lote1', tipo: 'cuenta_ahorro', nombre: 'Ahorro', ticker: null, cantidad: 1, cantidad_original: 1, precio_actual_unitario: 100, fecha_compra: '2026-01-01' }),
+    ];
+    const hist = [historico('lote1', '2026-01-01', 180)];
 
     const { lineas, puntos } = historicoPorActivo(posiciones, hist, 8);
 
-    expect(lineas).toEqual([{ id: 'lote1', colorIndex: 0, etiqueta: 'NUKL' }]);
+    expect(lineas).toEqual([{ id: 'lote1', colorIndex: 0, etiqueta: 'Ahorro' }]);
     expect(puntos).toEqual([{ mes: '01 ene', valores: { lote1: 180 } }]);
   });
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card } from '../ui/Card';
+import { IconVisualizaciones } from '../layout/NavIcons';
 import { claseColorPorSigno } from '../charts/colors';
 import { esTipoPorUnidad, ETIQUETA_TIPO, calcularPnL, type ActivoAgrupado } from '../../lib/finance/patrimonio';
 import {
@@ -26,9 +27,10 @@ interface ActivoCardProps {
   activo: ActivoAgrupado;
   onEditarLote: (lote: PosicionPatrimonio) => void;
   onVender: (activo: ActivoAgrupado) => void;
+  onVerGrafico: (activo: ActivoAgrupado) => void;
 }
 
-export function ActivoCard({ activo, onEditarLote, onVender }: ActivoCardProps) {
+export function ActivoCard({ activo, onEditarLote, onVender, onVerGrafico }: ActivoCardProps) {
   const [expandido, setExpandido] = useState(false);
   const variasCompras = activo.lotes.length > 1;
   const loteConError = activo.lotes.find((l) => l.error_precio);
@@ -94,18 +96,34 @@ export function ActivoCard({ activo, onEditarLote, onVender }: ActivoCardProps) 
         ) : (
           <span />
         )}
-        {esTipoPorUnidad(activo.tipo) && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onVender(activo);
-            }}
-            className="text-xs font-semibold text-[var(--color-accent)] shrink-0"
-          >
-            Vender
-          </button>
-        )}
+        <div className="flex items-center gap-3 shrink-0">
+          {activo.ticker && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onVerGrafico(activo);
+              }}
+              aria-label="Ver histórico"
+              title="Ver histórico"
+              className="text-[var(--color-text-muted)]"
+            >
+              <IconVisualizaciones className="w-4 h-4" />
+            </button>
+          )}
+          {esTipoPorUnidad(activo.tipo) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onVender(activo);
+              }}
+              className="text-xs font-semibold text-[var(--color-accent)]"
+            >
+              Vender
+            </button>
+          )}
+        </div>
       </div>
 
       {variasCompras && expandido && (

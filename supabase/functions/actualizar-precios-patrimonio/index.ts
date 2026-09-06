@@ -60,6 +60,17 @@
 // (0012_patrimonio_cron_horario.sql, `service_role_key`) tiene que ser el `sb_secret_...`, si
 // no la funcion responde 401 aunque el cron mande "algo" en el Authorization.
 //
+// Ademas de precio_actual_unitario (arriba), esta funcion mantiene precios_historico_activo: el
+// precio unitario REAL de cada activo dia a dia (por ticker+mercado, no por posicion), que
+// sustituye al backfill plano de patrimonio_historico (que usaba el precio de HOY para dias
+// pasados) en los graficos de Patrimonio — ver src/lib/finance/historicoPrecioActivo.ts y
+// supabase/migrations/0017_patrimonio_historico_precios.sql. La primera vez que un ticker+mercado
+// consigue precio y no tiene NINGUNA fila todavia en esa tabla, se pide su historico completo
+// (Yahoo/CoinGecko dan un rango entero en una sola peticion) desde la fecha de compra mas
+// antigua entre las posiciones actuales de ese activo — no hace falta ningun paso manual, el
+// propio cron lo hace solo la primera vez que ve un ticker nuevo. Despues, cada ejecucion solo
+// actualiza el punto de HOY (upsert), igual que ya hace con precio_actual_unitario.
+//
 // Desplegar con: npx supabase functions deploy actualizar-precios-patrimonio
 // (No hace falta ninguna clave de API: CoinGecko y Yahoo Finance son ambas gratis y sin clave.
 // SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta Supabase automaticamente.)
@@ -74,11 +85,22 @@ interface PosicionAActualizar {
   ticker: string;
   mercado: string | null;
   moneda: string;
+  fecha_compra: string;
 }
 
 interface ResultadoPrecio {
   precio: number | null;
   // Motivo por el que no se pudo obtener el precio (null si precio no es null).
+  error: string | null;
+}
+
+interface PuntoHistorico {
+  fecha: string; // YYYY-MM-DD
+  precio: number;
+}
+
+interface ResultadoHistorico {
+  puntos: PuntoHistorico[];
   error: string | null;
 }
 
@@ -114,6 +136,56 @@ async function precioCoinGecko(coinId: string): Promise<ResultadoPrecio> {
   return { precio, error: null };
 }
 
+// A diferencia del cliente (ver fechas.ts), aqui NO aplica la regla de "nunca toISOString" — no
+// hay zona horaria de un usuario de por medio, son timestamps UTC de una API externa que hay que
+// convertir a una fecha de calendario, y toISOString() es exactamente la conversion correcta.
+function fechaIsoDesdeUnixSegundos(segundos: number): string {
+  return new Date(segundos * 1000).toISOString().slice(0, 10);
+}
+
+// Historico diario completo de un ticker desde `desde` hasta hoy, en una sola peticion (mismo
+// endpoint que precioYahoo, con el rango como parametros). Los huecos sin cotizacion (el array
+// `close` trae null en dias sin sesion) se descartan.
+async function precioYahooHistorico(ticker: string, desde: Date): Promise<ResultadoHistorico> {
+  const period1 = Math.floor(desde.getTime() / 1000);
+  const period2 = Math.floor(Date.now() / 1000);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${period1}&period2=${period2}&interval=1d`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    return { puntos: [], error: `Yahoo Finance (${res.status}): ${data?.chart?.error?.description ?? 'error desconocido'}` };
+  }
+  const timestamps: unknown = data?.chart?.result?.[0]?.timestamp;
+  const cierres: unknown = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+  if (!Array.isArray(timestamps) || !Array.isArray(cierres)) {
+    return { puntos: [], error: 'Yahoo Finance: historico no disponible para este ticker' };
+  }
+  const puntos: PuntoHistorico[] = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const precio = cierres[i];
+    if (typeof precio === 'number') puntos.push({ fecha: fechaIsoDesdeUnixSegundos(timestamps[i]), precio });
+  }
+  return { puntos, error: null };
+}
+
+// Historico diario de un coin de CoinGecko ya en EUR (sin conversion). El plan gratuito limita
+// cuantos dias hacia atras se pueden pedir — si `desde` queda fuera de ese limite, CoinGecko
+// simplemente devuelve menos dias de los pedidos (limitacion conocida, ver TODO.md).
+async function precioCoinGeckoHistorico(coinId: string, desde: Date): Promise<ResultadoHistorico> {
+  const dias = Math.max(1, Math.ceil((Date.now() - desde.getTime()) / 86_400_000));
+  const url = `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(coinId)}/market_chart?vs_currency=eur&days=${dias}&interval=daily`;
+  const res = await fetch(url);
+  if (!res.ok) return { puntos: [], error: `CoinGecko (${res.status}): error desconocido` };
+  const data = await res.json().catch(() => null);
+  const precios: unknown = data?.prices;
+  if (!Array.isArray(precios)) return { puntos: [], error: 'CoinGecko: historico no disponible' };
+  const puntos: PuntoHistorico[] = precios
+    .filter((p): p is [number, number] => Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number')
+    .map(([ts, precio]) => ({ fecha: new Date(ts).toISOString().slice(0, 10), precio }));
+  return { puntos, error: null };
+}
+
 // El ticker+mercado es el codigo univoco del activo — el tipo NO entra en la clave de
 // agrupacion (a diferencia de claveActivo() en el cliente, que sí lo usa para el nombre/P&L
 // agregado): si el mismo ticker aparece en dos posiciones con un tipo distinto (p.ej. una mal
@@ -143,6 +215,33 @@ async function precioDelGrupo(
   return { precio: resultado.precio / tipoCambioEurUsd, error: null };
 }
 
+// Analogo a precioDelGrupo pero para el historico completo (backfill de un ticker nuevo).
+// `tipoCambioHistorico` (fecha -> tipo de cambio ese dia) se pide una unica vez por ejecucion,
+// igual que el tipo de cambio de hoy — si un dia concreto del historico en USD no tiene tipo de
+// cambio para esa misma fecha exacta, ese punto se descarta en vez de guardarlo sin convertir.
+async function historicoDelGrupo(
+  grupo: PosicionAActualizar[],
+  desde: Date,
+  tipoCambioHistorico: Map<string, number> | null
+): Promise<ResultadoHistorico> {
+  const [representante] = grupo;
+  const esCripto = grupo.some((p) => p.tipo === 'criptomoneda');
+  if (esCripto) return precioCoinGeckoHistorico(representante.ticker, desde);
+
+  const resultado = await precioYahooHistorico(representante.ticker, desde);
+  if (resultado.puntos.length === 0 || representante.moneda !== 'USD') return resultado;
+
+  if (!tipoCambioHistorico) {
+    return { puntos: [], error: 'No se pudo convertir el historico de USD a EUR: tipo de cambio no disponible' };
+  }
+  const puntos: PuntoHistorico[] = [];
+  for (const punto of resultado.puntos) {
+    const tasa = tipoCambioHistorico.get(punto.fecha);
+    if (tasa) puntos.push({ fecha: punto.fecha, precio: punto.precio / tasa });
+  }
+  return { puntos, error: null };
+}
+
 function agruparPorActivo(posiciones: PosicionAActualizar[]): PosicionAActualizar[][] {
   const grupos = new Map<string, PosicionAActualizar[]>();
   for (const p of posiciones) {
@@ -169,7 +268,7 @@ Deno.serve(async (req) => {
 
   const { data: posiciones, error } = await supabase
     .from('posiciones_patrimonio')
-    .select('id, tipo, ticker, mercado, moneda')
+    .select('id, tipo, ticker, mercado, moneda, fecha_compra')
     .eq('activa', true)
     .is('tae', null)
     .not('ticker', 'is', null);
@@ -197,8 +296,43 @@ Deno.serve(async (req) => {
     errorTipoCambio = resultado.error;
   }
 
+  // Un grupo necesita backfill si su ticker+mercado no tiene TODAVIA ninguna fila en
+  // precios_historico_activo (se comprueba con una consulta pequeña por grupo, limit 1, sobre el
+  // indice unico — el numero de activos distintos reales es siempre pequeño). Si hace falta
+  // convertir de USD para el backfill de alguno, se pide el historico de EURUSD=X una unica vez
+  // por ejecucion (desde la fecha mas antigua que necesite cualquiera de esos grupos).
+  const necesitaBackfill = new Map<PosicionAActualizar[], Date>();
+  for (const grupo of grupos) {
+    const [representante] = grupo;
+    const { count } = await supabase
+      .from('precios_historico_activo')
+      .select('id', { count: 'exact', head: true })
+      .eq('ticker', representante.ticker.trim().toLowerCase())
+      .eq('mercado', (representante.mercado ?? '').trim().toLowerCase());
+    if (!count) {
+      const fechaMasAntigua = grupo.reduce(
+        (min, p) => (p.fecha_compra < min ? p.fecha_compra : min),
+        representante.fecha_compra
+      );
+      necesitaBackfill.set(grupo, new Date(`${fechaMasAntigua}T00:00:00Z`));
+    }
+  }
+
+  let tipoCambioHistorico: Map<string, number> | null = null;
+  const necesitaDolarBackfill = Array.from(necesitaBackfill.keys()).some(
+    (g) => !g.some((p) => p.tipo === 'criptomoneda') && g[0].moneda === 'USD'
+  );
+  if (necesitaDolarBackfill) {
+    const desdeMasAntigua = new Date(Math.min(...Array.from(necesitaBackfill.values()).map((d) => d.getTime())));
+    const { puntos } = await precioYahooHistorico('EURUSD=X', desdeMasAntigua);
+    if (puntos.length > 0) tipoCambioHistorico = new Map(puntos.map((p) => [p.fecha, p.precio]));
+  }
+
   for (const grupo of grupos) {
     const ids = grupo.map((p) => p.id);
+    const [representante] = grupo;
+    const tickerNorm = representante.ticker.trim().toLowerCase();
+    const mercadoNorm = (representante.mercado ?? '').trim().toLowerCase();
 
     try {
       const { precio, error: errorPrecio } = await precioDelGrupo(grupo, tipoCambioEurUsd, errorTipoCambio);
@@ -220,6 +354,22 @@ Deno.serve(async (req) => {
             : { id: p.id, ticker: p.ticker, ok: true, precio }
         );
       }
+
+      // Backfill perezoso (una sola vez por ticker+mercado nuevo) + punto de HOY, siempre.
+      const desdeBackfill = necesitaBackfill.get(grupo);
+      if (desdeBackfill) {
+        const { puntos: puntosHistoricos } = await historicoDelGrupo(grupo, desdeBackfill, tipoCambioHistorico);
+        if (puntosHistoricos.length > 0) {
+          await supabase.from('precios_historico_activo').upsert(
+            puntosHistoricos.map((p) => ({ ticker: tickerNorm, mercado: mercadoNorm, fecha: p.fecha, precio_unitario: p.precio })),
+            { onConflict: 'ticker,mercado,fecha', ignoreDuplicates: true }
+          );
+        }
+      }
+      await supabase.from('precios_historico_activo').upsert(
+        { ticker: tickerNorm, mercado: mercadoNorm, fecha: new Date().toISOString().slice(0, 10), precio_unitario: precio },
+        { onConflict: 'ticker,mercado,fecha' }
+      );
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : String(err);
       await supabase.from('posiciones_patrimonio').update({ error_precio: mensaje }).in('id', ids);

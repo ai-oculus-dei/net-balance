@@ -10,6 +10,7 @@ function posicion(overrides: Partial<PosicionPatrimonio> & { id: string; tipo: T
     mercado: null,
     moneda: 'EUR',
     cantidad: 1,
+    cantidad_original: 1,
     precio_compra_unitario: 0,
     precio_actual_unitario: 0,
     tae: null,
@@ -26,7 +27,7 @@ describe('calcularVentaFIFO', () => {
   it('vende todo un unico lote y lo archiva', () => {
     const lote = posicion({ id: 'l1', tipo: 'criptomoneda', cantidad: 1, precio_compra_unitario: 20000 });
     const r = calcularVentaFIFO([lote], 1, 30000);
-    expect(r.actualizaciones).toEqual([{ id: 'l1', archivar: true }]);
+    expect(r.actualizaciones).toEqual([{ id: 'l1', archivar: true, cantidadConsumida: 1 }]);
     expect(r.costeBaseTotal).toBe(20000);
     expect(r.importeRecibido).toBe(30000);
     expect(r.gananciaRealizada).toBe(10000);
@@ -36,7 +37,7 @@ describe('calcularVentaFIFO', () => {
   it('vende una parte de un unico lote y reduce la cantidad sin archivar', () => {
     const lote = posicion({ id: 'l1', tipo: 'criptomoneda', cantidad: 1, precio_compra_unitario: 20000 });
     const r = calcularVentaFIFO([lote], 0.4, 30000);
-    expect(r.actualizaciones).toEqual([{ id: 'l1', archivar: false, cantidad: 0.6 }]);
+    expect(r.actualizaciones).toEqual([{ id: 'l1', archivar: false, cantidad: 0.6, cantidadConsumida: 0.4 }]);
     expect(r.costeBaseTotal).toBe(8000);
     expect(r.importeRecibido).toBe(12000);
     expect(r.gananciaRealizada).toBe(4000);
@@ -48,8 +49,8 @@ describe('calcularVentaFIFO', () => {
     // El activo agrupado siempre pasa los lotes ya ordenados ascendente por fecha_compra.
     const r = calcularVentaFIFO([lote1, lote2], 1.5, 40000);
     expect(r.actualizaciones).toEqual([
-      { id: 'l1', archivar: true },
-      { id: 'l2', archivar: false, cantidad: 0.5 },
+      { id: 'l1', archivar: true, cantidadConsumida: 1 },
+      { id: 'l2', archivar: false, cantidad: 0.5, cantidadConsumida: 0.5 },
     ]);
     // Coste base: 1 unidad del lote1 (20000) + 0.5 unidades del lote2 (15000) = 35000
     expect(r.costeBaseTotal).toBe(35000);

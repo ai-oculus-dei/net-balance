@@ -14,6 +14,10 @@ export interface ActualizacionLote {
   id: string;
   archivar: boolean;
   cantidad?: number; // solo presente cuando archivar es false
+  // Cuanto se ha tomado de este lote en esta venta (siempre > 0) — se guarda en
+  // ventas_patrimonio_lotes para poder reconstruir cuantas unidades seguian en cartera un dia
+  // pasado (ver src/lib/finance/historicoPrecioActivo.ts).
+  cantidadConsumida: number;
 }
 
 export interface ResultadoVentaFIFO {
@@ -43,9 +47,14 @@ export function calcularVentaFIFO(
     costeBaseTotal += tomado * lote.precio_compra_unitario;
     restante -= tomado;
     if (lote.cantidad - tomado <= EPSILON_CANTIDAD) {
-      actualizaciones.push({ id: lote.id, archivar: true });
+      actualizaciones.push({ id: lote.id, archivar: true, cantidadConsumida: round(tomado, 8) });
     } else {
-      actualizaciones.push({ id: lote.id, archivar: false, cantidad: round(lote.cantidad - tomado, 8) });
+      actualizaciones.push({
+        id: lote.id,
+        archivar: false,
+        cantidad: round(lote.cantidad - tomado, 8),
+        cantidadConsumida: round(tomado, 8),
+      });
     }
   }
 

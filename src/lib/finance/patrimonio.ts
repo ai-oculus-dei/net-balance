@@ -1,5 +1,6 @@
 import type { PatrimonioHistorico, PosicionPatrimonio, TipoPosicionPatrimonio } from '../supabase/database.types';
 import type { PuntoSerieLineas } from './visualizaciones';
+import { serieHistoricoActivo, type PrecioDiarioActivo, type VentaLote } from './historicoPrecioActivo';
 
 function round(v: number, decimales: number): number {
   const factor = 10 ** decimales;
@@ -289,7 +290,7 @@ export function crecimientoDesdeInicioAnio(
   return { eur, pct };
 }
 
-function etiquetaFecha(fecha: string): string {
+export function etiquetaFecha(fecha: string): string {
   // fecha viene como "YYYY-MM-DD" (columna date); se parsea con los componentes locales para
   // no arrastrar el mismo problema de zona horaria que toISOString (ver fechas.ts).
   const [anio, mes, dia] = fecha.split('-').map(Number);
@@ -297,12 +298,35 @@ function etiquetaFecha(fecha: string): string {
 }
 
 // Serie temporal del patrimonio total (todas las posiciones sumadas por fecha), shaped para
-// SerieTemporalLineasChart con una unica linea ('total').
-export function historicoTotalPorDia(historico: PatrimonioHistorico[]): PuntoSerieLineas[] {
+// SerieTemporalLineasChart con una unica linea ('total'). Las posiciones SIN ticker (cuentas,
+// TAE, manual) salen de `historico` (patrimonio_historico) como siempre; las que SI tienen
+// ticker salen del precio real diario (precios_historico_activo + cantidad_original/ventas de
+// cada lote — ver historicoPrecioActivo.ts), no del backfill plano de patrimonio_historico, que
+// para esas posiciones ya no se genera (ver generar_snapshot_patrimonio). `todasLasPosiciones`
+// debe incluir tambien las archivadas: un activo con ticker vendido del todo sigue aportando su
+// valor real a los dias ANTERIORES a la venta.
+export function historicoTotalPorDia(
+  historico: PatrimonioHistorico[],
+  todasLasPosiciones: PosicionPatrimonio[] = [],
+  preciosHistoricos: PrecioDiarioActivo[] = [],
+  ventasLotes: VentaLote[] = [],
+  hoy: Date = new Date()
+): PuntoSerieLineas[] {
+  const idsConTicker = new Set(todasLasPosiciones.filter((p) => p.ticker).map((p) => p.id));
   const porFecha = new Map<string, number>();
+
   for (const h of historico) {
+    if (idsConTicker.has(h.posicion_id)) continue; // cubierto abajo por el precio real
     porFecha.set(h.fecha, (porFecha.get(h.fecha) ?? 0) + h.valor_total);
   }
+
+  const activosConTicker = agruparPorActivo(todasLasPosiciones.filter((p) => p.ticker), hoy);
+  for (const activo of activosConTicker) {
+    for (const punto of serieHistoricoActivo(activo, ventasLotes, preciosHistoricos, hoy)) {
+      porFecha.set(punto.fecha, round2((porFecha.get(punto.fecha) ?? 0) + punto.valorTotal));
+    }
+  }
+
   return Array.from(porFecha.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([fecha, total]) => ({ mes: etiquetaFecha(fecha), valores: { total: round2(total) } }));
@@ -321,35 +345,65 @@ export interface HistoricoPorPosicion {
 
 // Serie temporal multi-linea (una linea por activo, sumando todas sus compras/lotes), limitada
 // a como maximo `maxLineas` activos — los de mayor valor actual — para no superar el techo de
-// la paleta categorica (colorsCategoricos.ts, 8 colores distinguibles por daltonismo).
+// la paleta categorica (colorsCategoricos.ts, 8 colores distinguibles por daltonismo). Igual que
+// historicoTotalPorDia, un activo CON ticker saca su historico del precio real diario en vez del
+// backfill plano de patrimonio_historico. `todasLasPosiciones` (activas + archivadas) hace falta
+// para poder usar TODAS las compras de un activo con ticker al reconstruir su historico: una
+// venta parcial puede haber archivado un lote suyo mientras otro sigue activo, y ese lote
+// archivado sigue haciendo falta para el valor de ANTES de venderlo.
+// Reconstruye un activo con TODAS sus compras (activas y archivadas) a partir de uno ya
+// agrupado (normalmente solo con las activas): una venta parcial puede haber archivado un lote
+// suyo mientras otro sigue activo, y ese lote archivado sigue haciendo falta para el historico de
+// ANTES de venderlo (ver serieHistoricoActivo). Sin ticker no hay nada que completar.
+export function activoCompletoParaHistorico(
+  activo: ActivoAgrupado,
+  todasLasPosiciones: PosicionPatrimonio[],
+  hoy: Date = new Date()
+): ActivoAgrupado {
+  if (!activo.ticker) return activo;
+  const clave = claveActivo(activo.ticker, activo.mercado);
+  const completo = agruparPorActivo(todasLasPosiciones.filter((p) => p.ticker), hoy).find(
+    (a) => claveActivo(a.ticker, a.mercado) === clave
+  );
+  return completo ?? activo;
+}
+
 export function historicoPorActivo(
-  posiciones: PosicionPatrimonio[],
+  posicionesActivas: PosicionPatrimonio[],
   historico: PatrimonioHistorico[],
   maxLineas: number,
+  todasLasPosiciones: PosicionPatrimonio[] = posicionesActivas,
+  preciosHistoricos: PrecioDiarioActivo[] = [],
+  ventasLotes: VentaLote[] = [],
   hoy: Date = new Date()
 ): HistoricoPorPosicion {
-  const activos = agruparPorActivo(posiciones, hoy);
+  const activos = agruparPorActivo(posicionesActivas, hoy);
   const elegidos = [...activos].sort((a, b) => b.valorActualTotal - a.valorActualTotal).slice(0, maxLineas);
 
-  const activoPorPosicionId = new Map<string, string>();
+  const puntosPorFecha = new Map<string, Record<string, number>>();
+
   for (const activo of elegidos) {
-    for (const lote of activo.lotes) activoPorPosicionId.set(lote.id, activo.id);
+    if (activo.ticker) {
+      const completo = activoCompletoParaHistorico(activo, todasLasPosiciones, hoy);
+      for (const punto of serieHistoricoActivo(completo, ventasLotes, preciosHistoricos, hoy)) {
+        const fila = puntosPorFecha.get(punto.fecha) ?? {};
+        fila[activo.id] = round2((fila[activo.id] ?? 0) + punto.valorTotal);
+        puntosPorFecha.set(punto.fecha, fila);
+      }
+    } else {
+      const idsDelActivo = new Set(activo.lotes.map((l) => l.id));
+      for (const h of historico) {
+        if (!idsDelActivo.has(h.posicion_id)) continue;
+        const fila = puntosPorFecha.get(h.fecha) ?? {};
+        fila[activo.id] = round2((fila[activo.id] ?? 0) + h.valor_total);
+        puntosPorFecha.set(h.fecha, fila);
+      }
+    }
   }
 
-  const fechas = Array.from(
-    new Set(historico.filter((h) => activoPorPosicionId.has(h.posicion_id)).map((h) => h.fecha))
-  ).sort();
-
-  const puntos: PuntoSerieLineas[] = fechas.map((fecha) => {
-    const valores: Record<string, number> = {};
-    for (const h of historico) {
-      if (h.fecha !== fecha) continue;
-      const activoId = activoPorPosicionId.get(h.posicion_id);
-      if (!activoId) continue;
-      valores[activoId] = round2((valores[activoId] ?? 0) + h.valor_total);
-    }
-    return { mes: etiquetaFecha(fecha), valores };
-  });
+  const puntos: PuntoSerieLineas[] = Array.from(puntosPorFecha.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([fecha, valores]) => ({ mes: etiquetaFecha(fecha), valores }));
 
   const lineas: LineaHistoricoPosicion[] = elegidos.map((a, indice) => ({
     id: a.id,

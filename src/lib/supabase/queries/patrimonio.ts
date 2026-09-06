@@ -1,5 +1,10 @@
 import { supabase } from '../client';
-import type { PatrimonioHistorico, PatrimonioPreciosActualizacion, PosicionPatrimonio } from '../database.types';
+import type {
+  PatrimonioHistorico,
+  PatrimonioPreciosActualizacion,
+  PosicionPatrimonio,
+  PrecioHistoricoActivo,
+} from '../database.types';
 
 export async function fetchPosicionesPatrimonio(): Promise<PosicionPatrimonio[]> {
   const { data, error } = await supabase
@@ -12,7 +17,12 @@ export async function fetchPosicionesPatrimonio(): Promise<PosicionPatrimonio[]>
 
 // error_precio la escribe solo la Edge Function: una posicion nueva nunca ha tenido un intento
 // de actualizacion todavia, asi que crearPosicionPatrimonio la fija a null directamente.
-export type NuevaPosicionPatrimonio = Omit<PosicionPatrimonio, 'id' | 'created_at' | 'updated_at' | 'activa' | 'error_precio'>;
+// cantidad_original es opcional: si no se manda, el trigger fijar_cantidad_original la iguala a
+// `cantidad` (ver 0017_patrimonio_historico_precios.sql) — no hace falta que el cliente la sepa.
+export type NuevaPosicionPatrimonio = Omit<
+  PosicionPatrimonio,
+  'id' | 'created_at' | 'updated_at' | 'activa' | 'error_precio' | 'cantidad_original'
+> & { cantidad_original?: number };
 
 export async function crearPosicionPatrimonio(posicion: NuevaPosicionPatrimonio): Promise<PosicionPatrimonio> {
   const { data, error } = await supabase
@@ -41,6 +51,13 @@ export async function archivarPosicionPatrimonio(id: string): Promise<PosicionPa
 
 export async function fetchPatrimonioHistorico(): Promise<PatrimonioHistorico[]> {
   const { data, error } = await supabase.from('patrimonio_historico').select('*').order('fecha', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+// Sin usuario_id (el precio de mercado se comparte, ver 0017_patrimonio_historico_precios.sql).
+export async function fetchPreciosHistoricoActivo(): Promise<PrecioHistoricoActivo[]> {
+  const { data, error } = await supabase.from('precios_historico_activo').select('*').order('fecha', { ascending: true });
   if (error) throw error;
   return data;
 }

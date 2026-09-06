@@ -1,6 +1,16 @@
 import { supabase } from '../client';
 import type { ActualizacionLote, ResultadoRetirada } from '../../finance/ventas';
 import type { NuevaPosicionPatrimonio } from './patrimonio';
+import type { VentaPatrimonioLote } from '../database.types';
+
+// El ledger completo (todas las posiciones del usuario, RLS lo filtra) — se usa para reconstruir
+// cuantas unidades de cada lote seguian en cartera en una fecha pasada, ver
+// src/lib/finance/historicoPrecioActivo.ts.
+export async function fetchVentasPatrimonioLotes(): Promise<VentaPatrimonioLote[]> {
+  const { data, error } = await supabase.from('ventas_patrimonio_lotes').select('*').order('fecha', { ascending: true });
+  if (error) throw error;
+  return data;
+}
 
 export interface DatosVentaPatrimonio {
   lotesActualizar: ActualizacionLote[];
@@ -20,7 +30,13 @@ export interface DatosVentaPatrimonio {
 // los lotes indicados, registra la venta, y si hay cuenta destino le abona el importe recibido.
 export async function registrarVentaPatrimonio(datos: DatosVentaPatrimonio): Promise<string> {
   const { data, error } = await supabase.rpc('registrar_venta_patrimonio', {
-    p_lotes_actualizar: datos.lotesActualizar,
+    // El RPC lee snake_case (jsonb_to_recordset) — se traduce aqui desde el objeto en camelCase.
+    p_lotes_actualizar: datos.lotesActualizar.map((l) => ({
+      id: l.id,
+      archivar: l.archivar,
+      cantidad: l.cantidad ?? null,
+      cantidad_consumida: l.cantidadConsumida,
+    })),
     p_tipo: datos.tipo,
     p_nombre: datos.nombre,
     p_ticker: datos.ticker,

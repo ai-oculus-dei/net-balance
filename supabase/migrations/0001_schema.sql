@@ -284,6 +284,10 @@ create table posiciones_patrimonio (
   error_precio           text,
   fecha_compra           date not null default current_date,
   activa                 boolean not null default true,
+  -- cantidad realmente comprada de este lote, fija desde que se crea: una venta NUNCA la toca
+  -- (solo reduce `cantidad`) — ver fijar_cantidad_original mas abajo y
+  -- src/lib/finance/historicoPrecioActivo.ts.
+  cantidad_original      numeric(18,8) not null,
   created_at             timestamptz not null default now(),
   updated_at             timestamptz not null default now(),
   constraint chk_precio_actual_o_tae check (tae is not null or precio_actual_unitario is not null)
@@ -291,6 +295,24 @@ create table posiciones_patrimonio (
 
 create index idx_posiciones_patrimonio_usuario on posiciones_patrimonio (usuario_id);
 create index idx_posiciones_patrimonio_activa  on posiciones_patrimonio (usuario_id, activa);
+
+-- Se fija sola a `cantidad` en el alta si no se manda explicitamente, para no tener que tocar
+-- crearPosicionPatrimonio/crearPosicionFinanciada en el cliente.
+create or replace function fijar_cantidad_original()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.cantidad_original is null then
+    new.cantidad_original := new.cantidad;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trg_posiciones_patrimonio_cantidad_original
+  before insert on posiciones_patrimonio
+  for each row execute function fijar_cantidad_original();
 
 create table patrimonio_historico (
   id          uuid primary key default gen_random_uuid(),
@@ -311,8 +333,27 @@ create table patrimonio_precios_actualizacion (
   actualizado_en timestamptz not null
 );
 
+-- Precio unitario diario de cada activo (ticker+mercado normalizado igual que claveActivo: trim
+-- + lowercase). Sin usuario_id: el precio de mercado no es un dato privado, se comparte entre
+-- todos los usuarios que tengan el mismo activo. Solo lo escribe la Edge Function
+-- actualizar-precios-patrimonio (service_role); el cliente solo lo lee. Ver
+-- src/lib/finance/historicoPrecioActivo.ts.
+create table precios_historico_activo (
+  id              uuid primary key default gen_random_uuid(),
+  ticker          text not null,
+  mercado         text not null default '',
+  fecha           date not null,
+  precio_unitario numeric(18,8) not null,
+  created_at      timestamptz not null default now(),
+  unique (ticker, mercado, fecha)
+);
+
+create index idx_precios_historico_activo_clave on precios_historico_activo (ticker, mercado, fecha);
+
 -- Genera (y rellena hacia atras, idempotente) el snapshot diario de las posiciones del usuario
--- que llama — ver comentario completo en 0009_patrimonio.sql.
+-- que llama — ver comentario completo en 0009_patrimonio.sql. Solo para posiciones SIN ticker
+-- (cuentas/TAE/manual): las que tienen ticker ya tienen su historico real en
+-- precios_historico_activo (ver 0017_patrimonio_historico_precios.sql).
 create or replace function generar_snapshot_patrimonio()
 returns void
 language plpgsql
@@ -326,7 +367,7 @@ declare
   valor numeric(20,8);
 begin
   for r in
-    select * from posiciones_patrimonio where usuario_id = auth.uid() and activa = true
+    select * from posiciones_patrimonio where usuario_id = auth.uid() and activa = true and ticker is null
   loop
     select coalesce(max(fecha) + 1, r.fecha_compra) into fecha_cursor
     from patrimonio_historico where posicion_id = r.id;
@@ -374,13 +415,27 @@ create table ventas_patrimonio (
 
 create index idx_ventas_patrimonio_usuario on ventas_patrimonio (usuario_id);
 
+-- Ledger: cuanto se ha consumido de CADA lote concreto en cada venta, y en que fecha — permite
+-- reconstruir cuantas unidades de una compra seguian en cartera un dia pasado cuando solo se ha
+-- vendido una parte de ella (ver src/lib/finance/historicoPrecioActivo.ts).
+create table ventas_patrimonio_lotes (
+  id                 uuid primary key default gen_random_uuid(),
+  venta_id           uuid not null references ventas_patrimonio(id) on delete cascade,
+  posicion_id        uuid not null references posiciones_patrimonio(id) on delete cascade,
+  cantidad_consumida numeric(18,8) not null check (cantidad_consumida > 0),
+  fecha              date not null,
+  created_at         timestamptz not null default now()
+);
+
+create index idx_ventas_patrimonio_lotes_posicion on ventas_patrimonio_lotes (posicion_id);
+
 -- Aplica una venta ya calculada en el cliente (calcularVentaFIFO): reduce/archiva los lotes
--- indicados, inserta el registro de la venta, y si se paso cuenta destino, le abona el importe
--- recibido como un lote nuevo (igual que una aportacion manual a una cuenta existente). No es
--- security definer: cada tabla que toca ya tiene policy de insert/update para `authenticated`,
--- esta funcion solo agrupa varias escrituras en una unica transaccion atomica.
+-- indicados, inserta el registro de la venta y el ledger por lote, y si se paso cuenta destino,
+-- le abona el importe recibido como un lote nuevo (igual que una aportacion manual a una cuenta
+-- existente). No es security definer: cada tabla que toca ya tiene policy de insert/update para
+-- `authenticated`, esta funcion solo agrupa varias escrituras en una unica transaccion atomica.
 create or replace function registrar_venta_patrimonio(
-  p_lotes_actualizar jsonb, -- [{"id": uuid, "archivar": bool, "cantidad": numeric|null}, ...]
+  p_lotes_actualizar jsonb, -- [{"id": uuid, "archivar": bool, "cantidad": numeric|null, "cantidad_consumida": numeric}, ...]
   p_tipo text, p_nombre text, p_ticker text, p_mercado text,
   p_cantidad_vendida numeric, p_precio_venta_unitario numeric,
   p_importe_recibido numeric, p_coste_base_total numeric, p_ganancia_realizada numeric,
@@ -393,15 +448,6 @@ declare
   v_credito_id uuid;
   v_venta_id uuid;
 begin
-  for r in select * from jsonb_to_recordset(p_lotes_actualizar) as x(id uuid, archivar boolean, cantidad numeric)
-  loop
-    if r.archivar then
-      update posiciones_patrimonio set activa = false where id = r.id and usuario_id = auth.uid();
-    else
-      update posiciones_patrimonio set cantidad = r.cantidad where id = r.id and usuario_id = auth.uid();
-    end if;
-  end loop;
-
   if p_cuenta_destino_id is not null then
     insert into posiciones_patrimonio (usuario_id, tipo, nombre, cantidad, precio_compra_unitario, precio_actual_unitario, fecha_compra)
     select auth.uid(), tipo, nombre, 1, p_importe_recibido, p_importe_recibido, current_date
@@ -416,6 +462,19 @@ begin
     auth.uid(), p_tipo, p_nombre, p_ticker, p_mercado, p_cantidad_vendida, p_precio_venta_unitario,
     p_importe_recibido, p_coste_base_total, p_ganancia_realizada, v_credito_id
   ) returning id into v_venta_id;
+
+  for r in select * from jsonb_to_recordset(p_lotes_actualizar) as x(id uuid, archivar boolean, cantidad numeric, cantidad_consumida numeric)
+  loop
+    if r.archivar then
+      update posiciones_patrimonio set activa = false where id = r.id and usuario_id = auth.uid();
+    else
+      update posiciones_patrimonio set cantidad = r.cantidad where id = r.id and usuario_id = auth.uid();
+    end if;
+
+    insert into ventas_patrimonio_lotes (venta_id, posicion_id, cantidad_consumida, fecha)
+    select v_venta_id, r.id, r.cantidad_consumida, current_date
+    where exists (select 1 from posiciones_patrimonio p where p.id = r.id and p.usuario_id = auth.uid());
+  end loop;
 
   return v_venta_id;
 end;

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
+import { PantallaCompletaGrafico } from '../components/charts/PantallaCompletaGrafico';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
 import { LineasPieChart } from '../components/charts/LineasPieChart';
 import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
@@ -10,8 +11,11 @@ import { PatrimonioPnLCard } from '../components/patrimonio/PatrimonioPnLCard';
 import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
 import { VenderActivoForm } from '../components/patrimonio/VenderActivoForm';
+import { HistoricoActivoVista } from '../components/patrimonio/HistoricoActivoVista';
 import { usePosicionesPatrimonio } from '../hooks/usePosicionesPatrimonio';
 import { usePatrimonioHistorico } from '../hooks/usePatrimonioHistorico';
+import { usePreciosHistoricoActivo } from '../hooks/usePreciosHistoricoActivo';
+import { useVentasPatrimonioLotes } from '../hooks/useVentasPatrimonioLotes';
 import { useUltimaActualizacionPrecios } from '../hooks/useUltimaActualizacionPrecios';
 import { useTheme } from '../lib/theme/useTheme';
 import {
@@ -25,6 +29,7 @@ import {
   type ActivoAgrupado,
   type GrupoPatrimonio,
 } from '../lib/finance/patrimonio';
+import { precioDiarioDesdeFila, ventaLoteDesdeFila } from '../lib/finance/historicoPrecioActivo';
 import type { PosicionPatrimonio } from '../lib/supabase/database.types';
 
 const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
@@ -33,12 +38,17 @@ export function PatrimonioPage() {
   const { theme } = useTheme();
   const { posiciones, loading: loadingPosiciones, actualizar, archivar, vender } = usePosicionesPatrimonio();
   const { historico, loading: loadingHistorico } = usePatrimonioHistorico();
+  const { precios: preciosHistoricosFilas, loading: loadingPrecios } = usePreciosHistoricoActivo();
+  const { ventasLotes: ventasLotesFilas, loading: loadingVentasLotes } = useVentasPatrimonioLotes();
   const ultimaActualizacionPrecios = useUltimaActualizacionPrecios();
   const [editando, setEditando] = useState<PosicionPatrimonio | null>(null);
   const [vendiendo, setVendiendo] = useState<ActivoAgrupado | null>(null);
+  const [viendoGrafico, setViendoGrafico] = useState<ActivoAgrupado | null>(null);
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
   const activos = useMemo(() => agruparPorActivo(posicionesActivas), [posicionesActivas]);
+  const preciosHistoricos = useMemo(() => preciosHistoricosFilas.map(precioDiarioDesdeFila), [preciosHistoricosFilas]);
+  const ventasLotes = useMemo(() => ventasLotesFilas.map(ventaLoteDesdeFila), [ventasLotesFilas]);
 
   const datosPorTipo = useMemo(() => {
     return patrimonioPorTipo(posicionesActivas)
@@ -46,13 +56,16 @@ export function PatrimonioPage() {
       .map((t, indice) => ({ id: t.tipo, colorIndex: indice, etiqueta: ETIQUETA_TIPO[t.tipo], neto: t.valor }));
   }, [posicionesActivas]);
 
-  const serieTotal = useMemo(() => historicoTotalPorDia(historico), [historico]);
+  const serieTotal = useMemo(
+    () => historicoTotalPorDia(historico, posiciones, preciosHistoricos, ventasLotes),
+    [historico, posiciones, preciosHistoricos, ventasLotes]
+  );
   const { puntos: puntosPorPosicion, lineas: lineasPorPosicion } = useMemo(
-    () => historicoPorActivo(posicionesActivas, historico, MAX_LINEAS),
-    [posicionesActivas, historico]
+    () => historicoPorActivo(posicionesActivas, historico, MAX_LINEAS, posiciones, preciosHistoricos, ventasLotes),
+    [posicionesActivas, historico, posiciones, preciosHistoricos, ventasLotes]
   );
 
-  const loading = loadingPosiciones || loadingHistorico;
+  const loading = loadingPosiciones || loadingHistorico || loadingPrecios || loadingVentasLotes;
 
   async function handleActualizar(values: PatrimonioFormValues) {
     if (!editando) return;
@@ -60,7 +73,14 @@ export function PatrimonioPage() {
     // AppShell.handlePatrimonioCreated) — nunca deberia venir informado desde el modo edicion,
     // pero se descarta explicitamente para no enviarlo en el update.
     const { cuentaOrigenId: _cuentaOrigenId, ...cambios } = values;
-    await actualizar(editando.id, cambios);
+    const cambiosFinales: Partial<PosicionPatrimonio> = { ...cambios };
+    // Corregir a mano la cantidad de una compra ya existente no es lo mismo que venderla: se
+    // desplaza cantidad_original por el mismo delta para no confundir esta correccion con una
+    // venta (que reduce `cantidad` sin tocar `cantidad_original`, ver ventas.ts).
+    if (cambios.cantidad !== editando.cantidad) {
+      cambiosFinales.cantidad_original = editando.cantidad_original + (cambios.cantidad - editando.cantidad);
+    }
+    await actualizar(editando.id, cambiosFinales);
     setEditando(null);
   }
 
@@ -137,7 +157,13 @@ export function PatrimonioPage() {
               </h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {deEsteGrupo.map((a) => (
-                  <ActivoCard key={a.id} activo={a} onEditarLote={setEditando} onVender={setVendiendo} />
+                  <ActivoCard
+                    key={a.id}
+                    activo={a}
+                    onEditarLote={setEditando}
+                    onVender={setVendiendo}
+                    onVerGrafico={setViendoGrafico}
+                  />
                 ))}
               </div>
             </div>
@@ -177,6 +203,22 @@ export function PatrimonioPage() {
           />
         )}
       </Modal>
+
+      <PantallaCompletaGrafico
+        abierto={viendoGrafico !== null}
+        onClose={() => setViendoGrafico(null)}
+        render={(altura) =>
+          viendoGrafico && (
+            <HistoricoActivoVista
+              activo={viendoGrafico}
+              todasLasPosiciones={posiciones}
+              preciosHistoricos={preciosHistoricos}
+              ventasLotes={ventasLotes}
+              altura={altura}
+            />
+          )
+        }
+      />
 
       {ultimaActualizacionPrecios && (
         <p className="text-center text-xs text-[var(--color-text-muted)]">

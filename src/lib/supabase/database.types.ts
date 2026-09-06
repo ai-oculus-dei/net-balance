@@ -190,6 +190,9 @@ export interface PosicionPatrimonio {
   // tipo de cambio EUR/USD antes de guardar precio_actual_unitario (que siempre queda en EUR).
   moneda: MonedaPosicion;
   cantidad: number;
+  // Cantidad realmente comprada de este lote, fija desde que se crea (una venta NUNCA la toca,
+  // solo reduce `cantidad`) — ver src/lib/finance/historicoPrecioActivo.ts.
+  cantidad_original: number;
   precio_compra_unitario: number;
   // null cuando la posicion tiene una TAE: el valor actual se calcula por formula (ver
   // src/lib/finance/patrimonio.ts) en vez de guardarse a mano. Nunca los dos a null a la vez.
@@ -213,6 +216,8 @@ export interface PosicionPatrimonioInsert {
   mercado?: string | null;
   moneda?: MonedaPosicion;
   cantidad?: number;
+  // Opcional: si no se manda, el trigger fijar_cantidad_original la iguala a `cantidad`.
+  cantidad_original?: number;
   precio_compra_unitario: number;
   precio_actual_unitario?: number | null;
   tae?: number | null;
@@ -232,6 +237,7 @@ export interface PosicionPatrimonioUpdate {
   mercado?: string | null;
   moneda?: MonedaPosicion;
   cantidad?: number;
+  cantidad_original?: number;
   precio_compra_unitario?: number;
   precio_actual_unitario?: number | null;
   tae?: number | null;
@@ -280,6 +286,32 @@ export interface VentaPatrimonio {
   // Lote nuevo creado en la cuenta destino, si se abono el importe en alguna. Null si el dinero
   // no se metio en ninguna cuenta trackeada.
   cuenta_destino_id: string | null;
+  created_at: string;
+}
+
+// Ledger: cuanto se ha consumido de un lote concreto en una venta, y en que fecha — permite
+// reconstruir cuantas unidades de una compra seguian en cartera un dia pasado cuando solo se ha
+// vendido una parte de ella. Solo lo escribe el RPC registrar_venta_patrimonio (ver
+// supabase/migrations/0017_patrimonio_historico_precios.sql).
+export interface VentaPatrimonioLote {
+  id: string;
+  venta_id: string;
+  posicion_id: string;
+  cantidad_consumida: number;
+  fecha: string;
+  created_at: string;
+}
+
+// Precio unitario diario de un activo (ticker+mercado normalizado igual que claveActivo — trim +
+// lowercase), compartido entre todos los usuarios: el precio de mercado no es un dato privado.
+// Solo lo escribe la Edge Function actualizar-precios-patrimonio (service_role) — el cliente
+// solo lo lee. Ver src/lib/finance/historicoPrecioActivo.ts.
+export interface PrecioHistoricoActivo {
+  id: string;
+  ticker: string;
+  mercado: string;
+  fecha: string;
+  precio_unitario: number;
   created_at: string;
 }
 

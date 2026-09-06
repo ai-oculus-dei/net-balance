@@ -144,6 +144,28 @@ create policy ventas_patrimonio_update on ventas_patrimonio
 create policy ventas_patrimonio_delete on ventas_patrimonio
   for delete using (usuario_id = auth.uid());
 
+-- ventas_patrimonio_lotes (ledger por lote — ver 0017_patrimonio_historico_precios.sql). Sin
+-- usuario_id propio: la propiedad se comprueba via posicion_id.
+alter table ventas_patrimonio_lotes enable row level security;
+
+create policy ventas_patrimonio_lotes_select on ventas_patrimonio_lotes
+  for select using (
+    exists (select 1 from posiciones_patrimonio p where p.id = posicion_id and p.usuario_id = auth.uid())
+  );
+
+create policy ventas_patrimonio_lotes_insert on ventas_patrimonio_lotes
+  for insert with check (
+    exists (select 1 from posiciones_patrimonio p where p.id = posicion_id and p.usuario_id = auth.uid())
+  );
+
+-- precios_historico_activo: igual que patrimonio_precios_actualizacion, no es un dato de un
+-- usuario en concreto (el precio de mercado de un ticker se comparte) — se puede leer sin
+-- filtrar. Solo la escribe la Edge Function (service_role, sin pasar por RLS).
+alter table precios_historico_activo enable row level security;
+
+create policy precios_historico_activo_select on precios_historico_activo
+  for select using (true);
+
 -- ============================================================
 -- Paso operativo fuera de SQL (Supabase Dashboard):
 --   1. Authentication -> Providers -> Email -> desactivar "Allow new users to sign up".

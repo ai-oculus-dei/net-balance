@@ -181,20 +181,35 @@ describe('crecimientoDesdeInicioAnio', () => {
 
   it('compara el total actual con el snapshot exacto del 1 de enero de este año', () => {
     const hist = [historico('a', '2026-01-01', 900), historico('b', '2026-01-01', 100)];
-    const crecimiento = crecimientoDesdeInicioAnio(hist, 1300, hoy);
+    const crecimiento = crecimientoDesdeInicioAnio(hist, 1300, [], [], [], hoy);
     expect(crecimiento).toEqual({ eur: 300, pct: 30 });
   });
 
   it('si nada existia a 1 de enero, el total de partida es 0 y el % es null', () => {
     const hist = [historico('a', '2026-06-01', 500)]; // posicion comprada despues de enero
-    const crecimiento = crecimientoDesdeInicioAnio(hist, 800, hoy);
+    const crecimiento = crecimientoDesdeInicioAnio(hist, 800, [], [], [], hoy);
     expect(crecimiento).toEqual({ eur: 800, pct: null });
   });
 
   it('ignora snapshots de 1 de enero de otros años', () => {
     const hist = [historico('a', '2025-01-01', 5000)];
-    const crecimiento = crecimientoDesdeInicioAnio(hist, 100, hoy);
+    const crecimiento = crecimientoDesdeInicioAnio(hist, 100, [], [], [], hoy);
     expect(crecimiento).toEqual({ eur: 100, pct: null });
+  });
+
+  it('para una posicion con ticker, usa el precio real de ese dia en vez de patrimonio_historico', () => {
+    const posiciones = [
+      posicion({ id: 'cuenta', tipo: 'cuenta_corriente', ticker: null, cantidad: 1, cantidad_original: 1, precio_actual_unitario: 100, fecha_compra: '2026-01-01' }),
+      posicion({ id: 'accion', tipo: 'stock', ticker: 'AAPL', mercado: null, cantidad: 2, cantidad_original: 2, precio_actual_unitario: 50, fecha_compra: '2026-01-01' }),
+    ];
+    const hist = [
+      historico('cuenta', '2026-01-01', 100),
+      historico('accion', '2026-01-01', 999), // fila muerta: no deberia contar
+    ];
+    const precios = [{ ticker: 'AAPL', mercado: '', fecha: '2026-01-01', precioUnitario: 30 }];
+    const crecimiento = crecimientoDesdeInicioAnio(hist, 1300, posiciones, precios, [], hoy);
+    // total 1 ene: 100 (cuenta) + 2x30 (accion) = 160; eur = 1300 - 160 = 1140
+    expect(crecimiento).toEqual({ eur: 1140, pct: 712.5 });
   });
 });
 

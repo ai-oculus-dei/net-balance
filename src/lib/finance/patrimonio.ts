@@ -275,16 +275,33 @@ export interface CrecimientoAnual {
 // Crecimiento del patrimonio total desde el 1 de enero del año en curso: compara el total
 // actual con la suma del historico de ESE dia exacto. Si ninguna posicion existia todavia el 1
 // de enero (todas con fecha_compra posterior), el total de partida es 0 de forma natural — no
-// hace falta buscar el dato mas cercano ni tratarlo como un caso especial.
+// hace falta buscar el dato mas cercano ni tratarlo como un caso especial. Igual que
+// historicoTotalPorDia: las posiciones CON ticker sacan su valor de ese dia del precio real
+// (precios_historico_activo), no de `historico` (patrimonio_historico), que ya no se genera para
+// ellas — `todasLasPosiciones` (activas + archivadas) es opcional para no romper llamadas
+// existentes que todavia no pasan las posiciones.
 export function crecimientoDesdeInicioAnio(
   historico: PatrimonioHistorico[],
   totalActual: number,
+  todasLasPosiciones: PosicionPatrimonio[] = [],
+  preciosHistoricos: PrecioDiarioActivo[] = [],
+  ventasLotes: VentaLote[] = [],
   hoy: Date = new Date()
 ): CrecimientoAnual {
   const fechaInicioAnio = `${hoy.getFullYear()}-01-01`;
-  const totalInicioAnio = round2(
-    historico.filter((h) => h.fecha === fechaInicioAnio).reduce((suma, h) => suma + h.valor_total, 0)
-  );
+  const idsConTicker = new Set(todasLasPosiciones.filter((p) => p.ticker).map((p) => p.id));
+
+  let totalInicioAnio = historico
+    .filter((h) => h.fecha === fechaInicioAnio && !idsConTicker.has(h.posicion_id))
+    .reduce((suma, h) => suma + h.valor_total, 0);
+
+  const activosConTicker = agruparPorActivo(todasLasPosiciones.filter((p) => p.ticker), hoy);
+  for (const activo of activosConTicker) {
+    const punto = serieHistoricoActivo(activo, ventasLotes, preciosHistoricos, hoy).find((p) => p.fecha === fechaInicioAnio);
+    if (punto) totalInicioAnio += punto.valorTotal;
+  }
+
+  totalInicioAnio = round2(totalInicioAnio);
   const eur = round2(totalActual - totalInicioAnio);
   const pct = totalInicioAnio > 0 ? round2((eur / totalInicioAnio) * 100) : null;
   return { eur, pct };

@@ -92,7 +92,14 @@ export function PatrimonioPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PatrimonioTotalCard posiciones={posicionesActivas} historico={historico} loading={loading} />
+      <PatrimonioTotalCard
+        posiciones={posicionesActivas}
+        historico={historico}
+        loading={loading}
+        todasLasPosiciones={posiciones}
+        preciosHistoricos={preciosHistoricos}
+        ventasLotes={ventasLotes}
+      />
 
       <PatrimonioPnLCard posiciones={posicionesActivas} loading={loading} />
 

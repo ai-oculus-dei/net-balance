@@ -2,17 +2,30 @@ import { Card } from '../ui/Card';
 import { claseColorPorSigno } from '../charts/colors';
 import { formatearImporte } from '../../lib/finance/formato';
 import { crecimientoDesdeInicioAnio, patrimonioTotalActual } from '../../lib/finance/patrimonio';
+import type { PrecioDiarioActivo, VentaLote } from '../../lib/finance/historicoPrecioActivo';
 import type { PatrimonioHistorico, PosicionPatrimonio } from '../../lib/supabase/database.types';
 
 interface PatrimonioTotalCardProps {
   posiciones: PosicionPatrimonio[];
   historico: PatrimonioHistorico[];
   loading: boolean;
+  // Para que el "crecimiento desde 1 de enero" tambien use el precio real de las posiciones con
+  // ticker en esa fecha, en vez del backfill plano ya retirado (ver crecimientoDesdeInicioAnio).
+  todasLasPosiciones?: PosicionPatrimonio[];
+  preciosHistoricos?: PrecioDiarioActivo[];
+  ventasLotes?: VentaLote[];
 }
 
-export function PatrimonioTotalCard({ posiciones, historico, loading }: PatrimonioTotalCardProps) {
+export function PatrimonioTotalCard({
+  posiciones,
+  historico,
+  loading,
+  todasLasPosiciones = posiciones,
+  preciosHistoricos = [],
+  ventasLotes = [],
+}: PatrimonioTotalCardProps) {
   const total = patrimonioTotalActual(posiciones);
-  const crecimiento = crecimientoDesdeInicioAnio(historico, total);
+  const crecimiento = crecimientoDesdeInicioAnio(historico, total, todasLasPosiciones, preciosHistoricos, ventasLotes);
 
   return (
     <Card>

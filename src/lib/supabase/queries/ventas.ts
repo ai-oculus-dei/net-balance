@@ -1,15 +1,17 @@
 import { supabase } from '../client';
+import { fetchTodasLasFilas } from '../paginacion';
 import type { ActualizacionLote, ResultadoRetirada } from '../../finance/ventas';
 import type { NuevaPosicionPatrimonio } from './patrimonio';
 import type { VentaPatrimonioLote } from '../database.types';
 
 // El ledger completo (todas las posiciones del usuario, RLS lo filtra) — se usa para reconstruir
 // cuantas unidades de cada lote seguian en cartera en una fecha pasada, ver
-// src/lib/finance/historicoPrecioActivo.ts.
+// src/lib/finance/historicoPrecioActivo.ts. Paginado (ver fetchTodasLasFilas) por si supera el
+// limite de filas por consulta de Supabase.
 export async function fetchVentasPatrimonioLotes(): Promise<VentaPatrimonioLote[]> {
-  const { data, error } = await supabase.from('ventas_patrimonio_lotes').select('*').order('fecha', { ascending: true });
-  if (error) throw error;
-  return data;
+  return fetchTodasLasFilas(async (desde, hasta) =>
+    supabase.from('ventas_patrimonio_lotes').select('*').order('fecha', { ascending: true }).range(desde, hasta)
+  );
 }
 
 export interface DatosVentaPatrimonio {

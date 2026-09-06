@@ -1,4 +1,5 @@
 import { supabase } from '../client';
+import { fetchTodasLasFilas } from '../paginacion';
 import type {
   PatrimonioHistorico,
   PatrimonioPreciosActualizacion,
@@ -49,17 +50,22 @@ export async function archivarPosicionPatrimonio(id: string): Promise<PosicionPa
   return actualizarPosicionPatrimonio(id, { activa: false });
 }
 
+// Paginado (ver fetchTodasLasFilas): esta tabla crece un poco cada dia para cada posicion sin
+// ticker y puede superar el limite de filas por consulta de Supabase (1000 por defecto), que
+// descarta el resto en silencio en vez de dar error — provoco un corte real en el historico a
+// mitad de año antes de arreglarse aqui.
 export async function fetchPatrimonioHistorico(): Promise<PatrimonioHistorico[]> {
-  const { data, error } = await supabase.from('patrimonio_historico').select('*').order('fecha', { ascending: true });
-  if (error) throw error;
-  return data;
+  return fetchTodasLasFilas(async (desde, hasta) =>
+    supabase.from('patrimonio_historico').select('*').order('fecha', { ascending: true }).range(desde, hasta)
+  );
 }
 
 // Sin usuario_id (el precio de mercado se comparte, ver 0017_patrimonio_historico_precios.sql).
+// Paginado por el mismo motivo que fetchPatrimonioHistorico.
 export async function fetchPreciosHistoricoActivo(): Promise<PrecioHistoricoActivo[]> {
-  const { data, error } = await supabase.from('precios_historico_activo').select('*').order('fecha', { ascending: true });
-  if (error) throw error;
-  return data;
+  return fetchTodasLasFilas(async (desde, hasta) =>
+    supabase.from('precios_historico_activo').select('*').order('fecha', { ascending: true }).range(desde, hasta)
+  );
 }
 
 export async function generarSnapshotPatrimonio(): Promise<void> {

@@ -1,5 +1,9 @@
 import type { Categoria, Movimiento, Subcategoria } from '../supabase/database.types';
 
+function round2(v: number): number {
+  return Math.round(v * 100) / 100;
+}
+
 export type SubcategoriasPorId = Map<number, Subcategoria>;
 
 export function indexarSubcategorias(subcategorias: Subcategoria[]): SubcategoriasPorId {
@@ -40,6 +44,65 @@ export function gastosFijosDelMes(movimientos: Movimiento[], subcategorias: Subc
     .filter((m) => subcategorias.get(m.subcategoria_id)?.es_gasto_fijo)
     .reduce((suma, m) => suma + m.importe, 0);
   return -balance;
+}
+
+export interface DesgloseSubcategoria {
+  etiqueta: string;
+  valor: number;
+}
+
+// Desglose de ingresoRealDelMes por subcategoria: cada "es_ingreso_real" con su balance
+// completo, mas cada "es_ingreso_condicional" solo si su propio balance ese mes es positivo —
+// exactamente el mismo criterio de ingresoRealDelMes, asi que las filas siempre suman el total.
+export function desgloseIngresoReal(movimientos: Movimiento[], subcategorias: SubcategoriasPorId): DesgloseSubcategoria[] {
+  const balancePorId = new Map<number, number>();
+  for (const m of movimientos) {
+    const sub = subcategorias.get(m.subcategoria_id);
+    if (!sub || (!sub.es_ingreso_real && !sub.es_ingreso_condicional)) continue;
+    balancePorId.set(sub.id, (balancePorId.get(sub.id) ?? 0) + m.importe);
+  }
+  const filas: DesgloseSubcategoria[] = [];
+  for (const [subId, valor] of balancePorId) {
+    const sub = subcategorias.get(subId)!;
+    if (sub.es_ingreso_condicional && !sub.es_ingreso_real && valor <= 0) continue;
+    if (valor === 0) continue;
+    filas.push({ etiqueta: sub.nombre, valor: round2(valor) });
+  }
+  return filas.sort((a, b) => b.valor - a.valor);
+}
+
+// Desglose de gastoRealTotalDelMes por subcategoria: magnitud de los movimientos negativos
+// (mismo filtro que esa funcion — solo gasto, sin traspasos), agrupada por subcategoria en vez
+// de sumada directa, asi que las filas siempre suman el total.
+export function desgloseGastoRealTotal(movimientos: Movimiento[], subcategorias: SubcategoriasPorId): DesgloseSubcategoria[] {
+  const magnitudPorId = new Map<number, number>();
+  for (const m of movimientos) {
+    if (m.importe >= 0) continue;
+    const sub = subcategorias.get(m.subcategoria_id);
+    if (!sub || sub.es_traspaso) continue;
+    magnitudPorId.set(sub.id, (magnitudPorId.get(sub.id) ?? 0) - m.importe);
+  }
+  return Array.from(magnitudPorId.entries())
+    .map(([subId, valor]) => ({ etiqueta: subcategorias.get(subId)!.nombre, valor: round2(valor) }))
+    .sort((a, b) => b.valor - a.valor);
+}
+
+// Desglose de gastoVariableDelMes por subcategoria: igual que desgloseGastoRealTotal pero
+// excluyendo las de gasto fijo. gastoVariableDelMes se calcula restando gastosFijosDelMes (que
+// neta reembolsos) de gastoRealTotalDelMes (que no los neta) — si una subcategoria de gasto
+// fijo tuviera un reembolso ese mismo mes, este desglose podria no sumar exactamente el total
+// mostrado; caso raro que no afecta al uso habitual.
+export function desgloseGastoVariable(movimientos: Movimiento[], subcategorias: SubcategoriasPorId): DesgloseSubcategoria[] {
+  const magnitudPorId = new Map<number, number>();
+  for (const m of movimientos) {
+    if (m.importe >= 0) continue;
+    const sub = subcategorias.get(m.subcategoria_id);
+    if (!sub || sub.es_traspaso || sub.es_gasto_fijo) continue;
+    magnitudPorId.set(sub.id, (magnitudPorId.get(sub.id) ?? 0) - m.importe);
+  }
+  return Array.from(magnitudPorId.entries())
+    .map(([subId, valor]) => ({ etiqueta: subcategorias.get(subId)!.nombre, valor: round2(valor) }))
+    .sort((a, b) => b.valor - a.valor);
 }
 
 export interface BalanceSubcategoria {

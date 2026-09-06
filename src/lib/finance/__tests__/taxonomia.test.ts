@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { balancePorSubcategoria, indexarSubcategorias, ingresoRealDelMes } from '../taxonomia';
+import {
+  balancePorSubcategoria,
+  desgloseGastoRealTotal,
+  desgloseGastoVariable,
+  desgloseIngresoReal,
+  indexarSubcategorias,
+  ingresoRealDelMes,
+} from '../taxonomia';
 import type { Categoria, Movimiento, Subcategoria } from '../../supabase/database.types';
 
 const categorias: Categoria[] = [
@@ -64,6 +71,53 @@ describe('ingresoRealDelMes', () => {
     // Ahorro: -300 + 500 = 200 (positivo, suma 200). Efectivo: 20 (positivo, suma 20).
     // Inversiones: -100 (negativo, no suma nada).
     expect(ingresoRealDelMes(movimientos, subcategoriasIngresoPorId)).toBe(2220);
+  });
+});
+
+describe('desgloseIngresoReal', () => {
+  it('incluye las incondicionales completas y solo las condicionales positivas, sumando el total', () => {
+    const movimientos = [mov(1, 2000), mov(2, 100), mov(4, -300), mov(4, 500), mov(5, 20), mov(6, -100)];
+    const filas = desgloseIngresoReal(movimientos, subcategoriasIngresoPorId);
+    expect(filas).toEqual(
+      expect.arrayContaining([
+        { etiqueta: 'Salario', valor: 2000 },
+        { etiqueta: 'Ingreso Extra', valor: 100 },
+        { etiqueta: 'Ahorro', valor: 200 },
+        { etiqueta: 'Efectivo', valor: 20 },
+      ])
+    );
+    expect(filas.find((f) => f.etiqueta === 'Inversiones')).toBeUndefined();
+    expect(filas.reduce((s, f) => s + f.valor, 0)).toBe(ingresoRealDelMes(movimientos, subcategoriasIngresoPorId));
+  });
+});
+
+describe('desgloseGastoRealTotal', () => {
+  it('suma la magnitud de cada subcategoria de gasto, ignorando ingresos, sumando el total', () => {
+    const movimientos = [mov(10, -800), mov(11, -50), mov(20, -40), mov(20, 15)];
+    const filas = desgloseGastoRealTotal(movimientos, subcategoriasPorId);
+    expect(filas.sort((a, b) => a.etiqueta.localeCompare(b.etiqueta))).toEqual([
+      { etiqueta: 'Alquiler', valor: 800 },
+      { etiqueta: 'Luz', valor: 50 },
+      { etiqueta: 'Restaurantes', valor: 40 },
+    ]);
+  });
+
+  it('excluye las subcategorias marcadas como traspaso', () => {
+    const conTraspaso = indexarSubcategorias([
+      ...subcategorias,
+      { id: 30, categoria_id: 2, nombre: 'Ahorro', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: true, es_inversion: false, es_traspaso: true, es_ingreso_condicional: true },
+    ]);
+    const movimientos = [mov(10, -800), mov(30, -300)];
+    const filas = desgloseGastoRealTotal(movimientos, conTraspaso);
+    expect(filas).toEqual([{ etiqueta: 'Alquiler', valor: 800 }]);
+  });
+});
+
+describe('desgloseGastoVariable', () => {
+  it('excluye ademas las subcategorias de gasto fijo', () => {
+    const movimientos = [mov(10, -800), mov(11, -50), mov(20, -40)];
+    const filas = desgloseGastoVariable(movimientos, subcategoriasPorId);
+    expect(filas).toEqual([{ etiqueta: 'Restaurantes', valor: 40 }]);
   });
 });
 

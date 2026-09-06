@@ -12,9 +12,21 @@ import {
   tasaAhorroDelMes,
   tasaInversionDelMes,
 } from '../../lib/finance/metricas';
-import { gastosFijosDelMes, ingresoRealDelMes, type SubcategoriasPorId } from '../../lib/finance/taxonomia';
+import {
+  desgloseGastoRealTotal,
+  desgloseGastoVariable,
+  desgloseIngresoReal,
+  gastosFijosDelMes,
+  ingresoRealDelMes,
+  type DesgloseSubcategoria,
+  type SubcategoriasPorId,
+} from '../../lib/finance/taxonomia';
 import { formatearImporte } from '../../lib/finance/formato';
 import type { Movimiento } from '../../lib/supabase/database.types';
+
+function comoFilas(desglose: DesgloseSubcategoria[]) {
+  return desglose.map((d) => ({ etiqueta: d.etiqueta, valor: `${formatearImporte(d.valor)} €` }));
+}
 
 // Tasa de ahorro: verde si se ahorra "bien" (>30%), roja si es baja (<20%), blanca en medio.
 function claseColorTasaAhorro(tasa: number | null): string {
@@ -55,6 +67,18 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading 
   );
   const gastoVariable = useMemo(() => gastoVariableDelMes(gastoRealTotal, gastosFijos), [gastoRealTotal, gastosFijos]);
   const balanceNeto = useMemo(() => balanceNetoDelMes(movimientos), [movimientos]);
+  const desgloseIngreso = useMemo(
+    () => comoFilas(desgloseIngresoReal(movimientos, subcategoriasPorId)),
+    [movimientos, subcategoriasPorId]
+  );
+  const desgloseGastos = useMemo(
+    () => comoFilas(desgloseGastoRealTotal(movimientos, subcategoriasPorId)),
+    [movimientos, subcategoriasPorId]
+  );
+  const desgloseVariable = useMemo(
+    () => comoFilas(desgloseGastoVariable(movimientos, subcategoriasPorId)),
+    [movimientos, subcategoriasPorId]
+  );
   const ahorroTotal = useMemo(
     () => ahorroTotalDelMes(movimientos, subcategoriasPorId),
     [movimientos, subcategoriasPorId]
@@ -74,10 +98,25 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading 
         <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
       ) : (
         <div className="grid grid-cols-2 gap-4">
-          <StatTile label="Ingreso real" value={`${formatearImporte(ingresoReal)} €`} colorClassName="text-[var(--color-gain)]" />
-          <StatTile label="Gastos totales" value={`${formatearImporte(gastoRealTotal)} €`} colorClassName="text-[var(--color-loss)]" />
+          <StatTile
+            label="Ingreso real"
+            value={`${formatearImporte(ingresoReal)} €`}
+            colorClassName="text-[var(--color-gain)]"
+            desglose={desgloseIngreso}
+          />
+          <StatTile
+            label="Gastos totales"
+            value={`${formatearImporte(gastoRealTotal)} €`}
+            colorClassName="text-[var(--color-loss)]"
+            desglose={desgloseGastos}
+          />
           <StatTile label="Gastos fijos" value={`${formatearImporte(gastosFijos)} €`} colorClassName="text-[var(--color-loss)]" />
-          <StatTile label="Gastos variables" value={`${formatearImporte(gastoVariable)} €`} colorClassName={claseColorPorSigno(-gastoVariable)} />
+          <StatTile
+            label="Gastos variables"
+            value={`${formatearImporte(gastoVariable)} €`}
+            colorClassName={claseColorPorSigno(-gastoVariable)}
+            desglose={desgloseVariable}
+          />
           <StatTile label="Balance neto" value={`${formatearImporte(balanceNeto)} €`} colorClassName={claseColorPorSigno(balanceNeto)} />
           <StatTile
             label="Operating margin"

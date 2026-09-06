@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   balancePorSubcategoria,
-  desgloseGastoRealTotal,
+  desgloseGastosFijos,
   desgloseGastoVariable,
   desgloseIngresoReal,
   indexarSubcategorias,
@@ -91,24 +91,20 @@ describe('desgloseIngresoReal', () => {
   });
 });
 
-describe('desgloseGastoRealTotal', () => {
-  it('suma la magnitud de cada subcategoria de gasto, ignorando ingresos, sumando el total', () => {
-    const movimientos = [mov(10, -800), mov(11, -50), mov(20, -40), mov(20, 15)];
-    const filas = desgloseGastoRealTotal(movimientos, subcategoriasPorId);
-    expect(filas.sort((a, b) => a.etiqueta.localeCompare(b.etiqueta))).toEqual([
+describe('desgloseGastosFijos', () => {
+  it('suma el balance neto (con signo invertido) de cada subcategoria de gasto fijo', () => {
+    const movimientos = [mov(10, -800), mov(11, -50), mov(11, 20), mov(20, -40)];
+    const filas = desgloseGastosFijos(movimientos, subcategoriasPorId);
+    // Restaurantes (20) no es gasto fijo: no aparece.
+    expect(filas).toEqual([
       { etiqueta: 'Alquiler', valor: 800 },
-      { etiqueta: 'Luz', valor: 50 },
-      { etiqueta: 'Restaurantes', valor: 40 },
+      { etiqueta: 'Luz', valor: 30 },
     ]);
   });
 
-  it('excluye las subcategorias marcadas como traspaso', () => {
-    const conTraspaso = indexarSubcategorias([
-      ...subcategorias,
-      { id: 30, categoria_id: 2, nombre: 'Ahorro', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: true, es_inversion: false, es_traspaso: true, es_ingreso_condicional: true },
-    ]);
-    const movimientos = [mov(10, -800), mov(30, -300)];
-    const filas = desgloseGastoRealTotal(movimientos, conTraspaso);
+  it('omite una subcategoria de gasto fijo si su balance neto ese mes es 0', () => {
+    const movimientos = [mov(10, -800), mov(11, -50), mov(11, 50)];
+    const filas = desgloseGastosFijos(movimientos, subcategoriasPorId);
     expect(filas).toEqual([{ etiqueta: 'Alquiler', valor: 800 }]);
   });
 });

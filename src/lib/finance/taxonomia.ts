@@ -71,27 +71,27 @@ export function desgloseIngresoReal(movimientos: Movimiento[], subcategorias: Su
   return filas.sort((a, b) => b.valor - a.valor);
 }
 
-// Desglose de gastoRealTotalDelMes por subcategoria: magnitud de los movimientos negativos
-// (mismo filtro que esa funcion — solo gasto, sin traspasos), agrupada por subcategoria en vez
-// de sumada directa, asi que las filas siempre suman el total.
-export function desgloseGastoRealTotal(movimientos: Movimiento[], subcategorias: SubcategoriasPorId): DesgloseSubcategoria[] {
-  const magnitudPorId = new Map<number, number>();
+// Desglose de gastosFijosDelMes por subcategoria: balance neto (con signo invertido, igual que
+// esa funcion) de cada subcategoria "es_gasto_fijo", agrupado por subcategoria en vez de sumado
+// directo, asi que las filas siempre suman el total.
+export function desgloseGastosFijos(movimientos: Movimiento[], subcategorias: SubcategoriasPorId): DesgloseSubcategoria[] {
+  const balancePorId = new Map<number, number>();
   for (const m of movimientos) {
-    if (m.importe >= 0) continue;
     const sub = subcategorias.get(m.subcategoria_id);
-    if (!sub || sub.es_traspaso) continue;
-    magnitudPorId.set(sub.id, (magnitudPorId.get(sub.id) ?? 0) - m.importe);
+    if (!sub?.es_gasto_fijo) continue;
+    balancePorId.set(sub.id, (balancePorId.get(sub.id) ?? 0) + m.importe);
   }
-  return Array.from(magnitudPorId.entries())
-    .map(([subId, valor]) => ({ etiqueta: subcategorias.get(subId)!.nombre, valor: round2(valor) }))
+  return Array.from(balancePorId.entries())
+    .map(([subId, balance]) => ({ etiqueta: subcategorias.get(subId)!.nombre, valor: round2(-balance) }))
+    .filter((f) => f.valor !== 0)
     .sort((a, b) => b.valor - a.valor);
 }
 
-// Desglose de gastoVariableDelMes por subcategoria: igual que desgloseGastoRealTotal pero
-// excluyendo las de gasto fijo. gastoVariableDelMes se calcula restando gastosFijosDelMes (que
-// neta reembolsos) de gastoRealTotalDelMes (que no los neta) — si una subcategoria de gasto
-// fijo tuviera un reembolso ese mismo mes, este desglose podria no sumar exactamente el total
-// mostrado; caso raro que no afecta al uso habitual.
+// Desglose de gastoVariableDelMes por subcategoria: magnitud de los movimientos negativos (sin
+// traspasos ni gasto fijo — mismo criterio de esa metrica). gastoVariableDelMes se calcula
+// restando gastosFijosDelMes (que neta reembolsos) de gastoRealTotalDelMes (que no los neta) —
+// si una subcategoria de gasto fijo tuviera un reembolso ese mismo mes, este desglose podria no
+// sumar exactamente el total mostrado; caso raro que no afecta al uso habitual.
 export function desgloseGastoVariable(movimientos: Movimiento[], subcategorias: SubcategoriasPorId): DesgloseSubcategoria[] {
   const magnitudPorId = new Map<number, number>();
   for (const m of movimientos) {

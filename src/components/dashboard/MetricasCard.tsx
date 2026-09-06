@@ -13,7 +13,7 @@ import {
   tasaInversionDelMes,
 } from '../../lib/finance/metricas';
 import {
-  desgloseGastoRealTotal,
+  desgloseGastosFijos,
   desgloseGastoVariable,
   desgloseIngresoReal,
   gastosFijosDelMes,
@@ -71,8 +71,8 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading 
     () => comoFilas(desgloseIngresoReal(movimientos, subcategoriasPorId)),
     [movimientos, subcategoriasPorId]
   );
-  const desgloseGastos = useMemo(
-    () => comoFilas(desgloseGastoRealTotal(movimientos, subcategoriasPorId)),
+  const desgloseFijos = useMemo(
+    () => comoFilas(desgloseGastosFijos(movimientos, subcategoriasPorId)),
     [movimientos, subcategoriasPorId]
   );
   const desgloseVariable = useMemo(
@@ -108,9 +108,13 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading 
             label="Gastos totales"
             value={`${formatearImporte(gastoRealTotal)} €`}
             colorClassName="text-[var(--color-loss)]"
-            desglose={desgloseGastos}
           />
-          <StatTile label="Gastos fijos" value={`${formatearImporte(gastosFijos)} €`} colorClassName="text-[var(--color-loss)]" />
+          <StatTile
+            label="Gastos fijos"
+            value={`${formatearImporte(gastosFijos)} €`}
+            colorClassName="text-[var(--color-loss)]"
+            desglose={desgloseFijos}
+          />
           <StatTile
             label="Gastos variables"
             value={`${formatearImporte(gastoVariable)} €`}

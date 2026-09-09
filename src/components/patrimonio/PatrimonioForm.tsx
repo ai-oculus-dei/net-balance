@@ -322,7 +322,7 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-[var(--color-text-muted)]">Precio de compra</span>
+          <span className="text-sm text-[var(--color-text-muted)]">{unitario ? 'Precio de compra' : 'Importe'}</span>
           {unitario && (
             <div className="flex rounded-md border border-[var(--color-border)] overflow-hidden text-xs font-semibold">
               <button
@@ -372,23 +372,7 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
             </p>
           )}
         </div>
-      ) : precioAutomatico ? (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm text-[var(--color-text-muted)]">Precio actual</span>
-          <p
-            className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md px-3 py-2 font-mono text-lg ${
-              initialValues?.error_precio ? 'text-[var(--color-loss)]' : 'text-[var(--color-text)]'
-            }`}
-          >
-            {initialValues?.error_precio ? '-' : `${formatearImporte(precioActualInput)} €`}
-          </p>
-          <p className="text-xs text-[var(--color-text-muted)]">
-            {initialValues?.error_precio
-              ? `No se ha podido actualizar el precio: ${initialValues.error_precio}`
-              : 'Se actualiza solo con el precio de mercado (Yahoo Finance/CoinGecko) cada hora — no se puede editar a mano mientras tenga ticker.'}
-          </p>
-        </div>
-      ) : (
+      ) : precioAutomatico ? null : (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <span className="text-sm text-[var(--color-text-muted)]">Precio actual</span>

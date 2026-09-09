@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   actualizarPosicionPatrimonio,
+  ajustarCuentaPatrimonio,
   archivarPosicionPatrimonio,
   crearPosicionPatrimonio,
   fetchPosicionesPatrimonio,
@@ -8,7 +9,7 @@ import {
 } from '../lib/supabase/queries/patrimonio';
 import { registrarVentaPatrimonio } from '../lib/supabase/queries/ventas';
 import type { PosicionPatrimonio } from '../lib/supabase/database.types';
-import { calcularVentaFIFO } from '../lib/finance/ventas';
+import { ajustarCuenta as calcularAjusteCuenta, calcularVentaFIFO } from '../lib/finance/ventas';
 import type { ActivoAgrupado } from '../lib/finance/patrimonio';
 import { emitPatrimonioChanged, onPatrimonioChanged } from '../lib/events/patrimonioBus';
 
@@ -74,5 +75,18 @@ export function usePosicionesPatrimonio() {
     emitPatrimonioChanged();
   }
 
-  return { posiciones, loading, error, crear, actualizar, archivar, vender, recargar };
+  // Hace crecer (delta > 0) o reduce (delta < 0) una cuenta "de saldo" ya existente, en vez de
+  // crear una posicion nueva agrupada visualmente con ella — ver ajustarCuenta en
+  // lib/finance/ventas.ts. `fecha` es el dia del cambio (no necesariamente hoy), y tambien la
+  // fecha del punto que se corrige en patrimonio_historico.
+  async function ajustarCuenta(posicionId: string, delta: number, fecha: string) {
+    const lote = posiciones.find((p) => p.id === posicionId);
+    if (!lote) throw new Error('Posición no encontrada.');
+    const resultado = calcularAjusteCuenta(lote, delta, new Date(`${fecha}T00:00:00`));
+    await ajustarCuentaPatrimonio(posicionId, resultado, fecha);
+    await recargar();
+    emitPatrimonioChanged();
+  }
+
+  return { posiciones, loading, error, crear, actualizar, archivar, vender, ajustarCuenta, recargar };
 }

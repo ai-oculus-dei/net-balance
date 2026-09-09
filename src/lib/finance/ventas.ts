@@ -113,3 +113,28 @@ export function retirarDeCuenta(lote: PosicionPatrimonio, importe: number, hoy: 
 
   return { archivar: false, cambios: { precio_actual_unitario: restante } };
 }
+
+export interface ResultadoAjusteCuenta {
+  precio_compra_unitario: number;
+  precio_actual_unitario: number;
+  tae: null;
+}
+
+// Hace crecer (delta > 0) o reduce (delta < 0) una cuenta "de saldo" (Cuenta Corriente, Cuenta
+// Remunerada, Cuenta de Ahorro, Fondo Monetario): se calcula el valor efectivo a hoy (si todavia
+// tenia una TAE fijada de antes, se cristaliza — igual que retirarDeCuenta) y se le suma el
+// delta. precio_compra_unitario y precio_actual_unitario quedan siempre iguales entre si: estas
+// cuentas ya no se tratan como una inversion con coste de compra propio, solo como un saldo que
+// vale lo que vale (sin P&L, ver ActivoCard). Lanza si el resultado seria negativo.
+export function ajustarCuenta(
+  lote: Pick<PosicionPatrimonio, 'precio_compra_unitario' | 'precio_actual_unitario' | 'fecha_compra' | 'tae'>,
+  delta: number,
+  hoy: Date = new Date()
+): ResultadoAjusteCuenta {
+  const valorActual = precioActualUnitarioEfectivo(lote, hoy);
+  const nuevoValor = round2(valorActual + delta);
+  if (nuevoValor < 0) {
+    throw new Error('El importe a restar supera el saldo disponible en la cuenta.');
+  }
+  return { precio_compra_unitario: nuevoValor, precio_actual_unitario: nuevoValor, tae: null };
+}

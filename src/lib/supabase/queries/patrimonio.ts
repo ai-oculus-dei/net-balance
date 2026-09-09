@@ -1,5 +1,6 @@
 import { supabase } from '../client';
 import { fetchTodasLasFilas } from '../paginacion';
+import type { ResultadoAjusteCuenta } from '../../finance/ventas';
 import type {
   PatrimonioHistorico,
   PatrimonioPreciosActualizacion,
@@ -48,6 +49,23 @@ export async function actualizarPosicionPatrimonio(
 // historico ya generado (ver 0009_patrimonio.sql).
 export async function archivarPosicionPatrimonio(id: string): Promise<PosicionPatrimonio> {
   return actualizarPosicionPatrimonio(id, { activa: false });
+}
+
+// Aplica un ajuste (ya calculado con ajustarCuenta) en una unica transaccion: actualiza el saldo
+// de la cuenta y deja constancia inmediata en patrimonio_historico para `fecha` (ver
+// 0018_patrimonio_ajustar_cuenta.sql).
+export async function ajustarCuentaPatrimonio(
+  posicionId: string,
+  resultado: ResultadoAjusteCuenta,
+  fecha: string
+): Promise<void> {
+  const { error } = await supabase.rpc('ajustar_cuenta_patrimonio', {
+    p_posicion_id: posicionId,
+    p_precio_compra_unitario: resultado.precio_compra_unitario,
+    p_precio_actual_unitario: resultado.precio_actual_unitario,
+    p_fecha: fecha,
+  });
+  if (error) throw error;
 }
 
 // Paginado (ver fetchTodasLasFilas): esta tabla crece un poco cada dia para cada posicion sin

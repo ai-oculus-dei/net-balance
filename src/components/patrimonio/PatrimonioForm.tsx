@@ -3,6 +3,7 @@ import { Input } from '../ui/Input';
 import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
+import { AjustarCuentaForm } from './AjustarCuentaForm';
 import { useAuth } from '../../lib/auth/useAuth';
 import { toIsoDate } from '../../lib/finance/fechas';
 import { formatearImporte } from '../../lib/finance/formato';
@@ -13,13 +14,12 @@ import {
   esCuentaGastos,
   ETIQUETA_GRUPO,
   ETIQUETA_TIPO,
-  esTipoConTae,
   esTipoPorUnidad,
+  precioActualUnitarioEfectivo,
   precioCompraTotal,
   TIPOS_POR_GRUPO,
   totalDesdeUnitario,
   unitarioDesdeTotal,
-  valorConTae,
   type GrupoPatrimonio,
 } from '../../lib/finance/patrimonio';
 import type { MonedaPosicion, PosicionPatrimonio, TipoPosicionPatrimonio } from '../../lib/supabase/database.types';
@@ -49,6 +49,9 @@ interface PatrimonioFormProps {
   // agruparPorActivo en lib/finance/patrimonio.ts) y heredar su nombre.
   posicionesExistentes?: PosicionPatrimonio[];
   onSubmit: (values: PatrimonioFormValues) => Promise<void>;
+  // Hace crecer una cuenta "de saldo" ya existente en vez de dar de alta una posicion nueva — ver
+  // ajustarCuenta en lib/finance/ventas.ts. Solo se usa al crear (ver cuentaSeleccionada).
+  onAjustarCuenta: (posicionId: string, importe: number, fecha: string) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -56,7 +59,13 @@ type ModoEntrada = 'total' | 'unitario';
 
 const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
 
-export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSubmit, onCancel }: PatrimonioFormProps) {
+export function PatrimonioForm({
+  initialValues,
+  posicionesExistentes = [],
+  onSubmit,
+  onAjustarCuenta,
+  onCancel,
+}: PatrimonioFormProps) {
   const { session } = useAuth();
 
   const [tipo, setTipo] = useState<TipoPosicionPatrimonio>(initialValues?.tipo ?? 'stock');
@@ -71,26 +80,37 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   const [modoCompra, setModoCompra] = useState<ModoEntrada>('unitario');
   const [modoActual, setModoActual] = useState<ModoEntrada>('unitario');
   const [precioCompraInput, setPrecioCompraInput] = useState(initialValues?.precio_compra_unitario ?? 0);
-  const [precioActualInput, setPrecioActualInput] = useState(initialValues?.precio_actual_unitario ?? 0);
-  const [usarTae, setUsarTae] = useState(initialValues?.tae != null);
-  const [tae, setTae] = useState(initialValues?.tae ?? 0);
-  const [cuentaSeleccionada, setCuentaSeleccionada] = useState('');
+  // Si la posicion todavia tenia una TAE fijada de antes (el formulario ya no la ofrece, ver
+  // handleSubmit), se parte del valor EFECTIVO a hoy (principal + interes acumulado) en vez de
+  // `precio_actual_unitario` (que para esas posiciones esta a null) — si no, guardar sin tocar
+  // este campo la resetearia a 0 en vez de conservar el valor real acumulado.
+  const [precioActualInput, setPrecioActualInput] = useState(() =>
+    initialValues?.tae != null && initialValues.precio_compra_unitario != null && initialValues.fecha_compra
+      ? precioActualUnitarioEfectivo({
+          precio_compra_unitario: initialValues.precio_compra_unitario,
+          precio_actual_unitario: initialValues.precio_actual_unitario ?? null,
+          fecha_compra: initialValues.fecha_compra,
+          tae: initialValues.tae,
+        })
+      : (initialValues?.precio_actual_unitario ?? 0)
+  );
+  const [cuentaSeleccionada, setCuentaSeleccionada] = useState(''); // id de la cuenta existente elegida, o '' = "Nueva"
   const [cuentaOrigenId, setCuentaOrigenId] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // "Financiar con una cuenta" solo se ofrece al crear, nunca al editar (ver cuentasOrigenElegibles).
+  // "Financiar con una cuenta" y "elegir cuenta existente" solo se ofrecen al crear, nunca al
+  // editar una posicion ya dada de alta (ver cuentasOrigenElegibles/cuentasExistentes).
   const esCreacion = !initialValues;
 
   const unitario = esTipoPorUnidad(tipo);
-  const puedeUsarTae = esTipoConTae(tipo);
   const otrasPosiciones = posicionesExistentes.filter((p) => p.id !== initialValues?.id);
   // Con ticker puesto, el precio de cualquier tipo "por unidad" lo mantiene solo la Edge
   // Function (Yahoo Finance/CoinGecko) cada hora — incluido Commodity: aunque el simbolo "de
   // materia prima" no lo cubre Yahoo con ese formato, un ETC/ETF que replique su precio si puede
   // estar cubierto. No tiene sentido dejar editar el precio a mano: se sobrescribiria en la
   // siguiente ejecucion de todas formas.
-  const precioAutomatico = unitario && ticker.trim() !== '' && !usarTae;
+  const precioAutomatico = unitario && ticker.trim() !== '';
 
   // Al pasar a un tipo "de saldo" (sin unidades: cuentas, fondo monetario), fija cantidad=1 y
   // fuerza el modo de entrada a "total" — el toggle no tiene sentido si cantidad siempre es 1.
@@ -101,11 +121,6 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
       setModoActual('total');
     }
   }, [unitario]);
-
-  // Si se cambia a un tipo sin rentabilidad conocida, se desactiva el uso de TAE.
-  useEffect(() => {
-    if (!puedeUsarTae) setUsarTae(false);
-  }, [puedeUsarTae]);
 
   // CoinGecko ya da el precio directamente en EUR (vs_currencies=eur): la divisa del ticker
   // solo aplica a Yahoo Finance, no tiene sentido para Criptomoneda.
@@ -130,27 +145,26 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   }, [activoExistente?.id, activoExistente?.nombre]);
 
   // Para los tipos "de saldo" (sin ticker: cuentas, fondo monetario...), el desplegable "Cuenta"
-  // ofrece sumar una aportacion nueva a una cuenta ya existente (mismo tipo+nombre) en vez de dar
-  // de alta una posicion sin relacion con el mismo nombre por casualidad.
-  const cuentasExistentes: string[] = [];
-  const clavesVistas = new Set<string>();
-  for (const p of otrasPosiciones) {
-    if (p.tipo !== tipo || p.ticker) continue;
-    const clave = claveCuenta(p.tipo, p.nombre);
-    if (!clavesVistas.has(clave)) {
-      clavesVistas.add(clave);
-      cuentasExistentes.push(p.nombre);
+  // ofrece elegir una cuenta ya existente (mismo tipo+nombre) en vez de dar de alta una sin
+  // relacion con el mismo nombre por casualidad — elegir una existente ya no crea una posicion
+  // nueva agrupada visualmente (ver mostrarAjusteCuenta mas abajo), hace crecer esa misma cuenta.
+  // Solo al crear: no tiene sentido "cambiar de cuenta" una posicion que ya existe, al editarla.
+  const cuentasExistentes: { id: string; nombre: string }[] = [];
+  if (esCreacion) {
+    const representantePorClave = new Map<string, PosicionPatrimonio>();
+    for (const p of otrasPosiciones) {
+      if (p.tipo !== tipo || p.ticker) continue;
+      const clave = claveCuenta(p.tipo, p.nombre);
+      const actual = representantePorClave.get(clave);
+      if (!actual || p.fecha_compra < actual.fecha_compra) representantePorClave.set(clave, p);
     }
+    for (const p of representantePorClave.values()) cuentasExistentes.push({ id: p.id, nombre: p.nombre });
   }
 
   // Al cambiar de tipo, la cuenta elegida (si la habia) pertenecia al tipo anterior: se resetea.
   useEffect(() => {
     setCuentaSeleccionada('');
   }, [tipo]);
-
-  useEffect(() => {
-    if (cuentaSeleccionada) setNombre(cuentaSeleccionada);
-  }, [cuentaSeleccionada]);
 
   // Cuentas que se pueden elegir para financiar esta compra: solo al crear (nunca al editar), y
   // solo cuentas de un unico lote — retirar de una con varias aportaciones es ambiguo (¿de cual
@@ -160,9 +174,6 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
   const cuentasOrigenElegibles = esCreacion
     ? agruparPorActivo(otrasPosiciones).filter((a) => !esTipoPorUnidad(a.tipo) && a.lotes.length === 1 && !esCuentaGastos(a))
     : [];
-
-  const valorActualConTaePreview =
-    usarTae && precioCompraInput > 0 ? valorConTae(precioCompraInput, tae, fechaCompra) : null;
 
   function cambiarModoCompra(nuevo: ModoEntrada) {
     if (nuevo === modoCompra) return;
@@ -212,8 +223,11 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
         cantidad: unitario ? cantidad : 1,
         precio_compra_unitario: precioCompraUnitarioFinal,
         precio_actual_unitario:
-          usarTae ? null : modoActual === 'total' ? unitarioDesdeTotal(precioActualInput, cantidad) : precioActualInput,
-        tae: usarTae ? tae : null,
+          modoActual === 'total' ? unitarioDesdeTotal(precioActualInput, cantidad) : precioActualInput,
+        // El formulario ya no ofrece fijar una TAE (las cuentas se tratan como saldo que crece a
+        // mano, ver ajustarCuenta) — una posicion antigua que todavia la tuviera la pierde en
+        // cuanto se edite y se guarde desde aqui.
+        tae: null,
         cuentaOrigenId: cuentaOrigenId || null,
         fecha_compra: fechaCompra,
         usuario_id: initialValues?.usuario_id ?? session!.user.id,
@@ -225,8 +239,8 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
     }
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+  const tipoYCuentaSelectores = (
+    <>
       <Select label="Tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoPosicionPatrimonio)}>
         {GRUPOS.map((grupo) => (
           <optgroup key={grupo} label={ETIQUETA_GRUPO[grupo]}>
@@ -239,16 +253,37 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
         ))}
       </Select>
 
-      {!unitario && cuentasExistentes.length > 0 && (
+      {esCreacion && !unitario && cuentasExistentes.length > 0 && (
         <Select label="Cuenta" value={cuentaSeleccionada} onChange={(e) => setCuentaSeleccionada(e.target.value)}>
           <option value="">Nueva</option>
-          {cuentasExistentes.map((nombreCuenta) => (
-            <option key={nombreCuenta} value={nombreCuenta}>
-              {nombreCuenta}
+          {cuentasExistentes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
             </option>
           ))}
         </Select>
       )}
+    </>
+  );
+
+  // Cuenta "de saldo" ya existente elegida: en vez de dar de alta una posicion nueva, el
+  // formulario se reduce a "cuanto se añade y cuando" y hace crecer esa misma cuenta.
+  if (esCreacion && !unitario && cuentaSeleccionada) {
+    return (
+      <div className="flex flex-col gap-4">
+        {tipoYCuentaSelectores}
+        <AjustarCuentaForm
+          etiquetaImporte="Importe a añadir"
+          onSubmit={(importe, fecha) => onAjustarCuenta(cuentaSeleccionada, importe, fecha)}
+          onCancel={onCancel}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {tipoYCuentaSelectores}
 
       <Input
         label="Nombre"
@@ -256,7 +291,7 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
         onChange={(e) => setNombre(e.target.value)}
         required
         placeholder="Apple Inc."
-        disabled={activoExistente !== null || cuentaSeleccionada !== ''}
+        disabled={activoExistente !== null}
       />
 
       {unitario && (
@@ -351,28 +386,7 @@ export function PatrimonioForm({ initialValues, posicionesExistentes = [], onSub
         />
       </div>
 
-      {puedeUsarTae && (
-        <label className="flex items-center gap-2 text-sm border border-[var(--color-border)] rounded-md p-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={usarTae}
-            onChange={(e) => setUsarTae(e.target.checked)}
-            className="w-4 h-4 accent-[var(--color-accent)]"
-          />
-          Usar rentabilidad conocida (TAE) en vez de precio actual manual
-        </label>
-      )}
-
-      {usarTae ? (
-        <div className="flex flex-col gap-1.5">
-          <ImporteKeypadInput label="TAE (%)" value={tae} onChange={setTae} decimales={2} />
-          {valorActualConTaePreview !== null && (
-            <p className="text-xs text-[var(--color-text-muted)]">
-              Valor actual calculado: {formatearImporte(valorActualConTaePreview)} €
-            </p>
-          )}
-        </div>
-      ) : precioAutomatico ? null : (
+      {precioAutomatico ? null : (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <span className="text-sm text-[var(--color-text-muted)]">Precio actual</span>

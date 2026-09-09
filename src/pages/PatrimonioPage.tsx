@@ -11,6 +11,7 @@ import { PatrimonioPnLCard } from '../components/patrimonio/PatrimonioPnLCard';
 import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
 import { VenderActivoForm } from '../components/patrimonio/VenderActivoForm';
+import { AjustarCuentaForm } from '../components/patrimonio/AjustarCuentaForm';
 import { HistoricoActivoVista } from '../components/patrimonio/HistoricoActivoVista';
 import { usePosicionesPatrimonio } from '../hooks/usePosicionesPatrimonio';
 import { usePatrimonioHistorico } from '../hooks/usePatrimonioHistorico';
@@ -36,13 +37,14 @@ const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
 
 export function PatrimonioPage() {
   const { theme } = useTheme();
-  const { posiciones, loading: loadingPosiciones, actualizar, archivar, vender } = usePosicionesPatrimonio();
+  const { posiciones, loading: loadingPosiciones, actualizar, archivar, vender, ajustarCuenta } = usePosicionesPatrimonio();
   const { historico, loading: loadingHistorico } = usePatrimonioHistorico();
   const { precios: preciosHistoricosFilas, loading: loadingPrecios } = usePreciosHistoricoActivo();
   const { ventasLotes: ventasLotesFilas, loading: loadingVentasLotes } = useVentasPatrimonioLotes();
   const ultimaActualizacionPrecios = useUltimaActualizacionPrecios();
   const [editando, setEditando] = useState<PosicionPatrimonio | null>(null);
   const [vendiendo, setVendiendo] = useState<ActivoAgrupado | null>(null);
+  const [reduciendo, setReduciendo] = useState<ActivoAgrupado | null>(null);
   const [viendoGrafico, setViendoGrafico] = useState<ActivoAgrupado | null>(null);
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
@@ -88,6 +90,12 @@ export function PatrimonioPage() {
     if (!vendiendo) return;
     await vender(vendiendo, cantidad, precioVentaUnitario, cuentaDestinoId);
     setVendiendo(null);
+  }
+
+  async function handleReducir(importe: number, fecha: string) {
+    if (!reduciendo) return;
+    await ajustarCuenta(reduciendo.lotes[0].id, -importe, fecha);
+    setReduciendo(null);
   }
 
   return (
@@ -169,6 +177,7 @@ export function PatrimonioPage() {
                     activo={a}
                     onEditarLote={setEditando}
                     onVender={setVendiendo}
+                    onReducir={setReduciendo}
                     onVerGrafico={setViendoGrafico}
                   />
                 ))}
@@ -185,6 +194,7 @@ export function PatrimonioPage() {
               initialValues={editando}
               posicionesExistentes={posicionesActivas}
               onSubmit={handleActualizar}
+              onAjustarCuenta={ajustarCuenta}
               onCancel={() => setEditando(null)}
             />
             <Button
@@ -208,6 +218,12 @@ export function PatrimonioPage() {
             onSubmit={handleVender}
             onCancel={() => setVendiendo(null)}
           />
+        )}
+      </Modal>
+
+      <Modal open={reduciendo !== null} onClose={() => setReduciendo(null)} title="Reducir">
+        {reduciendo && (
+          <AjustarCuentaForm etiquetaImporte="Importe a restar" onSubmit={handleReducir} onCancel={() => setReduciendo(null)} />
         )}
       </Modal>
 

@@ -527,6 +527,38 @@ $$;
 
 grant execute on function crear_posicion_financiada_patrimonio(text, text, text, text, text, numeric, numeric, numeric, numeric, date, uuid, boolean, numeric, date, numeric, numeric) to authenticated;
 
+-- Ajusta el saldo de una cuenta "de saldo" ya existente (crece o se reduce, ver
+-- ajustarCuenta en src/lib/finance/ventas.ts) y deja constancia inmediata del cambio en
+-- patrimonio_historico para el dia exacto. Security definer: patrimonio_historico no tiene
+-- policy de insert/update para `authenticated` (para que el cliente no pueda falsear el
+-- historico) — cada escritura comprueba explicitamente usuario_id = auth.uid() de todas formas.
+create or replace function ajustar_cuenta_patrimonio(
+  p_posicion_id uuid,
+  p_precio_compra_unitario numeric,
+  p_precio_actual_unitario numeric,
+  p_fecha date
+) returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update posiciones_patrimonio
+  set precio_compra_unitario = p_precio_compra_unitario,
+      precio_actual_unitario = p_precio_actual_unitario,
+      tae = null
+  where id = p_posicion_id and usuario_id = auth.uid();
+
+  insert into patrimonio_historico (posicion_id, fecha, valor_total)
+  select p_posicion_id, p_fecha, p.cantidad * p_precio_actual_unitario
+  from posiciones_patrimonio p
+  where p.id = p_posicion_id and p.usuario_id = auth.uid()
+  on conflict (posicion_id, fecha) do update set valor_total = excluded.valor_total;
+end;
+$$;
+
+grant execute on function ajustar_cuenta_patrimonio(uuid, numeric, numeric, date) to authenticated;
+
 -- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================

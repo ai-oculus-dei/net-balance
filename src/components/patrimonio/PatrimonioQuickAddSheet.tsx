@@ -8,9 +8,16 @@ interface PatrimonioQuickAddSheetProps {
   posicionesExistentes: PosicionPatrimonio[];
   onClose: () => void;
   onCreated: (values: PatrimonioFormValues) => Promise<void>;
+  onAjustarCuenta: (posicionId: string, importe: number, fecha: string) => Promise<void>;
 }
 
-export function PatrimonioQuickAddSheet({ open, posicionesExistentes, onClose, onCreated }: PatrimonioQuickAddSheetProps) {
+export function PatrimonioQuickAddSheet({
+  open,
+  posicionesExistentes,
+  onClose,
+  onCreated,
+  onAjustarCuenta,
+}: PatrimonioQuickAddSheetProps) {
   const { session } = useAuth();
 
   async function handleSubmit(values: PatrimonioFormValues) {
@@ -18,11 +25,21 @@ export function PatrimonioQuickAddSheet({ open, posicionesExistentes, onClose, o
     onClose();
   }
 
+  async function handleAjustarCuenta(posicionId: string, importe: number, fecha: string) {
+    await onAjustarCuenta(posicionId, importe, fecha);
+    onClose();
+  }
+
   if (!session) return null;
 
   return (
     <Modal open={open} onClose={onClose} title="Añadir patrimonio">
-      <PatrimonioForm posicionesExistentes={posicionesExistentes} onSubmit={handleSubmit} onCancel={onClose} />
+      <PatrimonioForm
+        posicionesExistentes={posicionesExistentes}
+        onSubmit={handleSubmit}
+        onAjustarCuenta={handleAjustarCuenta}
+        onCancel={onClose}
+      />
     </Modal>
   );
 }

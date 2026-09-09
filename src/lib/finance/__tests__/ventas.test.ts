@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calcularVentaFIFO, retirarDeCuenta } from '../ventas';
+import { ajustarCuenta, calcularVentaFIFO, retirarDeCuenta } from '../ventas';
 import type { PosicionPatrimonio, TipoPosicionPatrimonio } from '../../supabase/database.types';
 
 function posicion(overrides: Partial<PosicionPatrimonio> & { id: string; tipo: TipoPosicionPatrimonio }): PosicionPatrimonio {
@@ -105,5 +105,39 @@ describe('retirarDeCuenta', () => {
   it('lanza si el importe supera el saldo disponible', () => {
     const cuenta = posicion({ id: 'c1', tipo: 'cuenta_ahorro', precio_compra_unitario: 8000, precio_actual_unitario: 8000 });
     expect(() => retirarDeCuenta(cuenta, 8000.5)).toThrow();
+  });
+});
+
+describe('ajustarCuenta', () => {
+  it('crece: suma el delta al valor actual, dejando compra y actual iguales', () => {
+    const cuenta = posicion({ id: 'c1', tipo: 'cuenta_ahorro', precio_compra_unitario: 2000, precio_actual_unitario: 2000 });
+    const r = ajustarCuenta(cuenta, 100);
+    expect(r).toEqual({ precio_compra_unitario: 2100, precio_actual_unitario: 2100, tae: null });
+  });
+
+  it('reduce: resta el delta (numero negativo)', () => {
+    const cuenta = posicion({ id: 'c1', tipo: 'cuenta_ahorro', precio_compra_unitario: 2000, precio_actual_unitario: 2000 });
+    const r = ajustarCuenta(cuenta, -300);
+    expect(r).toEqual({ precio_compra_unitario: 1700, precio_actual_unitario: 1700, tae: null });
+  });
+
+  it('con TAE: cristaliza el valor efectivo a hoy antes de sumar el delta, y limpia la TAE', () => {
+    const cuenta = posicion({
+      id: 'c1',
+      tipo: 'cuenta_ahorro',
+      precio_compra_unitario: 8000,
+      precio_actual_unitario: null,
+      tae: 3.65,
+      fecha_compra: '2026-01-01',
+    });
+    const hoy = new Date(2026, 0, 101); // 100 dias despues
+    const r = ajustarCuenta(cuenta, 100, hoy);
+    // Valor efectivo a hoy: 8000 * (1 + 0.0365 * 100/365) = 8080; mas 100 = 8180
+    expect(r).toEqual({ precio_compra_unitario: 8180, precio_actual_unitario: 8180, tae: null });
+  });
+
+  it('lanza si el resultado seria negativo', () => {
+    const cuenta = posicion({ id: 'c1', tipo: 'cuenta_ahorro', precio_compra_unitario: 100, precio_actual_unitario: 100 });
+    expect(() => ajustarCuenta(cuenta, -100.5)).toThrow();
   });
 });

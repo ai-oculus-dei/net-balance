@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card } from '../ui/Card';
 import { IconVisualizaciones } from '../layout/NavIcons';
 import { claseColorPorSigno } from '../charts/colors';
-import { esTipoPorUnidad, ETIQUETA_TIPO, calcularPnL, type ActivoAgrupado } from '../../lib/finance/patrimonio';
+import { esCuentaGastos, esTipoPorUnidad, ETIQUETA_TIPO, calcularPnL, type ActivoAgrupado } from '../../lib/finance/patrimonio';
 import {
   formatearCantidad,
   formatearCantidadTruncada,
@@ -27,13 +27,18 @@ interface ActivoCardProps {
   activo: ActivoAgrupado;
   onEditarLote: (lote: PosicionPatrimonio) => void;
   onVender: (activo: ActivoAgrupado) => void;
+  onReducir: (activo: ActivoAgrupado) => void;
   onVerGrafico: (activo: ActivoAgrupado) => void;
 }
 
-export function ActivoCard({ activo, onEditarLote, onVender, onVerGrafico }: ActivoCardProps) {
+export function ActivoCard({ activo, onEditarLote, onVender, onReducir, onVerGrafico }: ActivoCardProps) {
   const [expandido, setExpandido] = useState(false);
   const variasCompras = activo.lotes.length > 1;
   const loteConError = activo.lotes.find((l) => l.error_precio);
+  // Cuentas Corriente/Remunerada/Ahorro/Fondo Monetario ya no se tratan como una inversion con
+  // coste de compra propio (ver ajustarCuenta en lib/finance/ventas.ts): no tiene sentido
+  // mostrarles P&L.
+  const mostrarPnL = esTipoPorUnidad(activo.tipo);
 
   function handleClick() {
     if (variasCompras) setExpandido((v) => !v);
@@ -82,10 +87,12 @@ export function ActivoCard({ activo, onEditarLote, onVender, onVerGrafico }: Act
         <span className="font-mono text-sm font-semibold">
           {activo.ticker ? `${formatearImporte(precioActualUnitario)} €/ea` : `${formatearImporte(activo.valorActualTotal)} €`}
         </span>
-        <span className={`font-mono text-xs font-semibold ${claseColorPorSigno(activo.pnl.eur)}`}>
-          {activo.pnl.eur > 0 ? '+' : ''}
-          {formatearImporte(activo.pnl.eur)} €{activo.pnl.pct !== null ? ` (${activo.pnl.pct > 0 ? '+' : ''}${formatearImporte(activo.pnl.pct, 1)}%)` : ''}
-        </span>
+        {mostrarPnL && (
+          <span className={`font-mono text-xs font-semibold ${claseColorPorSigno(activo.pnl.eur)}`}>
+            {activo.pnl.eur > 0 ? '+' : ''}
+            {formatearImporte(activo.pnl.eur)} €{activo.pnl.pct !== null ? ` (${activo.pnl.pct > 0 ? '+' : ''}${formatearImporte(activo.pnl.pct, 1)}%)` : ''}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center justify-between mt-2 gap-2">
@@ -123,6 +130,18 @@ export function ActivoCard({ activo, onEditarLote, onVender, onVerGrafico }: Act
               Vender
             </button>
           )}
+          {!esTipoPorUnidad(activo.tipo) && !esCuentaGastos(activo) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReducir(activo);
+              }}
+              className="text-xs font-semibold text-[var(--color-accent)]"
+            >
+              Reducir
+            </button>
+          )}
         </div>
       </div>
 
@@ -153,10 +172,12 @@ export function ActivoCard({ activo, onEditarLote, onVender, onVerGrafico }: Act
                   )}
                   <span className="truncate">{textoLote(lote)}</span>
                 </span>
-                <span className={`font-mono font-semibold shrink-0 ${claseColorPorSigno(pnlLote.eur)}`}>
-                  {pnlLote.eur > 0 ? '+' : ''}
-                  {formatearImporte(pnlLote.eur)} €{pnlLote.pct !== null ? ` (${pnlLote.pct > 0 ? '+' : ''}${formatearImporte(pnlLote.pct, 1)}%)` : ''}
-                </span>
+                {mostrarPnL && (
+                  <span className={`font-mono font-semibold shrink-0 ${claseColorPorSigno(pnlLote.eur)}`}>
+                    {pnlLote.eur > 0 ? '+' : ''}
+                    {formatearImporte(pnlLote.eur)} €{pnlLote.pct !== null ? ` (${pnlLote.pct > 0 ? '+' : ''}${formatearImporte(pnlLote.pct, 1)}%)` : ''}
+                  </span>
+                )}
               </div>
             );
           })}

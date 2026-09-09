@@ -8,9 +8,9 @@ import type { MovimientoFormValues } from '../movimientos/MovimientoForm';
 import type { PatrimonioFormValues } from '../patrimonio/PatrimonioForm';
 import { crearMovimiento } from '../../lib/supabase/queries/movimientos';
 import { crearAportacion } from '../../lib/supabase/queries/aportaciones';
-import { crearPosicionPatrimonio } from '../../lib/supabase/queries/patrimonio';
+import { ajustarCuentaPatrimonio, crearPosicionPatrimonio } from '../../lib/supabase/queries/patrimonio';
 import { crearPosicionFinanciada } from '../../lib/supabase/queries/ventas';
-import { retirarDeCuenta } from '../../lib/finance/ventas';
+import { ajustarCuenta, retirarDeCuenta } from '../../lib/finance/ventas';
 import { precioCompraTotal } from '../../lib/finance/patrimonio';
 import { emitMovimientosChanged } from '../../lib/events/movimientosBus';
 import { emitObjetivosChanged } from '../../lib/events/objetivosBus';
@@ -81,6 +81,15 @@ export function AppShell() {
     emitPatrimonioChanged();
   }
 
+  async function handlePatrimonioAjustado(posicionId: string, importe: number, fecha: string) {
+    if (!session) return;
+    const lote = posicionesPatrimonio.find((p) => p.id === posicionId);
+    if (!lote) return;
+    const resultado = ajustarCuenta(lote, importe, new Date(`${fecha}T00:00:00`));
+    await ajustarCuentaPatrimonio(posicionId, resultado, fecha);
+    emitPatrimonioChanged();
+  }
+
   return (
     <div className="min-h-svh flex flex-col pb-24 sm:pb-0">
       <BottomNav />
@@ -101,6 +110,7 @@ export function AppShell() {
           posicionesExistentes={posicionesPatrimonio.filter((p) => p.activa)}
           onClose={() => setQuickAddOpen(false)}
           onCreated={handlePatrimonioCreated}
+          onAjustarCuenta={handlePatrimonioAjustado}
         />
       ) : (
         <QuickAddSheet open={quickAddOpen} onClose={handleCloseQuickAdd} onCreated={handleCreated} />

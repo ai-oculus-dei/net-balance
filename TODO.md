@@ -33,7 +33,9 @@
   using posiciones_patrimonio p
   where h.posicion_id = p.id and p.ticker is not null;
   ```
-- [ ] Ejecutar `supabase/migrations/0018_patrimonio_ajustar_cuenta.sql` en el SQL Editor de Supabase (RPC `ajustar_cuenta_patrimonio` — "Añadir/reducir importe" en cuentas de saldo, sección 15).
+- [x] Ejecutar `supabase/migrations/0018_patrimonio_ajustar_cuenta.sql` en el SQL Editor de Supabase (RPC `ajustar_cuenta_patrimonio` — "Añadir/reducir importe" en cuentas de saldo, sección 15).
+- [ ] Ejecutar `supabase/migrations/0019_patrimonio_venta_credita_cuenta.sql` en el SQL Editor de Supabase (al vender y abonar en una cuenta existente, ahora la hace crecer en vez de crear una posición nueva — mismo motivo que la 0018).
+- [ ] (Una sola vez) Consolidar en el SQL Editor las cuentas de saldo que ya tengan varias posiciones de antes de este cambio (p. ej. varias aportaciones a la misma cuenta) en una sola fila cada una — pide el diagnóstico primero, ver conversación del 2026-09-09.
 
 ## Pendiente de definir (sección 14 de REQUIREMENTS.md, no bloqueante)
 

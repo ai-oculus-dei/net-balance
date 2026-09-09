@@ -430,29 +430,38 @@ create table ventas_patrimonio_lotes (
 create index idx_ventas_patrimonio_lotes_posicion on ventas_patrimonio_lotes (posicion_id);
 
 -- Aplica una venta ya calculada en el cliente (calcularVentaFIFO): reduce/archiva los lotes
--- indicados, inserta el registro de la venta y el ledger por lote, y si se paso cuenta destino,
--- le abona el importe recibido como un lote nuevo (igual que una aportacion manual a una cuenta
--- existente). No es security definer: cada tabla que toca ya tiene policy de insert/update para
--- `authenticated`, esta funcion solo agrupa varias escrituras en una unica transaccion atomica.
+-- indicados, inserta el registro de la venta y el ledger por lote, y si se paso cuenta destino
+-- la hace crecer con el importe recibido (ver ajustarCuenta) — nunca crea una posicion nueva,
+-- Cuenta Corriente/Remunerada/Ahorro/Fondo Monetario son siempre una unica posicion. No es
+-- security definer: cada tabla que toca ya tiene policy de insert/update para `authenticated`,
+-- esta funcion solo agrupa varias escrituras en una unica transaccion atomica.
 create or replace function registrar_venta_patrimonio(
   p_lotes_actualizar jsonb, -- [{"id": uuid, "archivar": bool, "cantidad": numeric|null, "cantidad_consumida": numeric}, ...]
   p_tipo text, p_nombre text, p_ticker text, p_mercado text,
   p_cantidad_vendida numeric, p_precio_venta_unitario numeric,
   p_importe_recibido numeric, p_coste_base_total numeric, p_ganancia_realizada numeric,
-  p_cuenta_destino_id uuid default null
+  p_cuenta_destino_id uuid default null,
+  p_destino_precio_compra_unitario numeric default null,
+  p_destino_precio_actual_unitario numeric default null
 ) returns uuid
 language plpgsql
 as $$
 declare
   r record;
-  v_credito_id uuid;
   v_venta_id uuid;
 begin
   if p_cuenta_destino_id is not null then
-    insert into posiciones_patrimonio (usuario_id, tipo, nombre, cantidad, precio_compra_unitario, precio_actual_unitario, fecha_compra)
-    select auth.uid(), tipo, nombre, 1, p_importe_recibido, p_importe_recibido, current_date
-    from posiciones_patrimonio where id = p_cuenta_destino_id and usuario_id = auth.uid()
-    returning id into v_credito_id;
+    update posiciones_patrimonio
+    set precio_compra_unitario = p_destino_precio_compra_unitario,
+        precio_actual_unitario = p_destino_precio_actual_unitario,
+        tae = null
+    where id = p_cuenta_destino_id and usuario_id = auth.uid();
+
+    insert into patrimonio_historico (posicion_id, fecha, valor_total)
+    select p_cuenta_destino_id, current_date, p.cantidad * p_destino_precio_actual_unitario
+    from posiciones_patrimonio p
+    where p.id = p_cuenta_destino_id and p.usuario_id = auth.uid()
+    on conflict (posicion_id, fecha) do update set valor_total = excluded.valor_total;
   end if;
 
   insert into ventas_patrimonio (
@@ -460,7 +469,7 @@ begin
     importe_recibido, coste_base_total, ganancia_realizada, cuenta_destino_id
   ) values (
     auth.uid(), p_tipo, p_nombre, p_ticker, p_mercado, p_cantidad_vendida, p_precio_venta_unitario,
-    p_importe_recibido, p_coste_base_total, p_ganancia_realizada, v_credito_id
+    p_importe_recibido, p_coste_base_total, p_ganancia_realizada, p_cuenta_destino_id
   ) returning id into v_venta_id;
 
   for r in select * from jsonb_to_recordset(p_lotes_actualizar) as x(id uuid, archivar boolean, cantidad numeric, cantidad_consumida numeric)
@@ -480,7 +489,7 @@ begin
 end;
 $$;
 
-grant execute on function registrar_venta_patrimonio(jsonb, text, text, text, text, numeric, numeric, numeric, numeric, numeric, uuid) to authenticated;
+grant execute on function registrar_venta_patrimonio(jsonb, text, text, text, text, numeric, numeric, numeric, numeric, numeric, uuid, numeric, numeric) to authenticated;
 
 -- Crea una posicion nueva y, si se indica cuenta origen, aplica en la misma transaccion el
 -- resultado ya calculado en el cliente por retirarDeCuenta (archivar, o los campos a cambiar:

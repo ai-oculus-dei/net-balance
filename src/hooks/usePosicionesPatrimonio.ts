@@ -54,10 +54,17 @@ export function usePosicionesPatrimonio() {
   }
 
   // Vende (total o parcialmente) un activo agrupado: reparte la cantidad entre sus lotes por
-  // FIFO (los mas antiguos primero, ver calcularVentaFIFO) y, si se indica, abona el importe
-  // recibido en una cuenta existente — todo en una unica transaccion (registrar_venta_patrimonio).
+  // FIFO (los mas antiguos primero, ver calcularVentaFIFO) y, si se indica, hace crecer una
+  // cuenta existente con el importe recibido (ver ajustarCuenta — nunca crea una posicion nueva)
+  // — todo en una unica transaccion (registrar_venta_patrimonio).
   async function vender(activo: ActivoAgrupado, cantidadAVender: number, precioVentaUnitario: number, cuentaDestinoId: string | null) {
     const resultado = calcularVentaFIFO(activo.lotes, cantidadAVender, precioVentaUnitario);
+    let destino: { precio_compra_unitario: number; precio_actual_unitario: number } | null = null;
+    if (cuentaDestinoId) {
+      const loteDestino = posiciones.find((p) => p.id === cuentaDestinoId);
+      if (!loteDestino) throw new Error('Cuenta destino no encontrada.');
+      destino = calcularAjusteCuenta(loteDestino, resultado.importeRecibido);
+    }
     await registrarVentaPatrimonio({
       lotesActualizar: resultado.actualizaciones,
       tipo: activo.tipo,
@@ -70,6 +77,8 @@ export function usePosicionesPatrimonio() {
       costeBaseTotal: resultado.costeBaseTotal,
       gananciaRealizada: resultado.gananciaRealizada,
       cuentaDestinoId,
+      destinoPrecioCompraUnitario: destino?.precio_compra_unitario ?? null,
+      destinoPrecioActualUnitario: destino?.precio_actual_unitario ?? null,
     });
     await recargar();
     emitPatrimonioChanged();

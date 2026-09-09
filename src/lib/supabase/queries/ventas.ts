@@ -26,10 +26,15 @@ export interface DatosVentaPatrimonio {
   costeBaseTotal: number;
   gananciaRealizada: number;
   cuentaDestinoId: string | null;
+  // Resultado ya calculado con ajustarCuenta (crece la cuenta destino en vez de crear un lote
+  // nuevo) — null si no hay cuenta destino.
+  destinoPrecioCompraUnitario: number | null;
+  destinoPrecioActualUnitario: number | null;
 }
 
 // Aplica una venta (ya calculada con calcularVentaFIFO) en una unica transaccion: reduce/archiva
-// los lotes indicados, registra la venta, y si hay cuenta destino le abona el importe recibido.
+// los lotes indicados, registra la venta, y si hay cuenta destino la hace crecer con el importe
+// recibido (ver ajustarCuenta) — nunca crea una posicion nueva.
 export async function registrarVentaPatrimonio(datos: DatosVentaPatrimonio): Promise<string> {
   const { data, error } = await supabase.rpc('registrar_venta_patrimonio', {
     // El RPC lee snake_case (jsonb_to_recordset) — se traduce aqui desde el objeto en camelCase.
@@ -49,6 +54,8 @@ export async function registrarVentaPatrimonio(datos: DatosVentaPatrimonio): Pro
     p_coste_base_total: datos.costeBaseTotal,
     p_ganancia_realizada: datos.gananciaRealizada,
     p_cuenta_destino_id: datos.cuentaDestinoId,
+    p_destino_precio_compra_unitario: datos.destinoPrecioCompraUnitario,
+    p_destino_precio_actual_unitario: datos.destinoPrecioActualUnitario,
   });
   if (error) throw error;
   return data as string;

@@ -11,8 +11,7 @@ import type { PosicionPatrimonio } from '../../lib/supabase/database.types';
 interface VenderActivoFormProps {
   activo: ActivoAgrupado;
   // Resto de posiciones activas del usuario, para ofrecer una cuenta destino a la que abonar el
-  // importe recibido (sin restriccion de un unico lote: abonar solo inserta un lote nuevo, nunca
-  // toca los existentes — a diferencia de "Financiar con una cuenta" en PatrimonioForm).
+  // importe recibido — la hace crecer directamente (ver ajustarCuenta), no crea un lote nuevo.
   posicionesExistentes: PosicionPatrimonio[];
   onSubmit: (cantidadVendida: number, precioVentaUnitario: number, cuentaDestinoId: string | null) => Promise<void>;
   onCancel: () => void;
@@ -29,9 +28,13 @@ export function VenderActivoForm({ activo, posicionesExistentes, onSubmit, onCan
 
   // La cuenta "Gastos" no se ofrece como destino: se resincroniza sola con el balance neto del
   // mes (useSincronizarCuentaGastos) y un abono manual ahi se deshace en cuanto vuelva a
-  // sincronizarse.
+  // sincronizarse. Solo cuentas de un unico lote: abonar hace crecer una fila existente
+  // concreta (ver ajustarCuenta), igual que "Financiar con una cuenta" en PatrimonioForm.
   const cuentasDestino = useMemo(
-    () => agruparPorActivo(posicionesExistentes).filter((a) => !esTipoPorUnidad(a.tipo) && !esCuentaGastos(a)),
+    () =>
+      agruparPorActivo(posicionesExistentes).filter(
+        (a) => !esTipoPorUnidad(a.tipo) && a.lotes.length === 1 && !esCuentaGastos(a)
+      ),
     [posicionesExistentes]
   );
 

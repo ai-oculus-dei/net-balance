@@ -33,12 +33,13 @@ interface ActivoCardProps {
 
 export function ActivoCard({ activo, onEditarLote, onVender, onReducir, onVerGrafico }: ActivoCardProps) {
   const [expandido, setExpandido] = useState(false);
-  const variasCompras = activo.lotes.length > 1;
-  const loteConError = activo.lotes.find((l) => l.error_precio);
   // Cuentas Corriente/Remunerada/Ahorro/Fondo Monetario ya no se tratan como una inversion con
   // coste de compra propio (ver ajustarCuenta en lib/finance/ventas.ts): no tiene sentido
-  // mostrarles P&L.
+  // mostrarles P&L, ni la idea de "varias compras" — son siempre UNA cuenta que crece/decrece
+  // (aunque quedara mas de un lote de antes de este cambio, no se muestra como tal).
   const mostrarPnL = esTipoPorUnidad(activo.tipo);
+  const variasCompras = mostrarPnL && activo.lotes.length > 1;
+  const loteConError = activo.lotes.find((l) => l.error_precio);
 
   function handleClick() {
     if (variasCompras) setExpandido((v) => !v);

@@ -360,30 +360,39 @@ export interface HistoricoPorPosicion {
   lineas: LineaHistoricoPosicion[];
 }
 
-// Serie temporal multi-linea (una linea por activo, sumando todas sus compras/lotes), limitada
-// a como maximo `maxLineas` activos — los de mayor valor actual — para no superar el techo de
-// la paleta categorica (colorsCategoricos.ts, 8 colores distinguibles por daltonismo). Igual que
-// historicoTotalPorDia, un activo CON ticker saca su historico del precio real diario en vez del
-// backfill plano de patrimonio_historico. `todasLasPosiciones` (activas + archivadas) hace falta
-// para poder usar TODAS las compras de un activo con ticker al reconstruir su historico: una
-// venta parcial puede haber archivado un lote suyo mientras otro sigue activo, y ese lote
-// archivado sigue haciendo falta para el valor de ANTES de venderlo.
-// Reconstruye un activo con TODAS sus compras (activas y archivadas) a partir de uno ya
-// agrupado (normalmente solo con las activas): una venta parcial puede haber archivado un lote
-// suyo mientras otro sigue activo, y ese lote archivado sigue haciendo falta para el historico de
-// ANTES de venderlo (ver serieHistoricoActivo). Sin ticker no hay nada que completar.
+// Reconstruye un activo con TODAS sus posiciones (activas y archivadas) a partir de uno ya
+// agrupado (normalmente solo con las activas), para no perder historico al archivar una: una
+// venta parcial puede haber archivado un lote con ticker mientras otro sigue activo (ver
+// serieHistoricoActivo), o una cuenta de saldo consolidada en una sola fila (ver
+// ajustar_cuenta_patrimonio) puede tener una o mas aportaciones antiguas ya archivadas — en
+// ambos casos, esas filas archivadas siguen haciendo falta para el historico de ANTES de
+// archivarlas.
 export function activoCompletoParaHistorico(
   activo: ActivoAgrupado,
   todasLasPosiciones: PosicionPatrimonio[],
   hoy: Date = new Date()
 ): ActivoAgrupado {
-  if (!activo.ticker) return activo;
-  const clave = claveActivo(activo.ticker, activo.mercado);
-  const completo = agruparPorActivo(todasLasPosiciones.filter((p) => p.ticker), hoy).find(
-    (a) => claveActivo(a.ticker, a.mercado) === clave
+  if (activo.ticker) {
+    const clave = claveActivo(activo.ticker, activo.mercado);
+    const completo = agruparPorActivo(todasLasPosiciones.filter((p) => p.ticker), hoy).find(
+      (a) => claveActivo(a.ticker, a.mercado) === clave
+    );
+    return completo ?? activo;
+  }
+  const clave = claveCuenta(activo.tipo, activo.nombre);
+  const completo = agruparPorActivo(todasLasPosiciones.filter((p) => !p.ticker), hoy).find(
+    (a) => !a.ticker && claveCuenta(a.tipo, a.nombre) === clave
   );
   return completo ?? activo;
 }
+
+// Serie temporal multi-linea (una linea por activo, sumando todas sus compras/lotes), limitada
+// a como maximo `maxLineas` activos — los de mayor valor actual — para no superar el techo de
+// la paleta categorica (colorsCategoricos.ts, 8 colores distinguibles por daltonismo). Igual que
+// historicoTotalPorDia, un activo CON ticker saca su historico del precio real diario en vez del
+// backfill plano de patrimonio_historico. `todasLasPosiciones` (activas + archivadas) hace falta
+// para usar TODAS las posiciones de un activo (con o sin ticker) al reconstruir su historico —
+// ver activoCompletoParaHistorico.
 
 export function historicoPorActivo(
   posicionesActivas: PosicionPatrimonio[],
@@ -408,7 +417,8 @@ export function historicoPorActivo(
         puntosPorFecha.set(punto.fecha, fila);
       }
     } else {
-      const idsDelActivo = new Set(activo.lotes.map((l) => l.id));
+      const completo = activoCompletoParaHistorico(activo, todasLasPosiciones, hoy);
+      const idsDelActivo = new Set(completo.lotes.map((l) => l.id));
       for (const h of historico) {
         if (!idsDelActivo.has(h.posicion_id)) continue;
         const fila = puntosPorFecha.get(h.fecha) ?? {};

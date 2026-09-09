@@ -336,6 +336,28 @@ describe('historicoPorActivo', () => {
     expect(puntos).toEqual([{ mes: '01 ene', valores: { lote1: 180 } }]);
   });
 
+  it('una cuenta sin ticker con una aportacion antigua ya archivada conserva su historico previo', () => {
+    // Consolidacion de una cuenta con 2 lotes (ver ajustar_cuenta_patrimonio): la mas antigua se
+    // queda activa con el total, la otra se archiva — su historico de ANTES de archivarla no
+    // deberia perderse en "Histórico por posición".
+    const activa = posicion({ id: 'antigua', tipo: 'cuenta_remunerada', nombre: 'Ahorro Sabadell', ticker: null, cantidad: 1, cantidad_original: 1, precio_actual_unitario: 2665.57, fecha_compra: '2026-01-01', activa: true });
+    const archivada = posicion({ id: 'aportacion', tipo: 'cuenta_remunerada', nombre: 'Ahorro Sabadell', ticker: null, cantidad: 1, cantidad_original: 1, precio_actual_unitario: 500, fecha_compra: '2026-03-01', activa: false });
+    const posicionesActivas = [activa];
+    const todasLasPosiciones = [activa, archivada];
+    const hist = [
+      historico('antigua', '2026-02-01', 2000),
+      historico('aportacion', '2026-03-01', 500),
+    ];
+
+    const { lineas, puntos } = historicoPorActivo(posicionesActivas, hist, 8, todasLasPosiciones);
+
+    expect(lineas).toEqual([{ id: 'antigua', colorIndex: 0, etiqueta: 'Ahorro Sabadell' }]);
+    expect(puntos).toEqual([
+      { mes: '01 feb', valores: { antigua: 2000 } },
+      { mes: '01 mar', valores: { antigua: 500 } },
+    ]);
+  });
+
   it('limita a maxLineas activos, eligiendo los de mayor valor actual', () => {
     const posiciones = [
       posicion({ id: 'a', tipo: 'stock', nombre: 'A', cantidad: 1, precio_actual_unitario: 100 }),

@@ -222,8 +222,13 @@ export function PatrimonioForm({
         moneda,
         cantidad: unitario ? cantidad : 1,
         precio_compra_unitario: precioCompraUnitarioFinal,
-        precio_actual_unitario:
-          modoActual === 'total' ? unitarioDesdeTotal(precioActualInput, cantidad) : precioActualInput,
+        // Para los tipos "de saldo" ya no hay un "precio actual" aparte del Importe (ver
+        // ajustarCuenta): compra y actual son siempre el mismo numero.
+        precio_actual_unitario: unitario
+          ? modoActual === 'total'
+            ? unitarioDesdeTotal(precioActualInput, cantidad)
+            : precioActualInput
+          : precioCompraUnitarioFinal,
         // El formulario ya no ofrece fijar una TAE (las cuentas se tratan como saldo que crece a
         // mano, ver ajustarCuenta) — una posicion antigua que todavia la tuviera la pierde en
         // cuanto se edite y se guarde desde aqui.
@@ -386,7 +391,7 @@ export function PatrimonioForm({
         />
       </div>
 
-      {precioAutomatico ? null : (
+      {precioAutomatico || !unitario ? null : (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <span className="text-sm text-[var(--color-text-muted)]">Precio actual</span>

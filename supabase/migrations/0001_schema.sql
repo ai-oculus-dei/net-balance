@@ -296,6 +296,12 @@ create table posiciones_patrimonio (
 create index idx_posiciones_patrimonio_usuario on posiciones_patrimonio (usuario_id);
 create index idx_posiciones_patrimonio_activa  on posiciones_patrimonio (usuario_id, activa);
 
+-- Evita mas de una Cuenta Corriente "Gastos" activa por usuario (useSincronizarCuentaGastos la
+-- crea sola si no existe — sin esto, dos pestañas/dispositivos podrian crear cada uno la suya).
+create unique index idx_posiciones_patrimonio_unica_cuenta_gastos
+on posiciones_patrimonio (usuario_id)
+where activa and tipo = 'cuenta_corriente' and lower(trim(nombre)) = 'gastos';
+
 -- Se fija sola a `cantidad` en el alta si no se manda explicitamente, para no tener que tocar
 -- crearPosicionPatrimonio/crearPosicionFinanciada en el cliente.
 create or replace function fijar_cantidad_original()

@@ -27,7 +27,12 @@ export function useSincronizarCuentaGastos(posicionesPatrimonio: PosicionPatrimo
     if (!session || loadingAnclas || loadingMovimientos || loadingPatrimonio || sincronizando.current) return;
 
     const balance = balanceNetoDelMes(movimientos);
-    const existente = posicionesPatrimonio.find((p) => p.activa && esCuentaGastos(p));
+    // Si por lo que sea hay mas de una (p.ej. de antes del indice unico que ahora lo impide), se
+    // sincroniza siempre la mas antigua — es la que ya tenian sincronizada las ejecuciones
+    // anteriores, para no saltar de una a otra en cada carga.
+    const candidatas = posicionesPatrimonio.filter((p) => p.activa && esCuentaGastos(p));
+    const existente =
+      candidatas.length === 0 ? null : candidatas.reduce((a, b) => (a.created_at < b.created_at ? a : b));
 
     if (existente) {
       const yaSincronizada =
@@ -59,6 +64,11 @@ export function useSincronizarCuentaGastos(posicionesPatrimonio: PosicionPatrimo
       fecha_compra: toIsoDate(new Date()),
     })
       .then(() => emitPatrimonioChanged())
+      .catch(() => {
+        // Otra pestaña/dispositivo se ha adelantado creando la misma cuenta justo antes (el
+        // indice unico de la 0020 lo impide) — no pasa nada, la siguiente sincronizacion ya la
+        // encuentra y sigue desde ahi.
+      })
       .finally(() => {
         sincronizando.current = false;
       });

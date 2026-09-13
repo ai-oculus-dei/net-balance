@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   actualizarMovimiento,
   borrarMovimiento,
@@ -14,14 +14,28 @@ export function useMovimientos(rango: RangoFechas) {
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Evita que una peticion antigua (p.ej. con un rango provisional, antes de que carguen las
+  // anclas del periodo) sobrescriba el resultado de una peticion mas nueva si resuelve despues:
+  // solo se aplica la respuesta si sigue siendo la ultima peticion lanzada.
+  const idPeticion = useRef(0);
 
   const recargar = useCallback(() => {
+    const miId = ++idPeticion.current;
     setLoading(true);
     setError(null);
     return fetchMovimientos(rango)
-      .then(setMovimientos)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+      .then((datos) => {
+        if (miId !== idPeticion.current) return;
+        setMovimientos(datos);
+      })
+      .catch((e: Error) => {
+        if (miId !== idPeticion.current) return;
+        setError(e.message);
+      })
+      .finally(() => {
+        if (miId !== idPeticion.current) return;
+        setLoading(false);
+      });
   }, [rango]);
 
   useEffect(() => {

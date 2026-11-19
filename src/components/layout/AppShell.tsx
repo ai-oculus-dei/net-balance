@@ -7,13 +7,11 @@ import { PatrimonioQuickAddSheet } from '../patrimonio/PatrimonioQuickAddSheet';
 import type { MovimientoFormValues } from '../movimientos/MovimientoForm';
 import type { PatrimonioFormValues } from '../patrimonio/PatrimonioForm';
 import { crearMovimiento } from '../../lib/supabase/queries/movimientos';
-import { crearAportacion } from '../../lib/supabase/queries/aportaciones';
 import { ajustarCuentaPatrimonio, crearPosicionPatrimonio } from '../../lib/supabase/queries/patrimonio';
 import { crearPosicionFinanciada } from '../../lib/supabase/queries/ventas';
 import { ajustarCuenta, retirarDeCuenta } from '../../lib/finance/ventas';
 import { precioCompraTotal } from '../../lib/finance/patrimonio';
 import { emitMovimientosChanged } from '../../lib/events/movimientosBus';
-import { emitObjetivosChanged } from '../../lib/events/objetivosBus';
 import { emitPatrimonioChanged } from '../../lib/events/patrimonioBus';
 import { useAuth } from '../../lib/auth/useAuth';
 import { usePosicionesPatrimonio } from '../../hooks/usePosicionesPatrimonio';
@@ -43,7 +41,7 @@ export function AppShell() {
 
   async function handleCreated(values: MovimientoFormValues) {
     if (!session) return;
-    const movimiento = await crearMovimiento({
+    await crearMovimiento({
       nombre: values.nombre,
       fecha: values.fecha,
       importe: values.importe,
@@ -55,15 +53,6 @@ export function AppShell() {
       es_primer_dia_mes: values.esPrimerDiaMes,
     });
     emitMovimientosChanged();
-
-    if (values.aportacion) {
-      await crearAportacion({
-        movimiento_id: movimiento.id,
-        objetivo_id: values.aportacion.objetivoId,
-        importe: values.aportacion.importe,
-      });
-      emitObjetivosChanged();
-    }
   }
 
   async function handlePatrimonioCreated(values: PatrimonioFormValues) {

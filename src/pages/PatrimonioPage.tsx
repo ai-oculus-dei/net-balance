@@ -9,6 +9,9 @@ import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
 import { PantallaCompletaGrafico } from '../components/charts/PantallaCompletaGrafico';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
 import { LineasPieChart } from '../components/charts/LineasPieChart';
+import { GraficoTemporal } from '../components/charts/GraficoTemporal';
+import { SelectorRango } from '../components/charts/SelectorRango';
+import { RANGO_POR_DEFECTO, type RangoTemporal } from '../lib/finance/rangosTemporales';
 import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
 import { PatrimonioTotalCard } from '../components/patrimonio/PatrimonioTotalCard';
 import { PatrimonioPnLCard } from '../components/patrimonio/PatrimonioPnLCard';
@@ -28,7 +31,7 @@ import {
   ETIQUETA_TIPO,
   agruparPorActivo,
   grupoDePosicion,
-  historicoPorActivo,
+  historicoPorActivoDiario,
   historicoTotalPorDia,
   patrimonioPorTipo,
   type ActivoAgrupado,
@@ -46,6 +49,7 @@ export function PatrimonioPage() {
   const { precios: preciosHistoricosFilas, loading: loadingPrecios } = usePreciosHistoricoActivo();
   const { ventasLotes: ventasLotesFilas, loading: loadingVentasLotes } = useVentasPatrimonioLotes();
   const ultimaActualizacionPrecios = useUltimaActualizacionPrecios();
+  const [rangoPosicion, setRangoPosicion] = useState<RangoTemporal>(RANGO_POR_DEFECTO);
   const [editando, setEditando] = useState<PosicionPatrimonio | null>(null);
   const [vendiendo, setVendiendo] = useState<ActivoAgrupado | null>(null);
   const [reduciendo, setReduciendo] = useState<ActivoAgrupado | null>(null);
@@ -67,7 +71,7 @@ export function PatrimonioPage() {
     [historico, posiciones, preciosHistoricos, ventasLotes]
   );
   const { puntos: puntosPorPosicion, lineas: lineasPorPosicion } = useMemo(
-    () => historicoPorActivo(posicionesActivas, historico, MAX_LINEAS, posiciones, preciosHistoricos, ventasLotes),
+    () => historicoPorActivoDiario(posicionesActivas, historico, MAX_LINEAS, posiciones, preciosHistoricos, ventasLotes),
     [posicionesActivas, historico, posiciones, preciosHistoricos, ventasLotes]
   );
 
@@ -156,6 +160,7 @@ export function PatrimonioPage() {
 
       <TarjetaGrafico
         titulo="Histórico por posición"
+        acciones={<SelectorRango value={rangoPosicion} onChange={setRangoPosicion} />}
         icono={<IconActividad />}
         render={(altura) =>
           loading ? (
@@ -163,7 +168,7 @@ export function PatrimonioPage() {
           ) : lineasPorPosicion.length === 0 ? (
             <p className="empty">Todavía no hay histórico.</p>
           ) : (
-            <SerieTemporalLineasChart datos={puntosPorPosicion} lineas={lineasPorPosicion} theme={theme} altura={altura} />
+            <GraficoTemporal puntos={puntosPorPosicion} lineas={lineasPorPosicion} rango={rangoPosicion} theme={theme} altura={altura} />
           )
         }
       />

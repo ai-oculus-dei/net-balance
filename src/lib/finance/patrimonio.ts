@@ -403,6 +403,34 @@ export function historicoPorActivo(
   ventasLotes: VentaLote[] = [],
   hoy: Date = new Date()
 ): HistoricoPorPosicion {
+  const { puntos, lineas } = historicoPorActivoDiario(
+    posicionesActivas,
+    historico,
+    maxLineas,
+    todasLasPosiciones,
+    preciosHistoricos,
+    ventasLotes,
+    hoy
+  );
+  return { puntos: puntos.map(({ fecha, valores }) => ({ mes: etiquetaFecha(fecha), valores })), lineas };
+}
+
+export interface PuntoDiario {
+  fecha: string; // "YYYY-MM-DD"
+  valores: Record<string, number>;
+}
+
+// Igual que historicoPorActivo, pero conservando la fecha completa de cada punto (para filtrar
+// por rango 1D/1W/1M... y dibujar un eje temporal real) en vez de la etiqueta "01 ene".
+export function historicoPorActivoDiario(
+  posicionesActivas: PosicionPatrimonio[],
+  historico: PatrimonioHistorico[],
+  maxLineas: number,
+  todasLasPosiciones: PosicionPatrimonio[] = posicionesActivas,
+  preciosHistoricos: PrecioDiarioActivo[] = [],
+  ventasLotes: VentaLote[] = [],
+  hoy: Date = new Date()
+): { puntos: PuntoDiario[]; lineas: LineaHistoricoPosicion[] } {
   const activos = agruparPorActivo(posicionesActivas, hoy);
   const elegidos = [...activos].sort((a, b) => b.valorActualTotal - a.valorActualTotal).slice(0, maxLineas);
 
@@ -428,9 +456,9 @@ export function historicoPorActivo(
     }
   }
 
-  const puntos: PuntoSerieLineas[] = Array.from(puntosPorFecha.entries())
+  const puntos: PuntoDiario[] = Array.from(puntosPorFecha.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([fecha, valores]) => ({ mes: etiquetaFecha(fecha), valores }));
+    .map(([fecha, valores]) => ({ fecha, valores }));
 
   const lineas: LineaHistoricoPosicion[] = elegidos.map((a, indice) => ({
     id: a.id,
@@ -448,4 +476,67 @@ export function unitarioDesdeTotal(total: number, cantidad: number): number {
 
 export function totalDesdeUnitario(unitario: number, cantidad: number): number {
   return unitario * cantidad;
+}
+
+export interface ActivoExportado {
+  id: string;
+  nombre: string;
+  ticker: string | null;
+  tipo: TipoPosicionPatrimonio;
+}
+
+export interface ValoresDiariosPatrimonio {
+  activos: ActivoExportado[]; // solo los que tienen algun valor dentro del rango
+  filas: { fecha: string; valores: Record<string, number> }[]; // fecha "YYYY-MM-DD", ascendente
+}
+
+// Valor diario de CADA activo (todas sus compras sumadas, activas y archivadas) entre `desde` y
+// `hasta` (ambas "YYYY-MM-DD", inclusive) — para exportar a CSV. Misma fuente de datos que
+// historicoPorActivo (grafico "Historico por posicion"), pero sin limite de numero de activos:
+// con ticker, precio real diario (precios_historico_activo + cantidades/ventas de cada lote);
+// sin ticker, los snapshots diarios de patrimonio_historico.
+export function valoresDiariosPorActivo(
+  todasLasPosiciones: PosicionPatrimonio[],
+  historico: PatrimonioHistorico[],
+  preciosHistoricos: PrecioDiarioActivo[],
+  ventasLotes: VentaLote[],
+  desde: string,
+  hasta: string,
+  hoy: Date = new Date()
+): ValoresDiariosPatrimonio {
+  const enRango = (fecha: string) => fecha >= desde && fecha <= hasta;
+  const porFecha = new Map<string, Record<string, number>>();
+  const conDatos = new Set<string>();
+
+  function sumar(fecha: string, activoId: string, valor: number) {
+    if (!enRango(fecha)) return;
+    const fila = porFecha.get(fecha) ?? {};
+    fila[activoId] = round2((fila[activoId] ?? 0) + valor);
+    porFecha.set(fecha, fila);
+    conDatos.add(activoId);
+  }
+
+  const activos = agruparPorActivo(todasLasPosiciones, hoy);
+  for (const activo of activos) {
+    if (activo.ticker) {
+      for (const punto of serieHistoricoActivo(activo, ventasLotes, preciosHistoricos, hoy)) {
+        sumar(punto.fecha, activo.id, punto.valorTotal);
+      }
+    } else {
+      const ids = new Set(activo.lotes.map((l) => l.id));
+      for (const h of historico) {
+        if (ids.has(h.posicion_id)) sumar(h.fecha, activo.id, h.valor_total);
+      }
+    }
+  }
+
+  return {
+    activos: activos
+      .filter((a) => conDatos.has(a.id))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+      .map((a) => ({ id: a.id, nombre: a.nombre, ticker: a.ticker, tipo: a.tipo })),
+    filas: Array.from(porFecha.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([fecha, valores]) => ({ fecha, valores })),
+  };
 }

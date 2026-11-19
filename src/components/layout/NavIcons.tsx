@@ -31,16 +31,6 @@ export function IconMovimientos(props: IconProps) {
   );
 }
 
-export function IconObjetivos(props: IconProps) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="12" cy="12" r="8" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
 export function IconVisualizaciones(props: IconProps) {
   return (
     <svg {...base} {...props}>

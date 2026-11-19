@@ -5,8 +5,7 @@ import { AppShell } from './components/layout/AppShell';
 import { Cargando } from './components/ui/Spinner';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { MovimientosPage } from './pages/MovimientosPage';
-import { ObjetivosPage } from './pages/ObjetivosPage';
+import { MovimientosPage } from './pages/MovimientosPage';
 import { VisualizacionesPage } from './pages/VisualizacionesPage';
 import { PatrimonioPage } from './pages/PatrimonioPage';
 import { AjustesPage } from './pages/AjustesPage';
@@ -60,8 +59,7 @@ function App() {
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
           <Route path="nuevo-gasto" element={<DashboardPage />} />
-          <Route path="movimientos" element={<MovimientosPage />} />
-          <Route path="objetivos" element={<ObjetivosPage />} />
+          <Route path="movimientos" element={<MovimientosPage />} />
           <Route path="visualizaciones" element={<VisualizacionesPage />} />
           <Route path="patrimonio" element={<PatrimonioPage />} />
           <Route path="ajustes" element={<AjustesPage />} />

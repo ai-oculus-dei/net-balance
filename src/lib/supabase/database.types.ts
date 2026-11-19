@@ -10,8 +10,6 @@
 // interfaces de abajo, que son la fuente de verdad de los tipos de fila.
 
 export type Visibilidad = 'privado' | 'compartido';
-export type TipoObjetivo = 'acumulativo' | 'recurrente';
-export type ModoAportacion = 'automatico' | 'manual';
 
 export interface Profile {
   id: string;
@@ -89,78 +87,6 @@ export interface MovimientoUpdate {
   visibilidad?: Visibilidad;
   nota?: string | null;
   es_primer_dia_mes?: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface ObjetivoAhorro {
-  id: string;
-  usuario_id: string;
-  nombre: string;
-  tipo: TipoObjetivo;
-  meta: number | null;
-  fecha_objetivo: string | null;
-  modo_aportacion: ModoAportacion;
-  porcentaje: number | null;
-  acumulado: number;
-  activo: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ObjetivoAhorroInsert {
-  id?: string;
-  usuario_id: string;
-  nombre: string;
-  tipo: TipoObjetivo;
-  meta?: number | null;
-  fecha_objetivo?: string | null;
-  modo_aportacion: ModoAportacion;
-  porcentaje?: number | null;
-  acumulado?: number;
-  activo?: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface ObjetivoAhorroUpdate {
-  id?: string;
-  usuario_id?: string;
-  nombre?: string;
-  tipo?: TipoObjetivo;
-  meta?: number | null;
-  fecha_objetivo?: string | null;
-  modo_aportacion?: ModoAportacion;
-  porcentaje?: number | null;
-  acumulado?: number;
-  activo?: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface AportacionObjetivo {
-  id: string;
-  objetivo_id: string;
-  movimiento_id: string | null;
-  importe: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AportacionObjetivoInsert {
-  id?: string;
-  objetivo_id: string;
-  movimiento_id?: string | null;
-  importe: number;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface AportacionObjetivoUpdate {
-  id?: string;
-  objetivo_id?: string;
-  movimiento_id?: string | null;
-  importe?: number;
   created_at?: string;
   updated_at?: string;
 }

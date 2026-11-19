@@ -38,7 +38,7 @@ export function ingresoRealDelMes(movimientos: Movimiento[], subcategorias: Subc
 // subcategorias marcadas es_gasto_fijo (Alquiler, Luz, Supermercado, Gimnasio...). Igual que
 // con el ingreso real, un reembolso dentro de una de estas subcategorias reduce el gasto fijo
 // neto en vez de tratarse aparte. Se devuelve como magnitud positiva para poder restarla
-// directamente en calcularDisponible.
+// directamente de otras cifras (p.ej. el operating margin).
 export function gastosFijosDelMes(movimientos: Movimiento[], subcategorias: SubcategoriasPorId): number {
   const balance = movimientos
     .filter((m) => subcategorias.get(m.subcategoria_id)?.es_gasto_fijo)

@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardTitle } from '../components/ui/Card';
 import { Cargando } from '../components/ui/Spinner';
 import { PageHeader, SelectorMes } from '../components/layout/PageHeader';
 import { IconMovimientos } from '../components/layout/NavIcons';
-import { IconFiltro, IconLista, IconPapelera } from '../components/icons/UiIcons';
+import { IconFiltro, IconLista, IconPapelera, IconSuma } from '../components/icons/UiIcons';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
@@ -15,9 +15,9 @@ import { useAnclasPeriodo } from '../hooks/useAnclasPeriodo';
 import { formatearMes, parseMes } from '../lib/finance/fechas';
 import { indexarSubcategorias } from '../lib/finance/taxonomia';
 import { resolverRangoMes } from '../lib/finance/periodos';
-import { fetchAportacionPorMovimiento, sincronizarAportacion } from '../lib/supabase/queries/aportaciones';
-import { emitObjetivosChanged } from '../lib/events/objetivosBus';
-import type { AportacionObjetivo, Movimiento } from '../lib/supabase/database.types';
+import { formatearImporte } from '../lib/finance/formato';
+import { claseColorPorSigno } from '../components/charts/colors';
+import type { Movimiento } from '../lib/supabase/database.types';
 
 export function MovimientosPage() {
   const [mes, setMes] = useState(() => formatearMes(new Date()));
@@ -47,22 +47,20 @@ export function MovimientosPage() {
     });
   }, [movimientos, subcategoriasPorId, filtroCategoriaId, filtroSubcategoriaId]);
 
-  const [editando, setEditando] = useState<Movimiento | null>(null);
-  const [aportacionEditando, setAportacionEditando] = useState<AportacionObjetivo | null>(null);
-
-  useEffect(() => {
-    if (!editando) {
-      setAportacionEditando(null);
-      return;
+  // Suma de los movimientos que pasan el filtro actual (neto con signo, y por separado lo que
+  // entra y lo que sale). En centimos para no arrastrar errores de coma flotante.
+  const totales = useMemo(() => {
+    let ingresosCent = 0;
+    let gastosCent = 0;
+    for (const m of movimientosFiltrados) {
+      const cent = Math.round(m.importe * 100);
+      if (cent >= 0) ingresosCent += cent;
+      else gastosCent += cent;
     }
-    let cancelado = false;
-    fetchAportacionPorMovimiento(editando.id).then((a) => {
-      if (!cancelado) setAportacionEditando(a);
-    });
-    return () => {
-      cancelado = true;
-    };
-  }, [editando]);
+    return { neto: (ingresosCent + gastosCent) / 100, ingresos: ingresosCent / 100, gastos: gastosCent / 100 };
+  }, [movimientosFiltrados]);
+
+  const [editando, setEditando] = useState<Movimiento | null>(null);
 
   async function handleUpdate(values: MovimientoFormValues) {
     if (!editando) return;
@@ -76,8 +74,6 @@ export function MovimientosPage() {
       nota: values.nota || null,
       es_primer_dia_mes: values.esPrimerDiaMes,
     });
-    await sincronizarAportacion(editando.id, aportacionEditando, values.aportacion);
-    emitObjetivosChanged();
     setEditando(null);
   }
 
@@ -140,6 +136,33 @@ export function MovimientosPage() {
         </div>
       </Card>
 
+      <Card>
+        <div className="flex items-baseline justify-between gap-3">
+          <CardTitle icon={<IconSuma />}>
+            {filtroCategoriaId === null ? 'Total del mes' : 'Total filtrado'}
+          </CardTitle>
+          {loading ? (
+            <span className="spin" aria-hidden="true" />
+          ) : (
+            <span className={`kpi-value shrink-0 ${claseColorPorSigno(totales.neto)}`}>
+              {totales.neto > 0 ? '+' : ''}
+              {formatearImporte(totales.neto)} €
+            </span>
+          )}
+        </div>
+        {!loading && (
+          <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-dashed border-line font-mono text-xs">
+            <span className="text-muted">
+              {movimientosFiltrados.length} {movimientosFiltrados.length === 1 ? 'movimiento' : 'movimientos'}
+            </span>
+            <span className="flex gap-3 shrink-0">
+              <span className="text-ok">+{formatearImporte(totales.ingresos)} €</span>
+              <span className="text-bad">{formatearImporte(totales.gastos)} €</span>
+            </span>
+          </div>
+        )}
+      </Card>
+
       <Card glow>
         <CardTitle icon={<IconLista />} className="mb-1">
           {etiquetaMes}
@@ -167,7 +190,6 @@ export function MovimientosPage() {
           <div className="flex flex-col gap-3">
             <MovimientoForm
               initialValues={editando}
-              aportacionInicial={aportacionEditando}
               onSubmit={handleUpdate}
               onCancel={() => setEditando(null)}
             />
@@ -175,7 +197,6 @@ export function MovimientosPage() {
               variant="danger"
               onClick={async () => {
                 await borrar(editando.id);
-                emitObjetivosChanged();
                 setEditando(null);
               }}
             >

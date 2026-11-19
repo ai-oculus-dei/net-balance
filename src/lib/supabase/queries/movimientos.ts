@@ -1,4 +1,5 @@
 import { supabase } from '../client';
+import { fetchTodasLasFilas } from '../paginacion';
 import type { Movimiento } from '../database.types';
 
 export interface RangoFechas {
@@ -51,4 +52,19 @@ export async function actualizarMovimiento(id: string, cambios: Partial<Movimien
 export async function borrarMovimiento(id: string): Promise<void> {
   const { error } = await supabase.from('movimientos').delete().eq('id', id);
   if (error) throw error;
+}
+
+// Todos los movimientos de un rango, paginado (ver fetchTodasLasFilas): para exportar rangos
+// largos, que pueden superar el limite de 1000 filas por consulta de Supabase.
+export async function fetchMovimientosParaExportar(rango: RangoFechas): Promise<Movimiento[]> {
+  return fetchTodasLasFilas(async (desde, hasta) =>
+    supabase
+      .from('movimientos')
+      .select('*')
+      .gte('fecha', rango.desde)
+      .lt('fecha', rango.hasta)
+      .order('fecha', { ascending: true })
+      .order('id', { ascending: true })
+      .range(desde, hasta)
+  );
 }

@@ -8,7 +8,6 @@ import { CategoriaSelect } from './CategoriaSelect';
 import { SubcategoriaSelect } from './SubcategoriaSelect';
 import { useTaxonomia } from '../../hooks/useTaxonomia';
 import { useProfiles } from '../../hooks/useProfiles';
-import { useObjetivos } from '../../hooks/useObjetivos';
 import { useAnclasPeriodo } from '../../hooks/useAnclasPeriodo';
 import { useAuth } from '../../lib/auth/useAuth';
 import { avisoCierreCorto, type AvisoCierreCorto } from '../../lib/finance/periodos';
@@ -17,7 +16,7 @@ import { IconChevronRight, IconInfo } from '../icons/UiIcons';
 import { Segmented } from '../ui/Segmented';
 import { Cargando } from '../ui/Spinner';
 import { FormActions, FormError } from '../ui/FormActions';
-import type { AportacionObjetivo, Movimiento, Visibilidad } from '../../lib/supabase/database.types';
+import type { Movimiento, Visibilidad } from '../../lib/supabase/database.types';
 
 export interface MovimientoFormValues {
   nombre: string;
@@ -28,12 +27,10 @@ export interface MovimientoFormValues {
   visibilidad: Visibilidad;
   nota: string;
   esPrimerDiaMes: boolean;
-  aportacion: { objetivoId: string; importe: number } | null;
 }
 
 interface MovimientoFormProps {
   initialValues?: Partial<Movimiento>;
-  aportacionInicial?: AportacionObjetivo | null;
   onSubmit: (values: MovimientoFormValues) => Promise<void>;
   onCancel: () => void;
 }
@@ -44,11 +41,10 @@ function toDatetimeLocal(iso?: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onCancel }: MovimientoFormProps) {
+export function MovimientoForm({ initialValues, onSubmit, onCancel }: MovimientoFormProps) {
   const { session } = useAuth();
   const { categorias, subcategorias: todasLasSubcategorias, subcategoriasDe, loading: loadingTaxonomia } = useTaxonomia();
   const { profiles } = useProfiles();
-  const { objetivos } = useObjetivos();
 
   const subInicial = initialValues?.subcategoria_id ?? null;
 
@@ -64,8 +60,6 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
   const [visibilidad, setVisibilidad] = useState<Visibilidad>(initialValues?.visibilidad ?? 'privado');
   const [nota, setNota] = useState(initialValues?.nota ?? '');
   const [esPrimerDiaMes, setEsPrimerDiaMes] = useState(initialValues?.es_primer_dia_mes ?? false);
-  const [objetivoDestino, setObjetivoDestino] = useState(aportacionInicial?.objetivo_id ?? '');
-  const [importeAportacion, setImporteAportacion] = useState(aportacionInicial?.importe ?? 0);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mostrarMas, setMostrarMas] = useState(false);
@@ -79,10 +73,6 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
   const subcategorias = categoriaId !== null ? subcategoriasDe(categoriaId) : [];
   const subcategoriaSeleccionada = todasLasSubcategorias.find((s) => s.id === subcategoriaId);
 
-  const puedeAsignarAObjetivo =
-    esGasto && subcategoriaSeleccionada?.es_ahorro === true && usuarioId === session?.user.id;
-  const objetivosActivos = objetivos.filter((o) => o.activo);
-
   // Al editar un movimiento existente, deriva la categoria a partir de su subcategoria
   // en cuanto la taxonomia termina de cargar (solo tenemos subcategoria_id guardado).
   useEffect(() => {
@@ -90,11 +80,6 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
     const sub = todasLasSubcategorias.find((s) => s.id === subInicial);
     if (sub) setCategoriaId(sub.categoria_id);
   }, [subInicial, todasLasSubcategorias, categoriaId]);
-
-  // Si el importe se reduce por debajo de lo ya asignado a un objetivo, ajusta la asignacion.
-  useEffect(() => {
-    setImporteAportacion((actual) => (actual > magnitud ? magnitud : actual));
-  }, [magnitud]);
 
   // La casilla "primer dia del mes" solo tiene sentido en Salario: si se cambia a otra
   // subcategoria, se desmarca para no dejar una marca fantasma en un movimiento que ya no la
@@ -106,12 +91,6 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
     const esSalario = todasLasSubcategorias.find((s) => s.id === subcategoriaId)?.nombre === 'Salario';
     if (!esSalario) setEsPrimerDiaMes(false);
   }, [subcategoriaId, todasLasSubcategorias]);
-
-  function handleSeleccionarObjetivo(id: string) {
-    setObjetivoDestino(id);
-    if (id && importeAportacion <= 0) setImporteAportacion(magnitud);
-    if (!id) setImporteAportacion(0);
-  }
 
   async function guardar(values: MovimientoFormValues) {
     setGuardando(true);
@@ -135,10 +114,6 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
       setError('Introduce un importe.');
       return;
     }
-    if (puedeAsignarAObjetivo && objetivoDestino && importeAportacion <= 0) {
-      setError('Introduce cuánto destinas al objetivo.');
-      return;
-    }
 
     const values: MovimientoFormValues = {
       nombre,
@@ -149,10 +124,6 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
       visibilidad,
       nota,
       esPrimerDiaMes,
-      aportacion:
-        puedeAsignarAObjetivo && objetivoDestino
-          ? { objetivoId: objetivoDestino, importe: Math.min(importeAportacion, magnitud) }
-          : null,
     };
 
     if (esPrimerDiaMes) {
@@ -236,31 +207,6 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
             aunque salga en rojo del balance, sigue siendo tuyo, solo que guardado en otro sitio.
           </span>
         </p>
-      )}
-
-      {puedeAsignarAObjetivo && (
-        <div className="field-group">
-          <Select
-            label="Destinar a un objetivo de ahorro (opcional)"
-            value={objetivoDestino}
-            onChange={(e) => handleSeleccionarObjetivo(e.target.value)}
-          >
-            <option value="">No asignar</option>
-            {objetivosActivos.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nombre}
-              </option>
-            ))}
-          </Select>
-          {objetivoDestino && (
-            <ImporteKeypadInput
-              label="Cantidad destinada (€)"
-              value={importeAportacion}
-              onChange={(v) => setImporteAportacion(Math.min(v, magnitud))}
-              colorClassName="text-cyan"
-            />
-          )}
-        </div>
       )}
 
       {subcategoriaSeleccionada?.nombre === 'Salario' && (

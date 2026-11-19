@@ -20,6 +20,7 @@ import {
   totalDesdeUnitario,
   unitarioDesdeTotal,
   valorConTae,
+  valoresDiariosPorActivo,
 } from '../patrimonio';
 import type { PatrimonioHistorico, PosicionPatrimonio, TipoPosicionPatrimonio } from '../../supabase/database.types';
 
@@ -450,5 +451,35 @@ describe('unitarioDesdeTotal / totalDesdeUnitario', () => {
 
   it('unitarioDesdeTotal con cantidad 0 no divide entre 0', () => {
     expect(unitarioDesdeTotal(150, 0)).toBe(0);
+  });
+});
+
+describe('valoresDiariosPorActivo', () => {
+  it('suma las aportaciones de una misma cuenta (activas y archivadas) por dia y filtra por rango', () => {
+    const actual = posicion({ id: 'c1', tipo: 'cuenta_ahorro', nombre: 'Ahorro', fecha_compra: '2026-01-01' });
+    const archivada = posicion({ id: 'c2', tipo: 'cuenta_ahorro', nombre: 'Ahorro', fecha_compra: '2026-02-01', activa: false });
+    const otra = posicion({ id: 'z1', tipo: 'cuenta_corriente', nombre: 'Corriente', fecha_compra: '2026-01-01' });
+    const hist = [
+      historico('c1', '2026-03-01', 100),
+      historico('c2', '2026-03-01', 50),
+      historico('c1', '2026-03-02', 110),
+      historico('z1', '2026-03-02', 20),
+      historico('c1', '2026-03-05', 999), // fuera de rango
+    ];
+
+    const { activos, filas } = valoresDiariosPorActivo([actual, archivada, otra], hist, [], [], '2026-03-01', '2026-03-02');
+
+    expect(activos.map((a) => a.nombre)).toEqual(['Ahorro', 'Corriente']);
+    expect(filas).toEqual([
+      { fecha: '2026-03-01', valores: { c1: 150 } },
+      { fecha: '2026-03-02', valores: { c1: 110, z1: 20 } },
+    ]);
+  });
+
+  it('no incluye activos sin ningun valor dentro del rango', () => {
+    const p = posicion({ id: 'c1', tipo: 'cuenta_ahorro' });
+    const { activos, filas } = valoresDiariosPorActivo([p], [historico('c1', '2025-01-01', 10)], [], [], '2026-01-01', '2026-12-31');
+    expect(activos).toEqual([]);
+    expect(filas).toEqual([]);
   });
 });

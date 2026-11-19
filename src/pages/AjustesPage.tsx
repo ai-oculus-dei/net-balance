@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Card, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
 import { Segmented } from '../components/ui/Segmented';
 import { PageHeader } from '../components/layout/PageHeader';
 import { IconAjustes } from '../components/layout/NavIcons';
-import { IconEnlace, IconLuna, IconMovil, IconSalir, IconSol, IconUsuario } from '../components/icons/UiIcons';
+import { IconDescargar, IconEnlace, IconLuna, IconMovil, IconSalir, IconSol, IconUsuario } from '../components/icons/UiIcons';
+import { ExportarForm } from '../components/ajustes/ExportarForm';
 import { useTheme } from '../lib/theme/useTheme';
 import { useAuth } from '../lib/auth/useAuth';
 import { useProfiles } from '../hooks/useProfiles';
@@ -12,6 +15,7 @@ export function AjustesPage() {
   const { theme, setTheme } = useTheme();
   const { session, signOut } = useAuth();
   const { profiles } = useProfiles();
+  const [exportando, setExportando] = useState(false);
 
   const perfil = profiles.find((p) => p.id === session?.user.id);
   const urlAccesoDirecto = `${window.location.origin}${window.location.pathname}#/nuevo-gasto`;
@@ -65,6 +69,23 @@ export function AjustesPage() {
           </Button>
         </a>
       </Card>
+
+      <Card>
+        <CardTitle icon={<IconDescargar />} className="mb-3">
+          Exportar datos
+        </CardTitle>
+        <p className="text-sm text-muted leading-relaxed mb-4">
+          Descarga en CSV los movimientos y el valor diario del patrimonio entre dos fechas.
+        </p>
+        <Button type="button" variant="secondary" className="w-full" onClick={() => setExportando(true)}>
+          <IconDescargar />
+          Exportar
+        </Button>
+      </Card>
+
+      <Modal open={exportando} onClose={() => setExportando(false)} title="Exportar CSV">
+        <ExportarForm />
+      </Modal>
 
       <Button variant="danger" onClick={signOut}>
         <IconSalir />

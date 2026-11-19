@@ -25,7 +25,13 @@ export default defineConfig({
         display: 'standalone',
         background_color: '#05070d',
         theme_color: '#05070d',
+        // PNG para los sistemas que no aceptan SVG como icono instalado (Android/Chrome lo
+        // prefieren); el SVG queda como opcion escalable. El iPhone usa apple-touch-icon.png
+        // (enlazado en index.html), no el manifiesto.
         icons: [
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           { src: 'icons/icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
@@ -36,7 +42,7 @@ export default defineConfig({
             name: 'Nuevo gasto',
             short_name: 'Nuevo gasto',
             url: `${base}#/nuevo-gasto`,
-            icons: [{ src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            icons: [{ src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
           },
         ],
       },

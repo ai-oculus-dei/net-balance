@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Input } from '../ui/Input';
 import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
-import { Button } from '../ui/Button';
+import { FormActions, FormError } from '../ui/FormActions';
 import { toIsoDate } from '../../lib/finance/fechas';
 
 interface AjustarCuentaFormProps {
@@ -40,15 +40,9 @@ export function AjustarCuentaForm({ etiquetaImporte, onSubmit, onCancel }: Ajust
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <ImporteKeypadInput label={etiquetaImporte} value={importe} onChange={setImporte} decimales={2} sufijo=" €" />
       <Input label="Fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required />
-      {error && <p className="text-sm text-[var(--color-loss)]">{error}</p>}
-      <div className="flex gap-2 justify-end">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={guardando}>
-          {guardando ? 'Guardando...' : 'Guardar'}
-        </Button>
-      </div>
+      <FormError>{error}</FormError>
+
+      <FormActions onCancel={onCancel} guardando={guardando} />
     </form>
   );
 }

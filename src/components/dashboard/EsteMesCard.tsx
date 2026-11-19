@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { Card } from '../ui/Card';
+import { Card, CardTitle } from '../ui/Card';
+import { ProgressBar } from '../ui/ProgressBar';
+import { Segmented, type OpcionSegmentada } from '../ui/Segmented';
+import { Cargando } from '../ui/Spinner';
+import { IconCapas } from '../icons/UiIcons';
+import { colorDeCategoria } from '../icons/coloresTaxonomia';
 import { claseColorPorSigno } from '../charts/colors';
 import { formatearImporte } from '../../lib/finance/formato';
 import { IconoCategoria, IconoSubcategoria } from '../icons/IconoTaxonomia';
@@ -58,46 +63,30 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion, 
 
   const modoSeleccion = seleccion?.activa ?? false;
 
+  const opcionesModo: OpcionSegmentada<ModoVista>[] = [
+    { value: 'neto', label: '€' },
+    { value: 'porcentaje', label: '%' },
+  ];
+  if (mesesEnRango !== undefined) opcionesModo.push({ value: 'promedio_mensual', label: '€/m' });
+
+  // Solo para la barra de cada categoria: peso de la categoria sobre el total de su signo (lo
+  // mismo que muestra el modo %), para ver el reparto de un vistazo.
+  function pesoCategoria(neto: number): number {
+    const base = neto < 0 ? totalGastado : totalIngresado;
+    return base > 0 ? (Math.abs(neto) / base) * 100 : 0;
+  }
+
   return (
     <Card>
-      <div className="flex items-center justify-between mb-2 gap-2">
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide truncate">
-          {titulo}
-        </h2>
-        <div className="flex rounded-md border border-[var(--color-border)] overflow-hidden shrink-0 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setModo('neto')}
-            aria-pressed={modo === 'neto'}
-            className={`px-2.5 py-1 ${modo === 'neto' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-          >
-            €
-          </button>
-          <button
-            type="button"
-            onClick={() => setModo('porcentaje')}
-            aria-pressed={modo === 'porcentaje'}
-            className={`px-2.5 py-1 ${modo === 'porcentaje' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-          >
-            %
-          </button>
-          {mesesEnRango !== undefined && (
-            <button
-              type="button"
-              onClick={() => setModo('promedio_mensual')}
-              aria-pressed={modo === 'promedio_mensual'}
-              className={`px-2.5 py-1 ${modo === 'promedio_mensual' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-            >
-              €/m
-            </button>
-          )}
-        </div>
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <CardTitle icon={<IconCapas />}>{titulo}</CardTitle>
+        <Segmented size="sm" ariaLabel="Unidades" value={modo} onChange={setModo} options={opcionesModo} />
       </div>
 
       {loading ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+        <Cargando />
       ) : balanceSubcategorias.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Sin movimientos en este periodo.</p>
+        <p className="empty">Sin movimientos en este periodo.</p>
       ) : (
         balanceSubcategorias.map((linea, indice) => {
           const nuevaCategoria = indice === 0 || balanceSubcategorias[indice - 1].categoriaId !== linea.categoriaId;
@@ -105,61 +94,78 @@ export function EsteMesCard({ titulo, balanceSubcategorias, loading, seleccion, 
           const categoriaColor = modoSeleccion ? seleccion!.colorDe(linea.categoriaId, null) : undefined;
           const subSeleccionada = modoSeleccion && seleccion!.estaSeleccionada(linea.categoriaId, linea.subcategoriaId);
           const subColor = modoSeleccion ? seleccion!.colorDe(linea.categoriaId, linea.subcategoriaId) : undefined;
+          const colorFijo = colorDeCategoria(linea.categoria);
+          const netoCategoria = netoPorCategoriaId.get(linea.categoriaId) ?? 0;
 
           return (
             <div
               key={linea.subcategoriaId}
-              className={nuevaCategoria ? 'pt-3 mt-3 border-t-2 border-[var(--color-border)] first:pt-0 first:mt-0 first:border-t-0' : ''}
+              className={nuevaCategoria ? 'pt-3 mt-2 border-t border-line first:pt-0 first:mt-0 first:border-t-0' : ''}
             >
               {nuevaCategoria && (
-                <div className="flex items-center justify-between mb-1">
-                  {modoSeleccion ? (
-                    <button
-                      type="button"
-                      onClick={() => seleccion!.onToggle(linea.categoriaId, null)}
-                      className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide ${
-                        categoriaSeleccionada ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)] opacity-40'
-                      }`}
-                    >
-                      {categoriaColor && (
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: categoriaColor }} aria-hidden="true" />
-                      )}
-                      <IconoCategoria nombre={linea.categoria} />
-                      {linea.categoria}
-                    </button>
-                  ) : (
-                    <p className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
-                      <IconoCategoria nombre={linea.categoria} />
-                      {linea.categoria}
-                    </p>
-                  )}
-                  <p className="font-mono text-xs font-semibold text-[var(--color-text-muted)]">
-                    {valorMostrado(netoPorCategoriaId.get(linea.categoriaId) ?? 0)}
-                  </p>
+                <div className="mb-1">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    {modoSeleccion ? (
+                      <button
+                        type="button"
+                        onClick={() => seleccion!.onToggle(linea.categoriaId, null)}
+                        aria-pressed={categoriaSeleccionada}
+                        className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] min-w-0 ${
+                          categoriaSeleccionada ? 'text-fg' : 'text-muted opacity-40'
+                        }`}
+                      >
+                        {categoriaColor && (
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: categoriaColor, boxShadow: `0 0 6px ${categoriaColor}` }}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span style={{ color: colorFijo }} className="flex">
+                          <IconoCategoria nombre={linea.categoria} />
+                        </span>
+                        <span className="truncate">{linea.categoria}</span>
+                      </button>
+                    ) : (
+                      <p className="flex items-center gap-1.5 text-[11px] font-semibold text-muted uppercase tracking-[0.12em] min-w-0">
+                        <span style={{ color: colorFijo }} className="flex">
+                          <IconoCategoria nombre={linea.categoria} />
+                        </span>
+                        <span className="truncate">{linea.categoria}</span>
+                      </p>
+                    )}
+                    <p className="font-mono text-xs font-semibold text-fg shrink-0">{valorMostrado(netoCategoria)}</p>
+                  </div>
+                  <ProgressBar value={pesoCategoria(netoCategoria)} color={colorFijo} thin />
                 </div>
               )}
-              <div className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)] last:border-0">
+              <div className="flex items-center justify-between gap-2 py-2 border-b border-dashed border-line last:border-0">
                 {modoSeleccion ? (
                   <button
                     type="button"
                     onClick={() => seleccion!.onToggle(linea.categoriaId, linea.subcategoriaId)}
-                    className={`flex items-center gap-1.5 text-sm ${
-                      subSeleccionada ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)] opacity-40'
+                    aria-pressed={subSeleccionada}
+                    className={`flex items-center gap-2 text-sm min-w-0 text-left ${
+                      subSeleccionada ? 'text-fg' : 'text-muted opacity-40'
                     }`}
                   >
                     {subColor && (
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: subColor }} aria-hidden="true" />
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: subColor, boxShadow: `0 0 6px ${subColor}` }}
+                        aria-hidden="true"
+                      />
                     )}
-                    <IconoSubcategoria nombre={linea.subcategoria} />
-                    {linea.subcategoria}
+                    <IconoSubcategoria nombre={linea.subcategoria} className="w-4 h-4 shrink-0 text-muted" />
+                    <span className="truncate">{linea.subcategoria}</span>
                   </button>
                 ) : (
-                  <span className="flex items-center gap-1.5 text-sm">
-                    <IconoSubcategoria nombre={linea.subcategoria} />
-                    {linea.subcategoria}
+                  <span className="flex items-center gap-2 text-sm min-w-0">
+                    <IconoSubcategoria nombre={linea.subcategoria} className="w-4 h-4 shrink-0 text-muted" />
+                    <span className="truncate">{linea.subcategoria}</span>
                   </span>
                 )}
-                <span className={`font-mono text-sm font-semibold ${claseColorPorSigno(linea.neto)}`}>
+                <span className={`font-mono text-sm font-semibold shrink-0 ${claseColorPorSigno(linea.neto)}`}>
                   {valorMostrado(linea.neto)}
                 </span>
               </div>

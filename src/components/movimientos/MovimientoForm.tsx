@@ -13,6 +13,10 @@ import { useAnclasPeriodo } from '../../hooks/useAnclasPeriodo';
 import { useAuth } from '../../lib/auth/useAuth';
 import { avisoCierreCorto, type AvisoCierreCorto } from '../../lib/finance/periodos';
 import { IconoSubcategoria } from '../icons/IconoTaxonomia';
+import { IconChevronRight, IconInfo } from '../icons/UiIcons';
+import { Segmented } from '../ui/Segmented';
+import { Cargando } from '../ui/Spinner';
+import { FormActions, FormError } from '../ui/FormActions';
 import type { AportacionObjetivo, Movimiento, Visibilidad } from '../../lib/supabase/database.types';
 
 export interface MovimientoFormValues {
@@ -186,34 +190,31 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-2">
-        <Button type="button" variant={esGasto ? 'danger' : 'secondary'} onClick={() => setEsGasto(true)}>
-          Gasto
-        </Button>
-        <Button
-          type="button"
-          variant={!esGasto ? 'primary' : 'secondary'}
-          className={!esGasto ? 'bg-[var(--color-gain)] hover:opacity-90' : ''}
-          onClick={() => setEsGasto(false)}
-        >
-          Ingreso
-        </Button>
-      </div>
+      <Segmented
+        full
+        ariaLabel="Tipo de movimiento"
+        value={esGasto ? 'gasto' : 'ingreso'}
+        onChange={(v) => setEsGasto(v === 'gasto')}
+        options={[
+          { value: 'gasto', label: 'Gasto', tone: 'bad' },
+          { value: 'ingreso', label: 'Ingreso', tone: 'ok' },
+        ]}
+      />
 
       <ImporteKeypadInput
         label="Importe"
         value={magnitud}
         onChange={setMagnitud}
-        colorClassName={esGasto ? 'text-[var(--color-loss)]' : 'text-[var(--color-gain)]'}
+        colorClassName={esGasto ? 'text-bad' : 'text-ok'}
       />
 
       {loadingTaxonomia ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Cargando categorías...</p>
+        <Cargando texto="Cargando categorías..." />
       ) : (
-        <>
+        <div className="grid grid-cols-2 gap-2">
           <CategoriaSelect categorias={categorias} value={categoriaId} onChange={(id) => { setCategoriaId(id); setSubcategoriaId(null); }} />
           <SubcategoriaSelect subcategorias={subcategorias} value={subcategoriaId} onChange={setSubcategoriaId} />
-        </>
+        </div>
       )}
 
       {/* El nombre va despues de categoria/subcategoria a proposito: abrir un <select> justo
@@ -223,19 +224,22 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
       <Input label="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required placeholder="Cena viernes" />
 
       {subcategoriaSeleccionada?.es_traspaso && (
-        <p className="text-xs text-[var(--color-text-muted)] bg-black/5 dark:bg-white/5 rounded-md px-3 py-2">
-          Un movimiento en{' '}
-          <span className="inline-flex items-center gap-1 align-text-bottom">
-            <IconoSubcategoria nombre={subcategoriaSeleccionada.nombre} className="w-3.5 h-3.5" />
-            {subcategoriaSeleccionada.nombre}
-          </span>{' '}
-          es un traspaso a otra cuenta tuya, no dinero perdido:
-          aunque salga en rojo del balance, sigue siendo tuyo, solo que guardado en otro sitio.
+        <p className="notice">
+          <IconInfo />
+          <span>
+            Un movimiento en{' '}
+            <span className="inline-flex items-center gap-1 align-text-bottom text-fg">
+              <IconoSubcategoria nombre={subcategoriaSeleccionada.nombre} className="w-3.5 h-3.5" />
+              {subcategoriaSeleccionada.nombre}
+            </span>{' '}
+            es un traspaso a otra cuenta tuya, no dinero perdido:
+            aunque salga en rojo del balance, sigue siendo tuyo, solo que guardado en otro sitio.
+          </span>
         </p>
       )}
 
       {puedeAsignarAObjetivo && (
-        <div className="flex flex-col gap-2 border border-[var(--color-border)] rounded-md p-3">
+        <div className="field-group">
           <Select
             label="Destinar a un objetivo de ahorro (opcional)"
             value={objetivoDestino}
@@ -253,20 +257,21 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
               label="Cantidad destinada (€)"
               value={importeAportacion}
               onChange={(v) => setImporteAportacion(Math.min(v, magnitud))}
+              colorClassName="text-cyan"
             />
           )}
         </div>
       )}
 
       {subcategoriaSeleccionada?.nombre === 'Salario' && (
-        <label className="flex items-center gap-2 text-sm border border-[var(--color-border)] rounded-md p-3 cursor-pointer">
+        <label className="field-group !flex-row items-center justify-between gap-3 text-sm cursor-pointer">
+          Hacer primer día del mes
           <input
             type="checkbox"
             checked={esPrimerDiaMes}
             onChange={(e) => setEsPrimerDiaMes(e.target.checked)}
-            className="w-4 h-4 accent-[var(--color-accent)]"
+            className="switch"
           />
-          Hacer primer día del mes
         </label>
       )}
 
@@ -276,52 +281,49 @@ export function MovimientoForm({ initialValues, aportacionInicial, onSubmit, onC
         <button
           type="button"
           onClick={() => setMostrarMas((v) => !v)}
-          className="flex items-center gap-1.5 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+          aria-expanded={mostrarMas}
+          className="flex items-center gap-1.5 text-[13px] text-muted hover:text-fg"
         >
-          <span className={`inline-block transition-transform ${mostrarMas ? 'rotate-90' : ''}`}>▸</span>
+          <IconChevronRight className={`w-4 h-4 transition-transform ${mostrarMas ? 'rotate-90 text-cyan' : ''}`} />
           Usuario, privacidad y nota
         </button>
 
         {mostrarMas && (
           <div className="flex flex-col gap-4 mt-3">
-            <Select label="Usuario" value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)}>
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
-            </Select>
+            <div className="grid grid-cols-2 gap-2">
+              <Select label="Usuario" value={usuarioId} onChange={(e) => setUsuarioId(e.target.value)}>
+                {profiles.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </Select>
 
-            <Select label="Visibilidad" value={visibilidad} onChange={(e) => setVisibilidad(e.target.value as Visibilidad)}>
-              <option value="privado">Privado</option>
-              <option value="compartido">Compartido</option>
-            </Select>
+              <Select label="Visibilidad" value={visibilidad} onChange={(e) => setVisibilidad(e.target.value as Visibilidad)}>
+                <option value="privado">Privado</option>
+                <option value="compartido">Compartido</option>
+              </Select>
+            </div>
 
             <Input label="Nota (opcional)" value={nota} onChange={(e) => setNota(e.target.value)} />
           </div>
         )}
       </div>
 
-      {error && <p className="text-sm text-[var(--color-loss)]">{error}</p>}
+      <FormError>{error}</FormError>
 
-      <div className="flex gap-2 justify-end">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={guardando}>
-          {guardando ? 'Guardando...' : 'Guardar'}
-        </Button>
-      </div>
+      <FormActions onCancel={onCancel} guardando={guardando} />
 
       <Modal open={confirmacionCierre !== null} onClose={cancelarCierre} title="Confirmar cierre de mes" centrado>
-        <p className="text-sm mb-4">
-          Vas a cerrar el mes {etiquetaMesCierre} con {confirmacionCierre?.dias} días. ¿Quieres proceder a cerrarlo?
+        <p className="text-sm text-muted leading-relaxed mb-5">
+          Vas a cerrar el mes <span className="text-fg font-medium">{etiquetaMesCierre}</span> con{' '}
+          <span className="font-mono text-fg">{confirmacionCierre?.dias}</span> días. ¿Quieres proceder a cerrarlo?
         </p>
-        <div className="flex gap-2 justify-end">
-          <Button type="button" variant="secondary" onClick={cancelarCierre}>
+        <div className="flex gap-2">
+          <Button type="button" variant="ghost" className="flex-1" onClick={cancelarCierre}>
             No
           </Button>
-          <Button type="button" onClick={confirmarCierre} disabled={guardando}>
+          <Button type="button" className="flex-1" onClick={confirmarCierre} disabled={guardando}>
             Sí
           </Button>
         </div>

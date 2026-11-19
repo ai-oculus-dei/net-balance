@@ -12,11 +12,14 @@ interface StatTileProps {
   // Si se pasa (y no esta vacio), el nombre se puede pulsar para desplegar un rectangulo con las
   // filas que suman `value` — p.ej. las subcategorias detras de "Ingreso real".
   desglose?: DesgloseFila[];
+  // "start": alineado a la izquierda (columna de indicadores junto al anillo de Inicio).
+  align?: "center" | "start";
+  size?: "md" | "lg";
 }
 
 const MARGEN_BORDE_PX = 8;
 
-export function StatTile({ label, value, colorClassName = '', desglose }: StatTileProps) {
+export function StatTile({ label, value, colorClassName = '', desglose, align = 'center', size = 'md' }: StatTileProps) {
   const [abierto, setAbierto] = useState(false);
   const [ajusteX, setAjusteX] = useState(0);
   const contenedorRef = useRef<HTMLDivElement>(null);
@@ -55,33 +58,33 @@ export function StatTile({ label, value, colorClassName = '', desglose }: StatTi
   }, [abierto]);
 
   return (
-    <div ref={contenedorRef} className="relative flex flex-col items-center text-center gap-0.5">
+    <div ref={contenedorRef} className={`relative flex flex-col gap-1 min-w-0 ${align === 'start' ? 'items-start text-left' : 'items-center text-center'}`}>
       {tieneDesglose ? (
         <button
           type="button"
           onClick={() => setAbierto((v) => !v)}
           aria-expanded={abierto}
-          className="text-xs text-[var(--color-text-muted)] underline decoration-dotted underline-offset-2"
+          className="kpi-label underline decoration-dotted decoration-faint underline-offset-[3px]"
         >
           {label}
         </button>
       ) : (
-        <p className="text-xs text-[var(--color-text-muted)]">{label}</p>
+        <p className="kpi-label">{label}</p>
       )}
-      <p className={`font-mono font-semibold ${colorClassName}`}>{value}</p>
+      <p className={`font-mono font-semibold leading-tight tracking-[-0.01em] whitespace-nowrap ${size === 'lg' ? 'text-[19px]' : 'text-[17px]'} ${colorClassName}`}>{value}</p>
 
       {tieneDesglose && abierto && (
         <div
           ref={popoverRef}
-          style={{ transform: `translateX(calc(-50% + ${ajusteX}px))` }}
-          className="absolute top-full left-1/2 mt-1 z-20 w-56 max-w-[85vw] rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg p-2"
+          style={{ transform: align === 'start' ? `translateX(${ajusteX}px)` : `translateX(calc(-50% + ${ajusteX}px))` }}
+          className={`popover absolute top-full mt-1.5 z-20 w-60 max-w-[85vw] ${align === 'start' ? 'left-0' : 'left-1/2'}`}
         >
           {desglose!.map((fila) => (
             <div
               key={fila.etiqueta}
-              className="flex items-center justify-between gap-2 py-1 text-xs border-b border-[var(--color-border)] last:border-0"
+              className="flex items-center justify-between gap-2 py-1.5 text-xs border-b border-dashed border-line last:border-0"
             >
-              <span className="text-[var(--color-text-muted)] truncate">{fila.etiqueta}</span>
+              <span className="text-muted truncate">{fila.etiqueta}</span>
               <span className="font-mono font-semibold shrink-0">{fila.valor}</span>
             </div>
           ))}

@@ -91,10 +91,10 @@ export function AppShell() {
   }
 
   return (
-    <div className="min-h-svh flex flex-col pb-24 sm:pb-0">
+    <div className="min-h-svh flex flex-col">
       <BottomNav />
 
-      <main className="flex-1 max-w-3xl w-full mx-auto p-4">
+      <main className="shell flex-1">
         <VisualizacionesProvider>
           <Outlet />
         </VisualizacionesProvider>

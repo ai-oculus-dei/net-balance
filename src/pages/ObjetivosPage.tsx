@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
+import { Cargando } from '../components/ui/Spinner';
+import { PageHeader } from '../components/layout/PageHeader';
+import { IconObjetivos } from '../components/layout/NavIcons';
+import { IconPapelera, IconPlus } from '../components/icons/UiIcons';
 import { Modal } from '../components/ui/Modal';
 import { ObjetivoCard } from '../components/objetivos/ObjetivoCard';
 import { ObjetivoForm, type ObjetivoFormValues } from '../components/objetivos/ObjetivoForm';
@@ -28,17 +32,22 @@ export function ObjetivosPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-          Objetivos de ahorro
-        </h2>
-        <Button onClick={() => setCreando(true)}>+ Nuevo</Button>
-      </div>
+      <PageHeader
+        icon={<IconObjetivos />}
+        title="Objetivos"
+        sub={loading ? 'cargando…' : `${objetivos.filter((o) => o.activo).length} activos · ${objetivos.length} en total`}
+        right={
+          <Button onClick={() => setCreando(true)} className="btn-sm !min-h-[36px]">
+            <IconPlus />
+            Nuevo
+          </Button>
+        }
+      />
 
       {loading || loadingIngreso ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+        <Cargando />
       ) : objetivos.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Todavía no tienes objetivos.</p>
+        <p className="empty card">Todavía no tienes objetivos.</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {objetivos.map((o) => (
@@ -58,7 +67,7 @@ export function ObjetivosPage() {
 
       <Modal open={editando !== null} onClose={() => setEditando(null)} title="Editar objetivo">
         {editando && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <ObjetivoForm initialValues={editando} onSubmit={handleActualizar} onCancel={() => setEditando(null)} />
             <Button
               variant="danger"
@@ -67,6 +76,7 @@ export function ObjetivosPage() {
                 setEditando(null);
               }}
             >
+              <IconPapelera />
               Borrar objetivo
             </Button>
           </div>

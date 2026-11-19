@@ -5,6 +5,9 @@ import './index.css';
 import App from './App.tsx';
 import { AuthProvider } from './lib/auth/AuthProvider';
 import { ThemeProvider } from './lib/theme/ThemeProvider';
+import { instalarAjustesIOS } from './lib/ui/iosViewport';
+
+instalarAjustesIOS();
 
 // Comprueba cada minuto si hay una version nueva desplegada, en vez de solo al abrir la app:
 // el service worker por si solo no revisa esto con frecuencia, y GitHub Pages ademas cachea

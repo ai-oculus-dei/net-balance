@@ -105,12 +105,12 @@ export function ImporteKeypadInput({
   }
 
   return (
-    <div className="flex flex-col gap-1 text-sm text-[var(--color-text-muted)]">
-      <span>{label}</span>
+    <div className="field">
+      {label && <span>{label}</span>}
       <button
         type="button"
         onClick={handleAbrir}
-        className={`text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-md px-3 py-2 font-mono text-lg ${colorClassName}`}
+        className={`input text-left font-mono font-semibold !text-lg ${abierto ? '!border-cyan' : ''} ${expresion ? '' : '!text-faint'} ${colorClassName}`}
       >
         {simbolosParaMostrar(expresion) || '0'}
       </button>

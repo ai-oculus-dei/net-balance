@@ -14,35 +14,38 @@ export function ObjetivoCard({ objetivo, aportacionMensual, onClick }: ObjetivoC
   const progreso = esAcumulativo && objetivo.meta ? (objetivo.acumulado / objetivo.meta) * 100 : 0;
 
   return (
-    <Card className="cursor-pointer hover:opacity-90" onClick={onClick}>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="font-semibold text-sm">{objetivo.nombre}</h3>
-        <span className="text-xs text-[var(--color-text-muted)]">
-          {esAcumulativo ? 'Acumulativo' : 'Recurrente'}
-        </span>
+    <Card onClick={onClick} className={objetivo.activo ? '' : 'opacity-70'}>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <h3 className="font-semibold text-[15px] truncate min-w-0">{objetivo.nombre}</h3>
+        <span className="tag shrink-0">{esAcumulativo ? 'acumulativo' : 'recurrente'}</span>
       </div>
 
       {esAcumulativo ? (
         <>
-          <ProgressBar value={progreso} />
-          <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            {formatearImporte(objetivo.acumulado)} € / {formatearImporte(objetivo.meta ?? 0)} €
-            {objetivo.modo_aportacion === 'automatico' ? ' · automático' : ` · manual (${objetivo.porcentaje}%)`}
+          <div className="flex items-baseline justify-between gap-2 mb-1.5">
+            <span className="font-mono text-[13px] text-fg truncate min-w-0">
+              {formatearImporte(objetivo.acumulado)} €<span className="text-faint"> / {formatearImporte(objetivo.meta ?? 0)} €</span>
+            </span>
+            <span className="font-mono text-xs font-semibold text-cyan shrink-0">{formatearImporte(progreso, 0)}%</span>
+          </div>
+          <ProgressBar value={progreso} color={progreso > 100 ? 'var(--ok)' : 'var(--cyan)'} />
+          <p className="text-xs text-muted mt-2">
+            {objetivo.modo_aportacion === 'automatico' ? 'Aportación automática' : `Aportación manual · ${objetivo.porcentaje}%`}
           </p>
         </>
       ) : (
-        <p className="text-xs text-[var(--color-text-muted)]">{objetivo.porcentaje}% del ingreso real / mes</p>
+        <p className="text-xs text-muted">
+          <span className="font-mono text-fg">{objetivo.porcentaje}%</span> del ingreso real / mes
+        </p>
       )}
 
       {objetivo.activo ? (
-        <p className="mt-2 pt-2 border-t border-[var(--color-border)] text-sm">
-          <span className="text-[var(--color-text-muted)]">Ahorrar este mes: </span>
-          <span className="font-semibold text-[var(--color-accent)]">{formatearImporte(aportacionMensual)} €</span>
+        <p className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-dashed border-line">
+          <span className="kpi-label">Ahorrar este mes</span>
+          <span className="font-mono text-[15px] font-semibold text-cyan">{formatearImporte(aportacionMensual)} €</span>
         </p>
       ) : (
-        <p className="mt-2 pt-2 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
-          Inactivo — no aporta este mes
-        </p>
+        <p className="mt-3 pt-3 border-t border-dashed border-line text-xs text-muted">Inactivo — no aporta este mes</p>
       )}
     </Card>
   );

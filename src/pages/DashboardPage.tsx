@@ -1,5 +1,9 @@
 import { useMemo } from 'react';
-import { Card } from '../components/ui/Card';
+import { Card, CardTitle } from '../components/ui/Card';
+import { Cargando } from '../components/ui/Spinner';
+import { PageHeader } from '../components/layout/PageHeader';
+import { IconInicio, IconObjetivos } from '../components/layout/NavIcons';
+import { IconLista } from '../components/icons/UiIcons';
 import { MovimientoRow } from '../components/movimientos/MovimientoRow';
 import { EsteMesCard } from '../components/dashboard/EsteMesCard';
 import { MetricasCard } from '../components/dashboard/MetricasCard';
@@ -40,42 +44,47 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PageHeader
+        icon={<IconInicio />}
+        title="Inicio"
+        sub={loading ? 'cargando…' : `${etiquetaMes} · ${movimientos.length} movimientos`}
+      />
+
       <MetricasCard
         titulo="Métricas del mes"
         movimientos={movimientos}
         subcategoriasPorId={subcategoriasPorId}
         loading={loading}
+        destacada
       />
 
       <EsteMesCard titulo={`Este mes: ${etiquetaMes}`} balanceSubcategorias={balanceSubcategorias} loading={loading} />
 
       <Card>
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">
+        <CardTitle icon={<IconObjetivos />} className="mb-2">
           Ahorro mensual
-        </h2>
+        </CardTitle>
         {loadingDisponible ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+          <Cargando />
         ) : objetivosActivos.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)]">No tienes objetivos de ahorro activos.</p>
+          <p className="empty">No tienes objetivos de ahorro activos.</p>
         ) : (
           <>
             {objetivosActivos.map((o) => {
               const importe = aportacionesDeseadas.find((a) => a.objetivoId === o.id)?.importe ?? 0;
               return (
-                <div
-                  key={o.id}
-                  className="flex items-center justify-between py-1.5 border-b border-[var(--color-border)] last:border-0"
-                >
-                  <span className="text-sm">{o.nombre}</span>
-                  <span className="font-mono text-sm font-semibold text-[var(--color-accent)]">
-                    {formatearImporte(importe)} €
-                  </span>
+                <div key={o.id} className="flex items-center justify-between gap-2 py-2 border-b border-dashed border-line last:border-0">
+                  <span className="text-sm truncate min-w-0">{o.nombre}</span>
+                  <span className="font-mono text-sm font-semibold text-cyan shrink-0">{formatearImporte(importe)} €</span>
                 </div>
               );
             })}
-            <div className="flex items-center justify-between pt-2 mt-1 border-t border-[var(--color-border)]">
-              <span className="text-sm font-semibold">Total</span>
-              <span className="font-mono text-sm font-semibold text-[var(--color-accent)]">
+            <div className="flex items-center justify-between gap-2 pt-2.5 mt-1 border-t border-line-strong">
+              <span className="kpi-label">Total</span>
+              <span
+                className="font-mono text-[15px] font-semibold text-cyan"
+                style={{ textShadow: '0 0 12px color-mix(in srgb, var(--cyan) 35%, transparent)' }}
+              >
                 {formatearImporte(totalAhorroMensual)} €
               </span>
             </div>
@@ -84,11 +93,11 @@ export function DashboardPage() {
       </Card>
 
       <Card>
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">
+        <CardTitle icon={<IconLista />} className="mb-1">
           Últimos movimientos
-        </h2>
+        </CardTitle>
         {movimientos.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Sin movimientos este mes.</p>
+          <p className="empty">Sin movimientos este mes.</p>
         ) : (
           movimientos
             .slice(0, 8)

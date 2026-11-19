@@ -1,5 +1,7 @@
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useId } from 'react';
+import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { colorCategorico } from './colorsCategoricos';
+import { LEYENDA, TICK, TOOLTIP_CONTENT, TOOLTIP_ITEM, TOOLTIP_LABEL } from './estiloGraficos';
 import { formatearImporte } from '../../lib/finance/formato';
 import type { PuntoSerieLineas } from '../../lib/finance/visualizaciones';
 import type { Theme } from '../../lib/theme/ThemeProvider';
@@ -18,40 +20,81 @@ interface SerieTemporalLineasChartProps {
 }
 
 export function SerieTemporalLineasChart({ datos, lineas, theme, altura = 280 }: SerieTemporalLineasChartProps) {
+  const idGradiente = `area-${useId().replace(/:/g, '')}`;
+
   if (lineas.length === 0) {
-    return <p className="text-sm text-[var(--color-text-muted)]">Selecciona al menos una categoría para comparar.</p>;
+    return <p className="empty">Selecciona al menos una categoría para comparar.</p>;
   }
 
   // Recharts necesita las claves de "valores" al nivel raiz de cada punto.
   const datosAplanados = datos.map((p) => ({ mes: p.mes, ...p.valores }));
+  // Con una sola serie (historicos de patrimonio), linea principal con brillo y area en
+  // degradado debajo; con varias, solo lineas para no mezclar rellenos.
+  const unaSola = lineas.length === 1;
+  const colorUnica = unaSola ? colorCategorico(lineas[0].colorIndex, theme) : undefined;
 
   return (
-    <ResponsiveContainer width="100%" height={altura}>
-      <LineChart data={datosAplanados} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-        <XAxis dataKey="mes" tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }} />
-        <YAxis
-          tick={{ fontSize: 11, fill: 'var(--color-text-muted)' }}
-          tickFormatter={(value) => formatearImporte(Number(value), 0)}
-        />
-        <Tooltip
-          formatter={(value) => `${formatearImporte(Number(value))} €`}
-          contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: 12 }}
-        />
-        {lineas.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
-        {lineas.map((linea) => (
-          <Line
-            key={linea.id}
-            type="monotone"
-            dataKey={linea.id}
-            name={linea.etiqueta}
-            stroke={colorCategorico(linea.colorIndex, theme)}
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4 }}
+    <div className={unaSola ? 'chart-glow' : ''}>
+      <ResponsiveContainer width="100%" height={altura}>
+        <ComposedChart data={datosAplanados} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+          {unaSola && (
+            <defs>
+              <linearGradient id={idGradiente} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={colorUnica} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={colorUnica} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+          )}
+          <CartesianGrid strokeDasharray="3 4" stroke="var(--line)" vertical={false} />
+          <XAxis
+            dataKey="mes"
+            tick={TICK}
+            tickLine={false}
+            axisLine={{ stroke: 'var(--line)' }}
+            minTickGap={12}
           />
-        ))}
-      </LineChart>
-    </ResponsiveContainer>
+          <YAxis
+            tick={TICK}
+            tickLine={false}
+            axisLine={false}
+            width={52}
+            tickFormatter={(value) => formatearImporte(Number(value), 0)}
+          />
+          <Tooltip
+            formatter={(value) => `${formatearImporte(Number(value))} €`}
+            contentStyle={TOOLTIP_CONTENT}
+            labelStyle={TOOLTIP_LABEL}
+            itemStyle={TOOLTIP_ITEM}
+            cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }}
+          />
+          {lineas.length > 1 && <Legend wrapperStyle={LEYENDA} iconType="circle" iconSize={8} />}
+          {unaSola && (
+            <Area
+              type="monotone"
+              dataKey={lineas[0].id}
+              stroke="none"
+              fill={`url(#${idGradiente})`}
+              isAnimationActive={false}
+              legendType="none"
+              tooltipType="none"
+              activeDot={false}
+            />
+          )}
+          {lineas.map((linea) => (
+            <Line
+              key={linea.id}
+              type="monotone"
+              dataKey={linea.id}
+              name={linea.etiqueta}
+              stroke={colorCategorico(linea.colorIndex, theme)}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 0 }}
+              isAnimationActive={false}
+            />
+          ))}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

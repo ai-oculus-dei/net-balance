@@ -1,4 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { IconX } from '../icons/UiIcons';
+import { bloquearScroll, desbloquearScroll } from '../../lib/ui/iosViewport';
 
 const PADDING_PANTALLA_GRANDE = 32;
 
@@ -31,32 +34,31 @@ interface PantallaCompletaGraficoProps {
 export function PantallaCompletaGrafico({ abierto, onClose, render }: PantallaCompletaGraficoProps) {
   const { ancho, alto } = useViewport();
   const esVertical = alto > ancho;
-
   useEffect(() => {
     if (!abierto) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
     document.addEventListener('keydown', onKeyDown);
-    const overflowPrevio = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    bloquearScroll();
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = overflowPrevio;
+      desbloquearScroll();
     };
   }, [abierto, onClose]);
 
   if (!abierto) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-[var(--color-surface)]">
+  return createPortal(
+    <div className="fixed inset-0 z-[70] bg-bg" style={{ animation: 'fade .18s ease' }}>
       <button
         type="button"
         onClick={onClose}
         aria-label="Cerrar pantalla grande"
-        className="absolute top-2 right-2 z-10 w-9 h-9 flex items-center justify-center rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] text-xl leading-none"
+        className="btn btn-icon absolute z-10"
+        style={{ top: 'calc(8px + env(safe-area-inset-top))', right: 'calc(8px + env(safe-area-inset-right))' }}
       >
-        &times;
+        <IconX />
       </button>
       {esVertical ? (
         <div
@@ -70,6 +72,7 @@ export function PantallaCompletaGrafico({ abierto, onClose, render }: PantallaCo
           {render(Math.max(alto - PADDING_PANTALLA_GRANDE, 160))}
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

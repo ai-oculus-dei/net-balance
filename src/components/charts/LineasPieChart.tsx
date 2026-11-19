@@ -1,5 +1,6 @@
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { colorCategorico } from './colorsCategoricos';
+import { LEYENDA, TOOLTIP_CONTENT, TOOLTIP_ITEM } from './estiloGraficos';
 import { formatearImporte } from '../../lib/finance/formato';
 import type { Theme } from '../../lib/theme/ThemeProvider';
 
@@ -40,8 +41,9 @@ function EtiquetaPorcentaje({ cx = 0, cy = 0, midAngle = 0, outerRadius = 0, per
     <text
       x={x}
       y={y}
-      fill="var(--color-text-muted)"
-      fontSize={11}
+      fill="var(--muted)"
+      fontSize={10}
+      fontFamily="'JetBrains Mono', ui-monospace, monospace"
       textAnchor={x > cx ? 'start' : x < cx ? 'end' : 'middle'}
       dominantBaseline="central"
     >
@@ -52,14 +54,14 @@ function EtiquetaPorcentaje({ cx = 0, cy = 0, midAngle = 0, outerRadius = 0, per
 
 export function LineasPieChart({ datos, theme, altura = 420 }: LineasPieChartProps) {
   if (datos.length === 0) {
-    return <p className="text-sm text-[var(--color-text-muted)]">Selecciona al menos una categoría para comparar.</p>;
+    return <p className="empty">Selecciona al menos una categoría para comparar.</p>;
   }
 
   const datosConMagnitud = datos.map((d) => ({ ...d, magnitud: Math.abs(d.neto) }));
   const hayDatos = datosConMagnitud.some((d) => d.magnitud > 0);
 
   if (!hayDatos) {
-    return <p className="text-sm text-[var(--color-text-muted)]">Sin movimientos en ese rango para estas líneas.</p>;
+    return <p className="empty">Sin movimientos en ese rango para estas líneas.</p>;
   }
 
   // Hasta 8 lineas con etiquetas largas pueden ocupar varias filas de leyenda: se deja hueco
@@ -75,6 +77,12 @@ export function LineasPieChart({ datos, theme, altura = 420 }: LineasPieChartPro
           cx="50%"
           cy="42%"
           outerRadius={105}
+          innerRadius={64}
+          paddingAngle={2}
+          cornerRadius={4}
+          stroke="var(--card-solid)"
+          strokeWidth={2}
+          isAnimationActive={false}
           label={EtiquetaPorcentaje}
           labelLine={false}
         >
@@ -84,9 +92,10 @@ export function LineasPieChart({ datos, theme, altura = 420 }: LineasPieChartPro
         </Pie>
         <Tooltip
           formatter={(_value, _name, item) => [`${formatearImporte((item.payload as { neto: number }).neto)} €`, item.payload.etiqueta]}
-          contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: 12 }}
+          contentStyle={TOOLTIP_CONTENT}
+          itemStyle={TOOLTIP_ITEM}
         />
-        <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 12, lineHeight: '1.6em' }} />
+        <Legend verticalAlign="bottom" align="center" wrapperStyle={LEYENDA} iconType="circle" iconSize={8} />
       </PieChart>
     </ResponsiveContainer>
   );

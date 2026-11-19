@@ -1,3 +1,5 @@
+import { IconBorrarTecla } from '../icons/UiIcons';
+
 interface NumericKeypadProps {
   onDigit: (digito: string) => void;
   onOperator: (op: '+' | '-' | '*' | '/') => void;
@@ -13,6 +15,11 @@ const FILAS = [
   ['.', '0', '⌫', '+'],
 ];
 
+const OPERADORES = new Set(['÷', '×', '−', '+']);
+
+const TECLA =
+  'h-11 rounded-[10px] bg-card-solid border border-line font-mono text-base text-fg flex items-center justify-center active:scale-95 hover-tint transition-transform';
+
 export function NumericKeypad({ onDigit, onOperator, onEquals, onBackspace, onDone }: NumericKeypadProps) {
   function handleKey(key: string) {
     if (key === '⌫') return onBackspace();
@@ -24,32 +31,23 @@ export function NumericKeypad({ onDigit, onOperator, onEquals, onBackspace, onDo
   }
 
   return (
-    <div className="p-2 border border-[var(--color-border)] rounded-md bg-[var(--color-bg)]">
+    <div className="p-2 border border-line rounded-[14px] bg-bg-2">
       <div className="grid grid-cols-4 gap-1.5">
         {FILAS.flat().map((key) => (
           <button
             key={key}
             type="button"
             onClick={() => handleKey(key)}
-            className={`h-11 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] font-medium text-[var(--color-text)] active:scale-95 hover:bg-black/5 dark:hover:bg-white/5 ${
-              key === '⌫' ? 'text-2xl' : 'text-base'
-            }`}
+            aria-label={key === '⌫' ? 'Borrar' : undefined}
+            className={`${TECLA} ${OPERADORES.has(key) ? '!text-cyan' : ''}`}
           >
-            {key}
+            {key === '⌫' ? <IconBorrarTecla className="w-5 h-5 text-muted" /> : key}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={onDone}
-          className="col-span-3 h-14 rounded-md bg-[var(--color-surface)] border border-[var(--color-border)] text-base font-semibold text-[var(--color-text)] active:scale-95 hover:bg-black/5 dark:hover:bg-white/5"
-        >
+        <button type="button" onClick={onDone} className={`${TECLA} col-span-3 h-14 font-sans font-semibold`}>
           Hecho
         </button>
-        <button
-          type="button"
-          onClick={onEquals}
-          className="h-11 self-center rounded-md bg-[var(--color-accent)] text-white text-base font-semibold active:scale-95 hover:opacity-90"
-        >
+        <button type="button" onClick={onEquals} className="btn btn-primary h-11 self-center !min-h-0 !p-0 font-mono text-lg">
           =
         </button>
       </div>

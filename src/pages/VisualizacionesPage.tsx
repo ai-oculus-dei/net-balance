@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useDebounced } from '../hooks/useDebounced';
-import { Card } from '../components/ui/Card';
+import { Card, CardTitle } from '../components/ui/Card';
+import { Cargando } from '../components/ui/Spinner';
+import { PageHeader } from '../components/layout/PageHeader';
+import { IconVisualizaciones } from '../components/layout/NavIcons';
+import { IconActividad, IconCalendario, IconCapas, IconCheck, IconInfo, IconPapelera, IconPlus, IconTarta, IconX } from '../components/icons/UiIcons';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
@@ -131,10 +135,16 @@ export function VisualizacionesPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PageHeader
+        icon={<IconVisualizaciones />}
+        title="Visualizaciones"
+        sub={`${desdeMes} → ${hastaMes} · ${periodos.length} ${periodos.length === 1 ? 'mes' : 'meses'}`}
+      />
+
       <Card>
-        <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-3 uppercase tracking-wide">
+        <CardTitle icon={<IconCalendario />} className="mb-3">
           Rango de meses
-        </h2>
+        </CardTitle>
         <div className="grid grid-cols-2 gap-2">
           <Input label="Desde" type="month" value={desdeMes} onChange={(e) => setDesdeMes(e.target.value)} />
           <Input label="Hasta" type="month" value={hastaMes} onChange={(e) => setHastaMes(e.target.value)} />
@@ -156,49 +166,50 @@ export function VisualizacionesPage() {
         mesesEnRango={periodos.length}
       />
 
-      <Card>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
-            Categorías a comparar
-          </h2>
-          {lineas.length >= MAX_LINEAS && (
-            <span className="text-xs text-[var(--color-text-muted)]">Máximo {MAX_LINEAS} líneas</span>
-          )}
+      <Card glow={modoSeleccion}>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <CardTitle icon={<IconCapas />}>Categorías a comparar</CardTitle>
+          {lineas.length >= MAX_LINEAS && <span className="tag shrink-0">máx. {MAX_LINEAS}</span>}
         </div>
 
         {lineas.length > 0 && (
           <>
-            <div className="flex flex-col gap-1.5 mb-3">
-              {lineas.map((linea) => (
-                <div key={linea.id} className="flex items-center gap-2">
-                  <span
-                    className="w-3 h-3 rounded-full shrink-0"
-                    style={{ backgroundColor: colorCategorico(linea.colorIndex, theme) }}
-                    aria-hidden="true"
-                  />
-                  <span className="flex-1 min-w-0 text-sm truncate">{etiquetaLinea(linea, categorias, subcategorias)}</span>
-                  <button
-                    type="button"
-                    onClick={() => quitarLinea(linea.id)}
-                    aria-label="Quitar línea"
-                    className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+            <div className="flex flex-col mb-3">
+              {lineas.map((linea) => {
+                const color = colorCategorico(linea.colorIndex, theme);
+                return (
+                  <div key={linea.id} className="flex items-center gap-2.5 py-1.5 border-b border-dashed border-line last:border-0">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: color, boxShadow: `0 0 8px ${color}` }}
+                      aria-hidden="true"
+                    />
+                    <span className="flex-1 min-w-0 text-sm truncate">{etiquetaLinea(linea, categorias, subcategorias)}</span>
+                    <button
+                      type="button"
+                      onClick={() => quitarLinea(linea.id)}
+                      aria-label="Quitar línea"
+                      className="icon-btn shrink-0 !w-7 !h-7"
+                    >
+                      <IconX />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex items-center justify-between gap-2 mb-2 font-mono text-sm font-semibold">
-              <span className="shrink-0 text-[var(--color-text-muted)]">Total</span>
-              <span className="shrink-0 whitespace-nowrap">
-                {formatearImporte(totalSeleccion)} € · {formatearImporte(mediaMensualSeleccion)} €/m
+            <div className="flex items-center justify-between gap-2 mb-3 pt-2.5 border-t border-line-strong">
+              <span className="kpi-label shrink-0">Total</span>
+              <span className="font-mono text-sm font-semibold whitespace-nowrap">
+                {formatearImporte(totalSeleccion)} € <span className="text-faint">·</span>{' '}
+                <span className="text-muted">{formatearImporte(mediaMensualSeleccion)} €/m</span>
               </span>
             </div>
           </>
         )}
 
         {modoSeleccion && (
-          <p className="text-xs text-[var(--color-text-muted)] mb-2">
+          <p className="notice mb-3">
+            <IconInfo />
             Pulsa los nombres en «Resumen Categorías» de arriba para (des)seleccionarlos.
           </p>
         )}
@@ -211,7 +222,8 @@ export function VisualizacionesPage() {
             onClick={() => setModoSeleccion((m) => !m)}
             aria-pressed={modoSeleccion}
           >
-            {modoSeleccion ? 'Hecho' : '+ Añadir categoría'}
+            {modoSeleccion ? <IconCheck /> : <IconPlus />}
+            {modoSeleccion ? 'Hecho' : 'Añadir categoría'}
           </Button>
           <Button type="button" variant="secondary" className="flex-1" onClick={seleccionarTodasCategorias}>
             Seleccionar todas
@@ -221,9 +233,10 @@ export function VisualizacionesPage() {
 
       <TarjetaGrafico
         titulo="Evolución mensual"
+        icono={<IconActividad />}
         render={(altura) =>
           loading ? (
-            <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+            <Cargando />
           ) : (
             <SerieTemporalLineasChart datos={serieTemporal} lineas={lineasInfo} theme={theme} altura={altura} />
           )
@@ -232,9 +245,10 @@ export function VisualizacionesPage() {
 
       <TarjetaGrafico
         titulo={`Reparto del total (${desdeMes} a ${hastaMes})`}
+        icono={<IconTarta />}
         render={(altura) =>
           loading ? (
-            <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+            <Cargando />
           ) : (
             <LineasPieChart datos={datosPie} theme={theme} altura={altura} />
           )
@@ -243,6 +257,7 @@ export function VisualizacionesPage() {
 
       {lineas.length > 0 && (
         <Button type="button" variant="danger" onClick={() => setLineas([])}>
+          <IconPapelera />
           Borrar todas las líneas
         </Button>
       )}

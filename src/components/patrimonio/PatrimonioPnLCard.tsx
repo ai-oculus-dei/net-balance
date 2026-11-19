@@ -1,4 +1,6 @@
-import { Card } from '../ui/Card';
+import { Card, CardTitle } from '../ui/Card';
+import { Cargando } from '../ui/Spinner';
+import { IconActividad } from '../icons/UiIcons';
 import { claseColorPorSigno } from '../charts/colors';
 import { formatearImporte } from '../../lib/finance/formato';
 import { patrimonioPnLTotal } from '../../lib/finance/patrimonio';
@@ -14,19 +16,19 @@ export function PatrimonioPnLCard({ posiciones, loading }: PatrimonioPnLCardProp
 
   return (
     <Card>
-      <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-3 uppercase tracking-wide text-center">
+      <CardTitle icon={<IconActividad />} className="mb-3">
         P&amp;L total
-      </h2>
+      </CardTitle>
       {loading ? (
-        <p className="text-sm text-[var(--color-text-muted)] text-center">Cargando...</p>
+        <Cargando />
       ) : (
-        <div className={`flex items-center justify-between font-mono text-lg font-bold ${claseColorPorSigno(pnl.eur)}`}>
-          <span>
+        <div className={`flex items-baseline justify-between gap-3 ${claseColorPorSigno(pnl.eur)}`}>
+          <span className="kpi-value">
             {pnl.eur > 0 ? '+' : ''}
             {formatearImporte(pnl.eur)} €
           </span>
           {pnl.pct !== null && (
-            <span>
+            <span className="font-mono text-sm font-semibold">
               {pnl.pct > 0 ? '+' : ''}
               {formatearImporte(pnl.pct, 1)}%
             </span>

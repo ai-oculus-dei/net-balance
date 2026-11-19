@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Input } from '../ui/Input';
 import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
-import { Button } from '../ui/Button';
+import { FormActions, FormError } from '../ui/FormActions';
 import { useAuth } from '../../lib/auth/useAuth';
 import type { ModoAportacion, ObjetivoAhorro, TipoObjetivo } from '../../lib/supabase/database.types';
 
@@ -92,16 +92,9 @@ export function ObjetivoForm({ initialValues, onSubmit, onCancel }: ObjetivoForm
         <ImporteKeypadInput label="% de ingreso real / mes" value={porcentaje} onChange={setPorcentaje} decimales={1} />
       )}
 
-      {error && <p className="text-sm text-[var(--color-loss)]">{error}</p>}
+      <FormError>{error}</FormError>
 
-      <div className="flex gap-2 justify-end">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={guardando}>
-          {guardando ? 'Guardando...' : 'Guardar'}
-        </Button>
-      </div>
+      <FormActions onCancel={onCancel} guardando={guardando} />
     </form>
   );
 }

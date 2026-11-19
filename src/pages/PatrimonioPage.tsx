@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
+import { Cargando } from '../components/ui/Spinner';
+import { PageHeader } from '../components/layout/PageHeader';
+import { IconPatrimonio } from '../components/layout/NavIcons';
+import { IconActividad, IconArchivar, IconCapas, IconTarta } from '../components/icons/UiIcons';
 import { Modal } from '../components/ui/Modal';
 import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
 import { PantallaCompletaGrafico } from '../components/charts/PantallaCompletaGrafico';
@@ -100,6 +104,12 @@ export function PatrimonioPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PageHeader
+        icon={<IconPatrimonio />}
+        title="Patrimonio"
+        sub={loading ? 'cargando…' : `${activos.length} activos · ${posicionesActivas.length} posiciones`}
+      />
+
       <PatrimonioTotalCard
         posiciones={posicionesActivas}
         historico={historico}
@@ -113,11 +123,12 @@ export function PatrimonioPage() {
 
       <TarjetaGrafico
         titulo="Por tipo de activo"
+        icono={<IconTarta />}
         render={(altura) =>
           loading ? (
-            <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+            <Cargando />
           ) : datosPorTipo.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-muted)]">Todavía no tienes posiciones.</p>
+            <p className="empty">Todavía no tienes posiciones.</p>
           ) : (
             <LineasPieChart datos={datosPorTipo} theme={theme} altura={altura} />
           )
@@ -126,11 +137,12 @@ export function PatrimonioPage() {
 
       <TarjetaGrafico
         titulo="Histórico del patrimonio"
+        icono={<IconActividad />}
         render={(altura) =>
           loading ? (
-            <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+            <Cargando />
           ) : serieTotal.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-muted)]">Todavía no hay histórico.</p>
+            <p className="empty">Todavía no hay histórico.</p>
           ) : (
             <SerieTemporalLineasChart
               datos={serieTotal}
@@ -144,11 +156,12 @@ export function PatrimonioPage() {
 
       <TarjetaGrafico
         titulo="Histórico por posición"
+        icono={<IconActividad />}
         render={(altura) =>
           loading ? (
-            <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+            <Cargando />
           ) : lineasPorPosicion.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-muted)]">Todavía no hay histórico.</p>
+            <p className="empty">Todavía no hay histórico.</p>
           ) : (
             <SerieTemporalLineasChart datos={puntosPorPosicion} lineas={lineasPorPosicion} theme={theme} altura={altura} />
           )
@@ -156,10 +169,10 @@ export function PatrimonioPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+        <Cargando />
       ) : posicionesActivas.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-muted)]">
-          Todavía no tienes posiciones. Usa el botón + para añadir la primera.
+        <p className="empty card">
+          Todavía no tienes posiciones. Usa el botón «Añadir» para añadir la primera.
         </p>
       ) : (
         GRUPOS.map((grupo) => {
@@ -167,8 +180,10 @@ export function PatrimonioPage() {
           if (deEsteGrupo.length === 0) return null;
           return (
             <div key={grupo} className="flex flex-col gap-3">
-              <h2 className="text-sm font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
-                {ETIQUETA_GRUPO[grupo]}
+              <h2 className="card-title px-1 pt-2">
+                <IconCapas />
+                <span>{ETIQUETA_GRUPO[grupo]}</span>
+                <span className="font-mono text-faint tracking-normal">{deEsteGrupo.length}</span>
               </h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {deEsteGrupo.map((a) => (
@@ -189,7 +204,7 @@ export function PatrimonioPage() {
 
       <Modal open={editando !== null} onClose={() => setEditando(null)} title="Editar posición">
         {editando && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <PatrimonioForm
               initialValues={editando}
               posicionesExistentes={posicionesActivas}
@@ -204,6 +219,7 @@ export function PatrimonioPage() {
                 setEditando(null);
               }}
             >
+              <IconArchivar />
               Archivar posición
             </Button>
           </div>
@@ -244,8 +260,8 @@ export function PatrimonioPage() {
       />
 
       {ultimaActualizacionPrecios && (
-        <p className="text-center text-xs text-[var(--color-text-muted)]">
-          Precios actualizados: {formatearUltimaActualizacion(ultimaActualizacionPrecios)}
+        <p className="text-center font-mono text-[11px] text-faint">
+          precios actualizados · {formatearUltimaActualizacion(ultimaActualizacionPrecios)}
         </p>
       )}
     </div>

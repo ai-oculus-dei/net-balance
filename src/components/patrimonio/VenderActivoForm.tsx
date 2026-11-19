@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
-import { Button } from '../ui/Button';
+import { FormActions, FormError } from '../ui/FormActions';
 import { claseColorPorSigno } from '../charts/colors';
 import { agruparPorActivo, esCuentaGastos, esTipoPorUnidad, type ActivoAgrupado } from '../../lib/finance/patrimonio';
 import { calcularVentaFIFO } from '../../lib/finance/ventas';
@@ -66,8 +66,11 @@ export function VenderActivoForm({ activo, posicionesExistentes, onSubmit, onCan
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <p className="text-sm text-[var(--color-text-muted)]">
-        Disponible: {formatearCantidad(activo.cantidadTotal)} {activo.ticker ?? activo.nombre}
+      <p className="flex items-center justify-between gap-2 text-sm text-muted">
+        <span>Disponible</span>
+        <span className="font-mono text-fg truncate">
+          {formatearCantidad(activo.cantidadTotal)} {activo.ticker ?? activo.nombre}
+        </span>
       </p>
 
       <ImporteKeypadInput label="Cantidad a vender" value={cantidad} onChange={setCantidad} decimales={8} />
@@ -85,17 +88,17 @@ export function VenderActivoForm({ activo, posicionesExistentes, onSubmit, onCan
       )}
 
       {previsualizacion && (
-        <div className="flex flex-col gap-1 text-sm border border-[var(--color-border)] rounded-md p-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[var(--color-text-muted)]">Importe a recibir</span>
+        <div className="field-group !gap-0 text-sm">
+          <div className="flex items-center justify-between gap-2 py-1.5 border-b border-dashed border-line last:border-0">
+            <span className="text-muted">Importe a recibir</span>
             <span className="font-mono font-semibold">{formatearImporte(previsualizacion.importeRecibido)} €</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[var(--color-text-muted)]">Coste base</span>
+          <div className="flex items-center justify-between gap-2 py-1.5 border-b border-dashed border-line last:border-0">
+            <span className="text-muted">Coste base</span>
             <span className="font-mono font-semibold">{formatearImporte(previsualizacion.costeBaseTotal)} €</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[var(--color-text-muted)]">Ganancia realizada</span>
+          <div className="flex items-center justify-between gap-2 py-1.5 border-b border-dashed border-line last:border-0">
+            <span className="text-muted">Ganancia realizada</span>
             <span className={`font-mono font-semibold ${claseColorPorSigno(previsualizacion.gananciaRealizada)}`}>
               {previsualizacion.gananciaRealizada > 0 ? '+' : ''}
               {formatearImporte(previsualizacion.gananciaRealizada)} €
@@ -107,16 +110,9 @@ export function VenderActivoForm({ activo, posicionesExistentes, onSubmit, onCan
         </div>
       )}
 
-      {error && <p className="text-sm text-[var(--color-loss)]">{error}</p>}
+      <FormError>{error}</FormError>
 
-      <div className="flex gap-2 justify-end">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" variant="danger" disabled={guardando}>
-          {guardando ? 'Vendiendo...' : 'Vender'}
-        </Button>
-      </div>
+      <FormActions onCancel={onCancel} guardando={guardando} textoGuardar="Vender" textoGuardando="Vendiendo..." variante="danger" />
     </form>
   );
 }

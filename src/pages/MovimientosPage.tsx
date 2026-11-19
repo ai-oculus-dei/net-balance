@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card } from '../components/ui/Card';
+import { Card, CardTitle } from '../components/ui/Card';
+import { Cargando } from '../components/ui/Spinner';
+import { PageHeader, SelectorMes } from '../components/layout/PageHeader';
+import { IconMovimientos } from '../components/layout/NavIcons';
+import { IconFiltro, IconLista, IconPapelera } from '../components/icons/UiIcons';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
@@ -78,41 +82,31 @@ export function MovimientosPage() {
   }
 
   const etiquetaMes = fechaBase.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  const etiquetaMesCorta = fechaBase.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }).replace('.', '');
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <button
-          type="button"
-          onClick={() => cambiarMes(-1)}
-          aria-label="Mes anterior"
-          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-md border border-[var(--color-border)] text-lg text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
-        >
-          ‹
-        </button>
-        <div className="relative">
-          <h2 className="text-base font-semibold capitalize text-center truncate pointer-events-none">
-            {etiquetaMes}
-          </h2>
-          <input
-            type="month"
-            value={mes}
-            onChange={(e) => e.target.value && setMes(e.target.value)}
-            aria-label="Elegir mes y año"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => cambiarMes(1)}
-          aria-label="Mes siguiente"
-          className="w-10 h-10 shrink-0 flex items-center justify-center rounded-md border border-[var(--color-border)] text-lg text-[var(--color-text)] hover:bg-black/5 dark:hover:bg-white/5 active:scale-95"
-        >
-          ›
-        </button>
-      </div>
+      <PageHeader
+        icon={<IconMovimientos />}
+        title="Movimientos"
+        sub={loading ? 'cargando…' : `${movimientosFiltrados.length} movimientos`}
+        right={
+          <SelectorMes etiqueta={etiquetaMesCorta} onAnterior={() => cambiarMes(-1)} onSiguiente={() => cambiarMes(1)}>
+            <input
+              type="month"
+              value={mes}
+              onChange={(e) => e.target.value && setMes(e.target.value)}
+              aria-label="Elegir mes y año"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </SelectorMes>
+        }
+      />
 
       <Card>
+        <CardTitle icon={<IconFiltro />} className="mb-3">
+          Filtros
+        </CardTitle>
         <div className="grid grid-cols-2 gap-2">
           <Select
             label="Categoría"
@@ -146,11 +140,14 @@ export function MovimientosPage() {
         </div>
       </Card>
 
-      <Card>
+      <Card glow>
+        <CardTitle icon={<IconLista />} className="mb-1">
+          {etiquetaMes}
+        </CardTitle>
         {loading ? (
-          <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+          <Cargando className="py-3" />
         ) : movimientosFiltrados.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)]">
+          <p className="empty">
             {filtroCategoriaId === null ? 'Sin movimientos este mes.' : 'Sin movimientos con ese filtro este mes.'}
           </p>
         ) : (
@@ -167,7 +164,7 @@ export function MovimientosPage() {
 
       <Modal open={editando !== null} onClose={() => setEditando(null)} title="Editar movimiento">
         {editando && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <MovimientoForm
               initialValues={editando}
               aportacionInicial={aportacionEditando}
@@ -182,6 +179,7 @@ export function MovimientosPage() {
                 setEditando(null);
               }}
             >
+              <IconPapelera />
               Borrar movimiento
             </Button>
           </div>

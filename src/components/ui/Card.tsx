@@ -1,12 +1,34 @@
-import type { HTMLAttributes } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 
-export function Card({ children, className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  // Brillo neon: solo para la tarjeta principal de cada pantalla.
+  glow?: boolean;
+}
+
+export function Card({ children, className = '', glow = false, onClick, ...props }: CardProps) {
   return (
     <div
-      className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-4 ${className}`}
+      className={`card ${glow ? 'glow' : ''} ${onClick ? 'card-interactive' : ''} ${className}`}
+      onClick={onClick}
       {...props}
     >
       {children}
     </div>
+  );
+}
+
+interface CardTitleProps {
+  icon?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}
+
+// Titulo de tarjeta: pequeño, en mayusculas, gris, con un icono de linea en cian delante.
+export function CardTitle({ icon, children, className = '' }: CardTitleProps) {
+  return (
+    <h2 className={`card-title ${className}`}>
+      {icon}
+      <span className="truncate">{children}</span>
+    </h2>
   );
 }

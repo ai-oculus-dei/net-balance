@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './lib/auth/useAuth';
 import { AppShell } from './components/layout/AppShell';
+import { Cargando } from './components/ui/Spinner';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MovimientosPage } from './pages/MovimientosPage';
@@ -39,7 +40,14 @@ function App() {
   useGenerarSnapshotPatrimonioAlEntrar(Boolean(session));
 
   if (loading) {
-    return <div className="min-h-svh flex items-center justify-center text-sm text-[var(--color-text-muted)]">Cargando...</div>;
+    return (
+      <div className="min-h-svh flex flex-col items-center justify-center gap-4">
+        <span className="logo text-[22px]">
+          net<b>balance</b>
+        </span>
+        <Cargando />
+      </div>
+    );
   }
 
   if (!session) {

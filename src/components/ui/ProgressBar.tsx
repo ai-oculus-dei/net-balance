@@ -1,14 +1,16 @@
 interface ProgressBarProps {
-  value: number; // 0-100
+  value: number; // 0-100 (por encima de 100 se muestra llena y rayada)
+  color?: string; // color CSS del relleno; por defecto, cian
+  thin?: boolean;
 }
 
-export function ProgressBar({ value }: ProgressBarProps) {
+export function ProgressBar({ value, color = 'var(--cyan)', thin = false }: ProgressBarProps) {
   const clamped = Math.min(100, Math.max(0, value));
   return (
-    <div className="w-full h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-      <div
-        className="h-full rounded-full bg-[var(--color-accent)] transition-[width]"
-        style={{ width: `${clamped}%` }}
+    <div className={`bar ${thin ? 'thin' : ''}`}>
+      <i
+        className={value > 100 ? 'over' : ''}
+        style={{ width: `${clamped}%`, background: color, boxShadow: `0 0 10px ${color}` }}
       />
     </div>
   );

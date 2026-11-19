@@ -2,7 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Input } from '../ui/Input';
 import { ImporteKeypadInput } from '../ui/ImporteKeypadInput';
 import { Select } from '../ui/Select';
-import { Button } from '../ui/Button';
+import { FormActions, FormError } from '../ui/FormActions';
+import { Segmented, type OpcionSegmentada } from '../ui/Segmented';
+import { IconInfo } from '../icons/UiIcons';
 import { AjustarCuentaForm } from './AjustarCuentaForm';
 import { useAuth } from '../../lib/auth/useAuth';
 import { toIsoDate } from '../../lib/finance/fechas';
@@ -58,6 +60,11 @@ interface PatrimonioFormProps {
 type ModoEntrada = 'total' | 'unitario';
 
 const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
+
+const OPCIONES_MODO: OpcionSegmentada<ModoEntrada>[] = [
+  { value: 'total', label: 'Total' },
+  { value: 'unitario', label: 'Por unidad' },
+];
 
 export function PatrimonioForm({
   initialValues,
@@ -316,34 +323,28 @@ export function PatrimonioForm({
               disabled={tipo === 'criptomoneda'}
             />
           </div>
-          <p className="text-xs text-[var(--color-text-muted)]">
+          <p className="text-[11.5px] leading-snug text-muted">
             {tipo === 'criptomoneda'
               ? 'Usa el ID de CoinGecko, no el símbolo (p. ej. "bitcoin", no "BTC") — así se actualiza el precio solo.'
               : 'Escribe el ticker exactamente como aparece en Yahoo Finance, con el sufijo de mercado incluido (p. ej. "AF.PA", "NUKL.DE"; sin sufijo para NASDAQ/NYSE) — así se actualiza el precio solo. Mercado es solo de referencia, ya no hace falta para buscar el precio.'}
           </p>
           {tipo !== 'criptomoneda' && (
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-[var(--color-text-muted)]">Divisa del ticker</span>
-                <div className="flex rounded-md border border-[var(--color-border)] overflow-hidden text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => setMoneda('EUR')}
-                    className={`px-2.5 py-1 ${moneda === 'EUR' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-                  >
-                    EUR
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMoneda('USD')}
-                    className={`px-2.5 py-1 ${moneda === 'USD' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-                  >
-                    USD
-                  </button>
-                </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted">Divisa del ticker</span>
+                <Segmented
+                  size="sm"
+                  ariaLabel="Divisa del ticker"
+                  value={moneda}
+                  onChange={setMoneda}
+                  options={[
+                    { value: "EUR", label: "EUR" },
+                    { value: "USD", label: "USD" },
+                  ]}
+                />
               </div>
               {moneda === 'USD' && (
-                <p className="text-xs text-[var(--color-text-muted)]">
+                <p className="text-[11.5px] leading-snug text-muted">
                   El precio del ticker se pide en dólares y se convierte a euros automáticamente con el tipo de
                   cambio EUR/USD del momento.
                 </p>
@@ -351,7 +352,8 @@ export function PatrimonioForm({
             </div>
           )}
           {activoExistente && (
-            <p className="text-xs text-[var(--color-accent)]">
+            <p className="notice">
+              <IconInfo />
               Este activo ya existe en el patrimonio, se heredará el nombre de la primera compra
             </p>
           )}
@@ -361,25 +363,16 @@ export function PatrimonioForm({
       {unitario && <ImporteKeypadInput label="Cantidad" value={cantidad} onChange={setCantidad} decimales={8} />}
 
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-[var(--color-text-muted)]">{unitario ? 'Precio de compra' : 'Importe'}</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-muted">{unitario ? 'Precio de compra' : 'Importe'}</span>
           {unitario && (
-            <div className="flex rounded-md border border-[var(--color-border)] overflow-hidden text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => cambiarModoCompra('total')}
-                className={`px-2.5 py-1 ${modoCompra === 'total' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-              >
-                Total
-              </button>
-              <button
-                type="button"
-                onClick={() => cambiarModoCompra('unitario')}
-                className={`px-2.5 py-1 ${modoCompra === 'unitario' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-              >
-                Por unidad
-              </button>
-            </div>
+            <Segmented
+              size="sm"
+              ariaLabel="Modo del precio de compra"
+              value={modoCompra}
+              onChange={cambiarModoCompra}
+              options={OPCIONES_MODO}
+            />
           )}
         </div>
         <ImporteKeypadInput
@@ -393,25 +386,16 @@ export function PatrimonioForm({
 
       {precioAutomatico || !unitario ? null : (
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--color-text-muted)]">Precio actual</span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted">Precio actual</span>
             {unitario && (
-              <div className="flex rounded-md border border-[var(--color-border)] overflow-hidden text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => cambiarModoActual('total')}
-                  className={`px-2.5 py-1 ${modoActual === 'total' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-                >
-                  Total
-                </button>
-                <button
-                  type="button"
-                  onClick={() => cambiarModoActual('unitario')}
-                  className={`px-2.5 py-1 ${modoActual === 'unitario' ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'}`}
-                >
-                  Por unidad
-                </button>
-              </div>
+              <Segmented
+                size="sm"
+                ariaLabel="Modo del precio actual"
+                value={modoActual}
+                onChange={cambiarModoActual}
+                options={OPCIONES_MODO}
+              />
             )}
           </div>
           <ImporteKeypadInput label="" value={precioActualInput} onChange={setPrecioActualInput} decimales={2} />
@@ -436,22 +420,15 @@ export function PatrimonioForm({
               </option>
             ))}
           </Select>
-          <p className="text-xs text-[var(--color-text-muted)]">
+          <p className="text-[11.5px] leading-snug text-muted">
             Al guardar, el coste de esta compra se descontará del saldo de esa cuenta.
           </p>
         </div>
       )}
 
-      {error && <p className="text-sm text-[var(--color-loss)]">{error}</p>}
+      <FormError>{error}</FormError>
 
-      <div className="flex gap-2 justify-end">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={guardando}>
-          {guardando ? 'Guardando...' : 'Guardar'}
-        </Button>
-      </div>
+      <FormActions onCancel={onCancel} guardando={guardando} />
     </form>
   );
 }

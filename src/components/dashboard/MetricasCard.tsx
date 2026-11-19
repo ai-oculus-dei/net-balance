@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { Card } from '../ui/Card';
+import { Card, CardTitle } from '../ui/Card';
+import { ProgressRing } from '../ui/ProgressRing';
+import { Cargando } from '../ui/Spinner';
+import { IconMedidor } from '../icons/UiIcons';
 import { StatTile } from '../ui/StatTile';
 import { claseColorPorSigno } from '../charts/colors';
 import {
@@ -31,15 +34,15 @@ function comoFilas(desglose: DesgloseSubcategoria[]) {
 // Tasa de ahorro: verde si se ahorra "bien" (>30%), roja si es baja (<20%), blanca en medio.
 function claseColorTasaAhorro(tasa: number | null): string {
   if (tasa === null) return '';
-  if (tasa > 30) return 'text-[var(--color-gain)]';
-  if (tasa < 20) return 'text-[var(--color-loss)]';
+  if (tasa > 30) return 'text-ok';
+  if (tasa < 20) return 'text-bad';
   return '';
 }
 
 // Tasa de inversion: verde por encima del 15%, roja por debajo (sin zona neutra).
 function claseColorTasaInversion(tasa: number | null): string {
   if (tasa === null) return '';
-  return tasa > 15 ? 'text-[var(--color-gain)]' : 'text-[var(--color-loss)]';
+  return tasa > 15 ? 'text-ok' : 'text-bad';
 }
 
 interface MetricasCardProps {
@@ -47,12 +50,14 @@ interface MetricasCardProps {
   movimientos: Movimiento[];
   subcategoriasPorId: SubcategoriasPorId;
   loading: boolean;
+  // Tarjeta principal de la pantalla (con brillo neon). Solo en Inicio.
+  destacada?: boolean;
 }
 
 // Grid de metricas reutilizable: recibe cualquier conjunto de movimientos (un mes, un rango de
 // meses...) y calcula todo a partir de ahi, para poder mostrar el mismo bloque en Inicio
 // (mes en curso) y en Visualizaciones (rango de meses elegido).
-export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading }: MetricasCardProps) {
+export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading, destacada = false }: MetricasCardProps) {
   const ingresoReal = useMemo(
     () => ingresoRealDelMes(movimientos, subcategoriasPorId),
     [movimientos, subcategoriasPorId]
@@ -91,55 +96,83 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading 
   const tasaInversion = useMemo(() => tasaInversionDelMes(inversionTotal, ingresoReal), [inversionTotal, ingresoReal]);
   const margenOperativo = useMemo(() => margenOperativoDelMes(ingresoReal, gastosFijos), [ingresoReal, gastosFijos]);
 
+  // Solo para el anillo: que parte del ingreso real se ha ido en gastos (ambas cifras ya se
+  // muestran justo al lado).
+  const pctGastado = ingresoReal > 0 ? (gastoRealTotal / ingresoReal) * 100 : null;
+
   return (
-    <Card>
-      <h2 className="text-sm font-semibold text-[var(--color-text-muted)] mb-3 uppercase tracking-wide">{titulo}</h2>
+    <Card glow={destacada}>
+      <CardTitle icon={<IconMedidor />} className="mb-4">
+        {titulo}
+      </CardTitle>
       {loading ? (
-        <p className="text-sm text-[var(--color-text-muted)]">Cargando...</p>
+        <Cargando />
       ) : (
-        <div className="grid grid-cols-2 gap-4">
-          <StatTile
-            label="Ingreso real"
-            value={`${formatearImporte(ingresoReal)} €`}
-            colorClassName="text-[var(--color-gain)]"
-            desglose={desgloseIngreso}
-          />
-          <StatTile
-            label="Gastos totales"
-            value={`${formatearImporte(gastoRealTotal)} €`}
-            colorClassName="text-[var(--color-loss)]"
-          />
-          <StatTile
-            label="Gastos fijos"
-            value={`${formatearImporte(gastosFijos)} €`}
-            colorClassName="text-[var(--color-loss)]"
-            desglose={desgloseFijos}
-          />
-          <StatTile
-            label="Gastos variables"
-            value={`${formatearImporte(gastoVariable)} €`}
-            colorClassName={claseColorPorSigno(-gastoVariable)}
-            desglose={desgloseVariable}
-          />
-          <StatTile label="Balance neto" value={`${formatearImporte(balanceNeto)} €`} colorClassName={claseColorPorSigno(balanceNeto)} />
-          <StatTile
-            label="Operating margin"
-            value={margenOperativo === null ? '—' : `${formatearImporte(margenOperativo, 0)} %`}
-            colorClassName={margenOperativo === null ? '' : claseColorPorSigno(margenOperativo)}
-          />
-          <StatTile label="Ahorro total" value={`${formatearImporte(ahorroTotal)} €`} colorClassName={claseColorPorSigno(ahorroTotal)} />
-          <StatTile label="Inversión total" value={`${formatearImporte(inversionTotal)} €`} colorClassName={claseColorPorSigno(inversionTotal)} />
-          <StatTile
-            label="Tasa de ahorro"
-            value={tasaAhorro === null ? '—' : `${formatearImporte(tasaAhorro, 0)} %`}
-            colorClassName={claseColorTasaAhorro(tasaAhorro)}
-          />
-          <StatTile
-            label="Tasa de inversión"
-            value={tasaInversion === null ? '—' : `${formatearImporte(tasaInversion, 0)} %`}
-            colorClassName={claseColorTasaInversion(tasaInversion)}
-          />
-        </div>
+        <>
+          <div className="flex items-center gap-4 min-w-0">
+            <ProgressRing pct={pctGastado} etiqueta="del ingreso gastado" size={120} />
+            <div className="flex flex-col gap-3 min-w-0">
+              <StatTile
+                align="start"
+                size="lg"
+                label="Ingreso real"
+                value={`${formatearImporte(ingresoReal)} €`}
+                colorClassName="text-ok"
+                desglose={desgloseIngreso}
+              />
+              <StatTile
+                align="start"
+                size="lg"
+                label="Gastos totales"
+                value={`${formatearImporte(gastoRealTotal)} €`}
+                colorClassName="text-bad"
+              />
+              <StatTile
+                align="start"
+                size="lg"
+                label="Balance neto"
+                value={`${formatearImporte(balanceNeto)} €`}
+                colorClassName={claseColorPorSigno(balanceNeto)}
+              />
+            </div>
+          </div>
+
+          <hr className="divider my-4" />
+
+          <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+            <StatTile
+              label="Gastos fijos"
+              value={`${formatearImporte(gastosFijos)} €`}
+              colorClassName="text-bad"
+              desglose={desgloseFijos}
+            />
+            <StatTile
+              label="Gastos variables"
+              value={`${formatearImporte(gastoVariable)} €`}
+              colorClassName={claseColorPorSigno(-gastoVariable)}
+              desglose={desgloseVariable}
+            />
+            <StatTile label="Ahorro total" value={`${formatearImporte(ahorroTotal)} €`} colorClassName={claseColorPorSigno(ahorroTotal)} />
+            <StatTile label="Inversión total" value={`${formatearImporte(inversionTotal)} €`} colorClassName={claseColorPorSigno(inversionTotal)} />
+            <StatTile
+              label="Tasa de ahorro"
+              value={tasaAhorro === null ? '—' : `${formatearImporte(tasaAhorro, 0)} %`}
+              colorClassName={claseColorTasaAhorro(tasaAhorro)}
+            />
+            <StatTile
+              label="Tasa de inversión"
+              value={tasaInversion === null ? '—' : `${formatearImporte(tasaInversion, 0)} %`}
+              colorClassName={claseColorTasaInversion(tasaInversion)}
+            />
+            <div className="col-span-2">
+              <StatTile
+                label="Operating margin"
+                value={margenOperativo === null ? '—' : `${formatearImporte(margenOperativo, 0)} %`}
+                colorClassName={margenOperativo === null ? '' : claseColorPorSigno(margenOperativo)}
+              />
+            </div>
+          </div>
+        </>
       )}
     </Card>
   );

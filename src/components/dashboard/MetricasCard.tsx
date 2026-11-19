@@ -111,9 +111,9 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading,
         <>
           <div className="flex items-center gap-4 min-w-0">
             <ProgressRing pct={pctGastado} etiqueta="del ingreso gastado" size={120} />
-            <div className="flex flex-col gap-3 min-w-0">
+            <div className="@container flex-1 min-w-0 flex flex-col divide-y divide-dashed divide-line [&>*]:py-2 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
               <StatTile
-                align="start"
+                align="spread"
                 size="lg"
                 label="Ingreso real"
                 value={`${formatearImporte(ingresoReal)} €`}
@@ -121,14 +121,14 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading,
                 desglose={desgloseIngreso}
               />
               <StatTile
-                align="start"
+                align="spread"
                 size="lg"
                 label="Gastos totales"
                 value={`${formatearImporte(gastoRealTotal)} €`}
                 colorClassName="text-bad"
               />
               <StatTile
-                align="start"
+                align="spread"
                 size="lg"
                 label="Balance neto"
                 value={`${formatearImporte(balanceNeto)} €`}

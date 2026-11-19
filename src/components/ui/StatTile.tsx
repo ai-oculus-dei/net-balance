@@ -12,12 +12,19 @@ interface StatTileProps {
   // Si se pasa (y no esta vacio), el nombre se puede pulsar para desplegar un rectangulo con las
   // filas que suman `value` — p.ej. las subcategorias detras de "Ingreso real".
   desglose?: DesgloseFila[];
-  // "start": alineado a la izquierda (columna de indicadores junto al anillo de Inicio).
-  align?: "center" | "start";
+  // "start": alineado a la izquierda. "spread": ocupa todo el ancho; con sitio suficiente
+  // (container query) pone la etiqueta a la izquierda y el valor a la derecha.
+  align?: "center" | "start" | "spread";
   size?: "md" | "lg";
 }
 
 const MARGEN_BORDE_PX = 8;
+
+const CLASES_ALINEACION = {
+  center: 'items-center text-center',
+  start: 'items-start text-left',
+  spread: 'w-full items-start text-left @[250px]:flex-row @[250px]:items-center @[250px]:justify-between @[250px]:gap-3',
+};
 
 export function StatTile({ label, value, colorClassName = '', desglose, align = 'center', size = 'md' }: StatTileProps) {
   const [abierto, setAbierto] = useState(false);
@@ -58,7 +65,7 @@ export function StatTile({ label, value, colorClassName = '', desglose, align = 
   }, [abierto]);
 
   return (
-    <div ref={contenedorRef} className={`relative flex flex-col gap-1 min-w-0 ${align === 'start' ? 'items-start text-left' : 'items-center text-center'}`}>
+    <div ref={contenedorRef} className={`relative flex flex-col gap-1 min-w-0 ${CLASES_ALINEACION[align]}`}>
       {tieneDesglose ? (
         <button
           type="button"
@@ -71,13 +78,13 @@ export function StatTile({ label, value, colorClassName = '', desglose, align = 
       ) : (
         <p className="kpi-label">{label}</p>
       )}
-      <p className={`font-mono font-semibold leading-tight tracking-[-0.01em] whitespace-nowrap ${size === 'lg' ? 'text-[19px]' : 'text-[17px]'} ${colorClassName}`}>{value}</p>
+      <p className={`font-mono font-semibold leading-tight tracking-[-0.01em] whitespace-nowrap ${size === 'lg' ? 'text-[19px]' : 'text-[17px]'} ${align === 'spread' ? 'self-end @[250px]:self-auto' : ''} ${colorClassName}`}>{value}</p>
 
       {tieneDesglose && abierto && (
         <div
           ref={popoverRef}
-          style={{ transform: align === 'start' ? `translateX(${ajusteX}px)` : `translateX(calc(-50% + ${ajusteX}px))` }}
-          className={`popover absolute top-full mt-1.5 z-20 w-60 max-w-[85vw] ${align === 'start' ? 'left-0' : 'left-1/2'}`}
+          style={{ transform: align !== 'center' ? `translateX(${ajusteX}px)` : `translateX(calc(-50% + ${ajusteX}px))` }}
+          className={`popover absolute top-full mt-1.5 z-20 w-60 max-w-[85vw] ${align !== 'center' ? 'left-0' : 'left-1/2'}`}
         >
           {desglose!.map((fila) => (
             <div

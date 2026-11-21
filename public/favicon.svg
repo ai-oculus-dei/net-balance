@@ -1,18 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Favicon: misma balanza que icons/icon.svg, simplificada para leerse a 16-32 px. -->
-  <defs>
-    <linearGradient id="brazo" gradientUnits="userSpaceOnUse" x1="12" y1="0" x2="52" y2="0">
-      <stop offset="0" stop-color="#22d3ee"/>
-      <stop offset="1" stop-color="#a78bfa"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="#05070d"/>
-  <g stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M32 20V48M24 49H40" stroke="#e6edf7" stroke-width="3.5"/>
-    <path d="M12 21H52" stroke="url(#brazo)" stroke-width="4"/>
-    <path d="M12 21L7 35M12 21L17 35" stroke="#22d3ee" stroke-width="1.8"/>
-    <path d="M52 21L47 35M52 21L57 35" stroke="#a78bfa" stroke-width="1.8"/>
-  </g>
-  <path d="M5 35H19A7 6 0 0 1 5 35Z" fill="#34d399"/>
-  <path d="M45 35H59A7 6 0 0 1 45 35Z" fill="#fb7185"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="64" height="64">
+  <!-- Favicon: mismo diseño que icons/icon.svg con un marco blanco más fino para leerse a 16-32 px. -->
+  <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="140" y1="400" x2="380" y2="110"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="#ffffff"/>
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="#0a0d16"/>
+  <g transform="translate(32 32) scale(0.875)"><circle cx="256" cy="256" r="150" fill="none" stroke="#1e2535" stroke-width="44"/><path d="M256 106A150 150 0 1 1 126.1 181" fill="none" stroke="url(#g)" stroke-width="44" stroke-linecap="round"/><g fill="none" stroke="#f1f5f9" stroke-linecap="round" stroke-linejoin="round" stroke-width="20"><path d="M196 214H316M256 200V318M222 318H290"/><path d="M196 214L176 262H216ZM316 214L296 262H336Z" stroke-width="14"/></g></g>
 </svg>

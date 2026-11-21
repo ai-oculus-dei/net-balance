@@ -1,52 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="brazo" gradientUnits="userSpaceOnUse" x1="118" y1="0" x2="394" y2="0">
-      <stop offset="0" stop-color="#22d3ee"/>
-      <stop offset="1" stop-color="#a78bfa"/>
-    </linearGradient>
-    <radialGradient id="halo" cx="50%" cy="40%" r="62%">
-      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.20"/>
-      <stop offset="0.55" stop-color="#a78bfa" stop-opacity="0.06"/>
-      <stop offset="1" stop-color="#05070d" stop-opacity="0"/>
-    </radialGradient>
-    <pattern id="cuadricula" width="32" height="32" patternUnits="userSpaceOnUse">
-      <path d="M32 0H0V32" fill="none" stroke="#94a3b8" stroke-opacity="0.09" stroke-width="2"/>
-    </pattern>
-    <filter id="neon" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="7" result="difuso"/>
-      <feMerge><feMergeNode in="difuso"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <clipPath id="forma"><rect width="512" height="512" rx="112"/></clipPath>
-  </defs>
-
-  <g clip-path="url(#forma)">
-    <rect width="512" height="512" fill="#05070d"/>
-    <rect width="512" height="512" fill="url(#cuadricula)"/>
-    <rect width="512" height="512" fill="url(#halo)"/>
-  </g>
-  <rect x="1.5" y="1.5" width="509" height="509" rx="110.5" fill="none" stroke="#22d3ee" stroke-opacity="0.22" stroke-width="3"/>
-
-  <g stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <!-- columna y base -->
-    <path d="M256 168V376" stroke="#e6edf7" stroke-width="18"/>
-    <path d="M190 386H322" stroke="#e6edf7" stroke-width="18"/>
-
-    <g filter="url(#neon)">
-      <!-- brazo de la balanza (equilibrado) -->
-      <path d="M118 176H394" stroke="url(#brazo)" stroke-width="20"/>
-      <circle cx="256" cy="150" r="17" fill="#05070d" stroke="url(#brazo)" stroke-width="12"/>
-
-      <!-- cuerdas -->
-      <path d="M118 176L82 286M118 176L154 286" stroke="#22d3ee" stroke-width="7"/>
-      <path d="M394 176L358 286M394 176L430 286" stroke="#a78bfa" stroke-width="7"/>
-
-      <!-- platillo izquierdo: ingresos -->
-      <path d="M70 286H166A48 42 0 0 1 70 286Z" fill="#34d399" fill-opacity="0.16" stroke="#34d399" stroke-width="9"/>
-      <path d="M118 290V318M104 304H132" stroke="#34d399" stroke-width="8"/>
-
-      <!-- platillo derecho: gastos -->
-      <path d="M346 286H442A48 42 0 0 1 346 286Z" fill="#fb7185" fill-opacity="0.16" stroke="#fb7185" stroke-width="9"/>
-      <path d="M380 304H408" stroke="#fb7185" stroke-width="8"/>
-    </g>
-  </g>
+  <!-- Net Balance: anillo cian-violeta con balanza blanca, sobre cuadro oscuro con marco blanco. -->
+  <defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="140" y1="400" x2="380" y2="110"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="#ffffff"/>
+  <rect x="56" y="56" width="400" height="400" rx="88" fill="#0a0d16"/>
+  <g transform="translate(56 56) scale(0.78125)"><circle cx="256" cy="256" r="150" fill="none" stroke="#1e2535" stroke-width="44"/><path d="M256 106A150 150 0 1 1 126.1 181" fill="none" stroke="url(#g)" stroke-width="44" stroke-linecap="round"/><g fill="none" stroke="#f1f5f9" stroke-linecap="round" stroke-linejoin="round" stroke-width="20"><path d="M196 214H316M256 200V318M222 318H290"/><path d="M196 214L176 262H216ZM316 214L296 262H336Z" stroke-width="14"/></g></g>
 </svg>

@@ -45,6 +45,9 @@ import type { PosicionPatrimonio } from '../lib/supabase/database.types';
 
 const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
 
+// Alto total (controles + grafico) del historico pequeno dentro de la tarjeta de un activo.
+const ALTO_GRAFICO_EN_TARJETA = 260;
+
 export function PatrimonioPage() {
   const { theme } = useTheme();
   const {
@@ -218,6 +221,16 @@ export function PatrimonioPage() {
                     onVender={setVendiendo}
                     onReducir={setReduciendo}
                     onVerGrafico={setViendoGrafico}
+                    renderGrafico={(activo) => (
+                      <HistoricoActivoVista
+                        compacto
+                        activo={activo}
+                        todasLasPosiciones={posiciones}
+                        preciosHistoricos={preciosHistoricos}
+                        ventasLotes={ventasLotes}
+                        altura={ALTO_GRAFICO_EN_TARJETA}
+                      />
+                    )}
                   />
                 ))}
               </div>

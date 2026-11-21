@@ -17,6 +17,9 @@ interface HistoricoActivoVistaProps {
   preciosHistoricos: PrecioDiarioActivo[];
   ventasLotes: VentaLote[];
   altura?: number;
+  // Version pequena dentro de la tarjeta del activo: sin titulo (ya esta en la tarjeta) y sin
+  // dejar hueco para el boton de cerrar de la pantalla completa.
+  compacto?: boolean;
 }
 
 // Alto que ocupan, ademas del grafico, la fila del selector de periodo y la leyenda de compras.
@@ -30,6 +33,7 @@ export function HistoricoActivoVista({
   preciosHistoricos,
   ventasLotes,
   altura,
+  compacto = false,
 }: HistoricoActivoVistaProps) {
   const { theme } = useTheme();
   const [modo, setModo] = useState<Modo>('precio');
@@ -62,12 +66,15 @@ export function HistoricoActivoVista({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between gap-2 mb-2 pr-12">
-        <h2 className="text-[15px] font-semibold tracking-[-0.01em] truncate min-w-0">
-          {activo.ticker ? `[${activo.ticker}] ${activo.nombre}` : activo.nombre}
-        </h2>
+      <div className={`flex items-center justify-between gap-2 mb-2 ${compacto ? '' : 'pr-12'}`}>
+        {!compacto && (
+          <h2 className="text-[15px] font-semibold tracking-[-0.01em] truncate min-w-0">
+            {activo.ticker ? `[${activo.ticker}] ${activo.nombre}` : activo.nombre}
+          </h2>
+        )}
         <Segmented
           size="sm"
+          full={compacto}
           ariaLabel="Qué mostrar"
           value={modo}
           onChange={setModo}
@@ -78,7 +85,7 @@ export function HistoricoActivoVista({
         />
       </div>
 
-      <div className="mb-2 max-w-sm">
+      <div className={compacto ? 'mb-2' : 'mb-2 max-w-sm'}>
         <SelectorRango value={rango} onChange={setRango} />
       </div>
 

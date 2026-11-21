@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Card } from '../ui/Card';
 import { IconVisualizaciones } from '../layout/NavIcons';
 import { IconAlerta, IconChevronDown } from '../icons/UiIcons';
@@ -30,9 +30,12 @@ interface ActivoCardProps {
   onVender: (activo: ActivoAgrupado) => void;
   onReducir: (activo: ActivoAgrupado) => void;
   onVerGrafico: (activo: ActivoAgrupado) => void;
+  // Grafico pequeno que se muestra debajo de las compras al desplegarlas (el mismo que el de
+  // pantalla completa, ver HistoricoActivoVista con `compacto`).
+  renderGrafico?: (activo: ActivoAgrupado) => ReactNode;
 }
 
-export function ActivoCard({ activo, onEditarLote, onVender, onReducir, onVerGrafico }: ActivoCardProps) {
+export function ActivoCard({ activo, onEditarLote, onVender, onReducir, onVerGrafico, renderGrafico }: ActivoCardProps) {
   const [expandido, setExpandido] = useState(false);
   // Cuentas Corriente/Remunerada/Ahorro/Fondo Monetario ya no se tratan como una inversion con
   // coste de compra propio (ver ajustarCuenta en lib/finance/ventas.ts): no tiene sentido
@@ -182,6 +185,13 @@ export function ActivoCard({ activo, onEditarLote, onVender, onReducir, onVerGra
               </div>
             );
           })}
+        </div>
+      )}
+
+      {variasCompras && expandido && activo.ticker && renderGrafico && (
+        // Los toques dentro del grafico (rango, modo, tooltip) no deben plegar la tarjeta.
+        <div className="mt-3 pt-3 border-t border-dashed border-line cursor-default" onClick={(e) => e.stopPropagation()}>
+          {renderGrafico(activo)}
         </div>
       )}
     </Card>

@@ -3,7 +3,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { Card, CardTitle } from '../ui/Card';
 import { Modal } from '../ui/Modal';
 import { Cargando } from '../ui/Spinner';
-import { IconAlerta, IconCheck, IconMedidor } from '../icons/UiIcons';
+import { IconAlerta, IconCheck, IconChevronDown, IconMedidor } from '../icons/UiIcons';
 import { colorCategorico } from '../charts/colorsCategoricos';
 import { ObjetivoCarteraForm } from './ObjetivoCarteraForm';
 import { formatearImporte } from '../../lib/finance/formato';
@@ -62,6 +62,7 @@ function EtiquetaObjetivo({ cx = 0, cy = 0, midAngle = 0, outerRadius = 0, paylo
 
 export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme, onGuardar }: RepartoCarteraCardProps) {
   const [editando, setEditando] = useState<UnidadCartera | null>(null);
+  const [detalleAbierto, setDetalleAbierto] = useState(false);
   const objetivoPorClave = useMemo(() => new Map(objetivos.map((o) => [o.clave, o])), [objetivos]);
 
   const filas = useMemo(
@@ -97,7 +98,7 @@ export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme,
       <CardTitle icon={<IconMedidor />} className="mb-1">
         Reparto vs objetivo
       </CardTitle>
-      <p className="text-xs text-muted mb-2">Interior: peso actual · Exterior: objetivo. Toca un activo para fijar su objetivo.</p>
+      <p className="text-xs text-muted mb-2">Interior: peso actual · Exterior: objetivo. Abre el desplegable y toca un activo para fijar su objetivo.</p>
 
       {loading ? (
         <Cargando />
@@ -177,6 +178,20 @@ export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme,
             </div>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setDetalleAbierto((v) => !v)}
+            aria-expanded={detalleAbierto}
+            className="w-full flex items-center justify-between gap-3 py-2.5 border-t border-line text-left cursor-pointer"
+          >
+            <span className="text-sm font-medium">
+              Activos y objetivos <span className="font-mono text-[11.5px] text-muted">({filas.length})</span>
+            </span>
+            <IconChevronDown className={`w-4 h-4 text-muted shrink-0 transition-transform ${detalleAbierto ? 'rotate-180' : ''}`} />
+          </button>
+
+          {detalleAbierto && (
+          <>
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[11.5px] mb-2">
             <span className="text-muted">
               Núcleo <span className="text-fg">{pct(peso.nucleo)}</span> · Satélite <span className="text-fg">{pct(peso.satelite)}</span>
@@ -233,6 +248,8 @@ export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme,
               );
             })}
           </div>
+          </>
+          )}
         </>
       )}
 

@@ -1,0 +1,146 @@
+import { describe, expect, it } from 'vitest';
+import {
+  CLAVE_BLOQUE_INDEXADOS_RV,
+  CLAVE_BLOQUE_LIQUIDEZ,
+  claveUnidad,
+  desviacionesCartera,
+  estadoObjetivo,
+  margenObjetivo,
+  parsearPorcentaje,
+  pesoPorEtiqueta,
+  unidadesCartera,
+} from '../objetivosCartera';
+import type { PosicionPatrimonio, TipoPosicionPatrimonio } from '../../supabase/database.types';
+
+function posicion(o: Partial<PosicionPatrimonio> & { id: string; tipo: TipoPosicionPatrimonio; valor: number }): PosicionPatrimonio {
+  const { valor, ...resto } = o;
+  return {
+    usuario_id: 'u1',
+    nombre: o.id,
+    ticker: null,
+    mercado: null,
+    moneda: 'EUR',
+    cantidad: 1,
+    cantidad_original: 1,
+    precio_compra_unitario: valor,
+    precio_actual_unitario: valor,
+    tae: null,
+    error_precio: null,
+    fecha_compra: '2026-01-01',
+    activa: true,
+    created_at: '',
+    updated_at: '',
+    ...resto,
+  };
+}
+
+describe('claveUnidad', () => {
+  it('agrupa liquidez y renta fija en un bloque, y los indexados RV en otro', () => {
+    for (const tipo of ['cuenta_corriente', 'cuenta_remunerada', 'cuenta_ahorro', 'fondo_monetario', 'fondo_indexado_rf'] as const) {
+      expect(claveUnidad({ tipo, ticker: null, mercado: null, nombre: 'x' })).toBe(CLAVE_BLOQUE_LIQUIDEZ);
+    }
+    expect(claveUnidad({ tipo: 'fondo_indexado_rv', ticker: 'IWDA', mercado: null, nombre: 'x' })).toBe(CLAVE_BLOQUE_INDEXADOS_RV);
+  });
+
+  it('cada stock, ETF, cripto o commodity va por separado', () => {
+    expect(claveUnidad({ tipo: 'stock', ticker: 'AAPL', mercado: 'NASDAQ', nombre: 'Apple' })).toBe('activo:aapl|nasdaq');
+    expect(claveUnidad({ tipo: 'etf', ticker: 'VWCE.DE', mercado: null, nombre: 'V' })).not.toBe(
+      claveUnidad({ tipo: 'etf', ticker: 'SXR8.DE', mercado: null, nombre: 'S' })
+    );
+  });
+});
+
+describe('unidadesCartera', () => {
+  it('suma cada bloque y calcula el peso sobre el patrimonio total, de mayor a menor', () => {
+    const unidades = unidadesCartera([
+      posicion({ id: 'c1', tipo: 'cuenta_corriente', valor: 1000 }),
+      posicion({ id: 'c2', tipo: 'cuenta_remunerada', valor: 1000 }),
+      posicion({ id: 'f1', tipo: 'fondo_indexado_rv', valor: 6000 }),
+      posicion({ id: 's1', tipo: 'stock', ticker: 'SPCX', valor: 2000 }),
+    ]);
+    expect(unidades.map((u) => [u.clave, u.valor, u.pct, u.numActivos])).toEqual([
+      [CLAVE_BLOQUE_INDEXADOS_RV, 6000, 60, 1],
+      [CLAVE_BLOQUE_LIQUIDEZ, 2000, 20, 2],
+      ['activo:spcx|', 2000, 20, 1],
+    ]);
+    expect(unidades[1].nombre).toBe('Liquidez y renta fija');
+  });
+
+  it('las compras de un mismo stock son una sola unidad', () => {
+    const unidades = unidadesCartera([
+      posicion({ id: 'a', tipo: 'stock', ticker: 'AAPL', valor: 100 }),
+      posicion({ id: 'b', tipo: 'stock', ticker: 'AAPL', valor: 300 }),
+    ]);
+    expect(unidades).toHaveLength(1);
+    expect(unidades[0].valor).toBe(400);
+    expect(unidades[0].pct).toBe(100);
+  });
+});
+
+describe('margen y estado', () => {
+  it('margen = el menor entre 5 puntos y el 40 % del objetivo', () => {
+    expect(margenObjetivo(5)).toBe(2);
+    expect(margenObjetivo(10)).toBe(4);
+    expect(margenObjetivo(12.5)).toBe(5);
+    expect(margenObjetivo(70)).toBe(5);
+    expect(margenObjetivo(0)).toBe(0);
+  });
+
+  it('ejemplos: 5 % avisa por debajo de 3 o por encima de 7; 70 % fuera de 65-75', () => {
+    expect(estadoObjetivo(3, 5)).toBe('en_rango');
+    expect(estadoObjetivo(2.9, 5)).toBe('por_debajo');
+    expect(estadoObjetivo(7, 5)).toBe('en_rango');
+    expect(estadoObjetivo(7.1, 5)).toBe('por_encima');
+    expect(estadoObjetivo(64.9, 70)).toBe('por_debajo');
+    expect(estadoObjetivo(75.1, 70)).toBe('por_encima');
+    expect(estadoObjetivo(70, 70)).toBe('en_rango');
+  });
+});
+
+describe('desviacionesCartera', () => {
+  const unidades = unidadesCartera([
+    posicion({ id: 'f1', tipo: 'fondo_indexado_rv', valor: 8000 }),
+    posicion({ id: 's1', tipo: 'stock', ticker: 'SPCX', valor: 1000 }),
+    posicion({ id: 'c1', tipo: 'cuenta_corriente', valor: 1000 }),
+  ]);
+
+  it('solo devuelve las unidades con objetivo fuera de margen, las mas desviadas primero', () => {
+    const d = desviacionesCartera(unidades, [
+      { clave: CLAVE_BLOQUE_INDEXADOS_RV, etiqueta: 'nucleo', objetivoPct: 70 }, // 80 > 75
+      { clave: 'activo:spcx|', etiqueta: 'satelite', objetivoPct: 5 }, // 10 > 7
+      { clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: 10 }, // 10, en rango
+      { clave: 'activo:otro', etiqueta: 'satelite', objetivoPct: null }, // sin objetivo
+    ]);
+    expect(d.map((x) => [x.clave, x.estado])).toEqual([
+      [CLAVE_BLOQUE_INDEXADOS_RV, 'por_encima'],
+      ['activo:spcx|', 'por_encima'],
+    ]);
+  });
+
+  it('un bloque con objetivo pero sin nada dentro cuenta como 0 %', () => {
+    const sinLiquidez = unidadesCartera([posicion({ id: 's1', tipo: 'stock', ticker: 'X', valor: 100 })]);
+    const d = desviacionesCartera(sinLiquidez, [{ clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: 20 }]);
+    expect(d).toEqual([
+      { clave: CLAVE_BLOQUE_LIQUIDEZ, nombre: 'Liquidez y renta fija', pct: 0, objetivoPct: 20, margen: 5, estado: 'por_debajo' },
+    ]);
+  });
+
+  it('suma el peso de nucleo y satelite', () => {
+    expect(
+      pesoPorEtiqueta(unidades, [
+        { clave: CLAVE_BLOQUE_INDEXADOS_RV, etiqueta: 'nucleo', objetivoPct: null },
+        { clave: 'activo:spcx|', etiqueta: 'satelite', objetivoPct: null },
+      ])
+    ).toEqual({ nucleo: 80, satelite: 10 });
+  });
+});
+
+describe('parsearPorcentaje', () => {
+  it('acepta coma o punto y valida el rango', () => {
+    expect(parsearPorcentaje('5,5')).toBe(5.5);
+    expect(parsearPorcentaje(' 70 % ')).toBe(70);
+    expect(parsearPorcentaje('')).toBeNull();
+    expect(parsearPorcentaje('120')).toBeNaN();
+    expect(parsearPorcentaje('abc')).toBeNaN();
+  });
+});

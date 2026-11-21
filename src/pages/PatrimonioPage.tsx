@@ -15,6 +15,9 @@ import { RANGO_POR_DEFECTO, type RangoTemporal } from '../lib/finance/rangosTemp
 import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
 import { PatrimonioTotalCard } from '../components/patrimonio/PatrimonioTotalCard';
 import { PatrimonioPnLCard } from '../components/patrimonio/PatrimonioPnLCard';
+import { RepartoCarteraCard } from '../components/patrimonio/RepartoCarteraCard';
+import { useObjetivosCartera } from '../hooks/useObjetivosCartera';
+import { unidadesCartera } from '../lib/finance/objetivosCartera';
 import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
 import { VenderActivoForm } from '../components/patrimonio/VenderActivoForm';
@@ -44,6 +47,12 @@ const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
 
 export function PatrimonioPage() {
   const { theme } = useTheme();
+  const {
+    objetivos: objetivosCartera,
+    loading: loadingObjetivosCartera,
+    error: errorObjetivosCartera,
+    guardar: guardarObjetivoCartera,
+  } = useObjetivosCartera();
   const { posiciones, loading: loadingPosiciones, actualizar, archivar, vender, ajustarCuenta } = usePosicionesPatrimonio();
   const { historico, loading: loadingHistorico } = usePatrimonioHistorico();
   const { precios: preciosHistoricosFilas, loading: loadingPrecios } = usePreciosHistoricoActivo();
@@ -57,6 +66,7 @@ export function PatrimonioPage() {
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
   const activos = useMemo(() => agruparPorActivo(posicionesActivas), [posicionesActivas]);
+  const unidadesDeCartera = useMemo(() => unidadesCartera(posicionesActivas), [posicionesActivas]);
   const preciosHistoricos = useMemo(() => preciosHistoricosFilas.map(precioDiarioDesdeFila), [preciosHistoricosFilas]);
   const ventasLotes = useMemo(() => ventasLotesFilas.map(ventaLoteDesdeFila), [ventasLotesFilas]);
 
@@ -124,6 +134,15 @@ export function PatrimonioPage() {
       />
 
       <PatrimonioPnLCard posiciones={posicionesActivas} loading={loading} />
+
+      <RepartoCarteraCard
+        unidades={unidadesDeCartera}
+        objetivos={objetivosCartera}
+        loading={loadingPosiciones || loadingObjetivosCartera}
+        error={errorObjetivosCartera}
+        theme={theme}
+        onGuardar={guardarObjetivoCartera}
+      />
 
       <TarjetaGrafico
         titulo="Por tipo de activo"

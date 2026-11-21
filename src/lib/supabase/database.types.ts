@@ -241,3 +241,13 @@ export interface PrecioHistoricoActivo {
   created_at: string;
 }
 
+
+// Ver supabase/migrations/0021_objetivos_cartera.sql y src/lib/finance/objetivosCartera.ts.
+export interface ObjetivoCarteraFila {
+  usuario_id: string;
+  clave: string;
+  etiqueta: 'nucleo' | 'satelite' | null;
+  objetivo_pct: number | null;
+  created_at: string;
+  updated_at: string;
+}

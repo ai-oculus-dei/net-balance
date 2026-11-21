@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
+import { AvisoCartera } from './AvisoCartera';
 import { QuickAddButton } from '../movimientos/QuickAddButton';
 import { QuickAddSheet } from '../movimientos/QuickAddSheet';
 import { PatrimonioQuickAddSheet } from '../patrimonio/PatrimonioQuickAddSheet';
@@ -25,6 +26,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const { posiciones: posicionesPatrimonio, loading: loadingPosicionesPatrimonio } = usePosicionesPatrimonio();
   useSincronizarCuentaGastos(posicionesPatrimonio, loadingPosicionesPatrimonio);
+  const posicionesActivas = useMemo(() => posicionesPatrimonio.filter((p) => p.activa), [posicionesPatrimonio]);
 
   const enPatrimonio = location.pathname.startsWith('/patrimonio');
 
@@ -84,6 +86,7 @@ export function AppShell() {
       <BottomNav />
 
       <main className="shell flex-1">
+        <AvisoCartera posicionesActivas={posicionesActivas} loading={loadingPosicionesPatrimonio} />
         <VisualizacionesProvider>
           <Outlet />
         </VisualizacionesProvider>

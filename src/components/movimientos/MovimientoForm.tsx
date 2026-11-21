@@ -16,7 +16,9 @@ import { IconChevronRight, IconInfo } from '../icons/UiIcons';
 import { Segmented } from '../ui/Segmented';
 import { Cargando } from '../ui/Spinner';
 import { FormActions, FormError } from '../ui/FormActions';
-import type { Movimiento, Visibilidad } from '../../lib/supabase/database.types';
+import { ETIQUETA_TIPO, precioActualUnitarioEfectivo } from '../../lib/finance/patrimonio';
+import { formatearImporte } from '../../lib/finance/formato';
+import type { Movimiento, PosicionPatrimonio, Visibilidad } from '../../lib/supabase/database.types';
 
 export interface MovimientoFormValues {
   nombre: string;
@@ -27,13 +29,21 @@ export interface MovimientoFormValues {
   visibilidad: Visibilidad;
   nota: string;
   esPrimerDiaMes: boolean;
+  // Solo en movimientos de Ahorro dados de alta (no al editar): cuenta de Patrimonio a la que va
+  // (gasto: se le suma) o de la que sale (ingreso: se le resta) el dinero. null = ninguna.
+  cuentaPatrimonioId: string | null;
 }
 
 interface MovimientoFormProps {
   initialValues?: Partial<Movimiento>;
   onSubmit: (values: MovimientoFormValues) => Promise<void>;
   onCancel: () => void;
+  // Cuentas (corriente, remunerada, de ahorro) entre las que elegir en un movimiento de Ahorro.
+  // Sin esta prop (p.ej. al editar) no se muestra el selector.
+  cuentasAhorro?: PosicionPatrimonio[];
 }
+
+const SIN_CUENTA = 'ninguna';
 
 function toDatetimeLocal(iso?: string): string {
   const d = iso ? new Date(iso) : new Date();
@@ -41,7 +51,7 @@ function toDatetimeLocal(iso?: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function MovimientoForm({ initialValues, onSubmit, onCancel }: MovimientoFormProps) {
+export function MovimientoForm({ initialValues, onSubmit, onCancel, cuentasAhorro }: MovimientoFormProps) {
   const { session } = useAuth();
   const { categorias, subcategorias: todasLasSubcategorias, subcategoriasDe, loading: loadingTaxonomia } = useTaxonomia();
   const { profiles } = useProfiles();
@@ -63,6 +73,7 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mostrarMas, setMostrarMas] = useState(false);
+  const [cuentaId, setCuentaId] = useState('');
   const [valoresPendientes, setValoresPendientes] = useState<MovimientoFormValues | null>(null);
   const [confirmacionCierre, setConfirmacionCierre] = useState<AvisoCierreCorto | null>(null);
 
@@ -72,6 +83,14 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
 
   const subcategorias = categoriaId !== null ? subcategoriasDe(categoriaId) : [];
   const subcategoriaSeleccionada = todasLasSubcategorias.find((s) => s.id === subcategoriaId);
+  const elegirCuenta = !!subcategoriaSeleccionada?.es_ahorro && !!cuentasAhorro && cuentasAhorro.length > 0;
+
+  // Al pasar a Ahorro, propone la primera cuenta (las de ahorro van primero, ver AppShell); si ya
+  // habia una elegida y sigue existiendo, se respeta.
+  useEffect(() => {
+    if (!elegirCuenta || !cuentasAhorro) return;
+    if (cuentaId !== SIN_CUENTA && !cuentasAhorro.some((c) => c.id === cuentaId)) setCuentaId(cuentasAhorro[0].id);
+  }, [elegirCuenta, cuentasAhorro, cuentaId]);
 
   // Al editar un movimiento existente, deriva la categoria a partir de su subcategoria
   // en cuanto la taxonomia termina de cargar (solo tenemos subcategoria_id guardado).
@@ -124,6 +143,7 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
       visibilidad,
       nota,
       esPrimerDiaMes,
+      cuentaPatrimonioId: elegirCuenta && cuentaId && cuentaId !== SIN_CUENTA ? cuentaId : null,
     };
 
     if (esPrimerDiaMes) {
@@ -207,6 +227,28 @@ export function MovimientoForm({ initialValues, onSubmit, onCancel }: Movimiento
             aunque salga en rojo del balance, sigue siendo tuyo, solo que guardado en otro sitio.
           </span>
         </p>
+      )}
+
+      {elegirCuenta && cuentasAhorro && (
+        <div className="flex flex-col gap-1.5">
+          <Select
+            label={esGasto ? 'Cuenta a la que va el ahorro' : 'Cuenta de la que sale el dinero'}
+            value={cuentaId}
+            onChange={(e) => setCuentaId(e.target.value)}
+          >
+            {cuentasAhorro.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre} · {ETIQUETA_TIPO[c.tipo]} ({formatearImporte(precioActualUnitarioEfectivo(c, new Date()))} €)
+              </option>
+            ))}
+            <option value={SIN_CUENTA}>Ninguna (no tocar Patrimonio)</option>
+          </Select>
+          {cuentaId !== SIN_CUENTA && (
+            <span className="text-xs text-muted">
+              {esGasto ? 'Se sumará' : 'Se restará'} el importe al saldo de esta cuenta en Patrimonio.
+            </span>
+          )}
+        </div>
       )}
 
       {subcategoriaSeleccionada?.nombre === 'Salario' && (

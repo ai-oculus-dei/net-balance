@@ -11,7 +11,9 @@ import { crearMovimiento } from '../../lib/supabase/queries/movimientos';
 import { ajustarCuentaPatrimonio, crearPosicionPatrimonio } from '../../lib/supabase/queries/patrimonio';
 import { crearPosicionFinanciada } from '../../lib/supabase/queries/ventas';
 import { ajustarCuenta, retirarDeCuenta } from '../../lib/finance/ventas';
-import { precioCompraTotal } from '../../lib/finance/patrimonio';
+import { esCuentaGastos, precioCompraTotal } from '../../lib/finance/patrimonio';
+import { toIsoDate } from '../../lib/finance/fechas';
+import type { PosicionPatrimonio } from '../../lib/supabase/database.types';
 import { emitMovimientosChanged } from '../../lib/events/movimientosBus';
 import { emitPatrimonioChanged } from '../../lib/events/patrimonioBus';
 import { useAuth } from '../../lib/auth/useAuth';
@@ -43,6 +45,13 @@ export function AppShell() {
 
   async function handleCreated(values: MovimientoFormValues) {
     if (!session) return;
+    // Movimiento de Ahorro con cuenta elegida: el gasto (importe < 0) se suma a la cuenta y el
+    // ingreso se le resta. Se calcula ANTES de crear el movimiento para que, si la cuenta no
+    // tiene saldo suficiente, falle sin dejar el movimiento guardado a medias.
+    const fechaAjuste = toIsoDate(new Date(values.fecha));
+    const cuenta = values.cuentaPatrimonioId ? posicionesPatrimonio.find((p) => p.id === values.cuentaPatrimonioId) : undefined;
+    const ajuste = cuenta ? ajustarCuenta(cuenta, -values.importe, new Date(`${fechaAjuste}T00:00:00`)) : null;
+
     await crearMovimiento({
       nombre: values.nombre,
       fecha: values.fecha,
@@ -55,7 +64,22 @@ export function AppShell() {
       es_primer_dia_mes: values.esPrimerDiaMes,
     });
     emitMovimientosChanged();
+
+    if (cuenta && ajuste) {
+      await ajustarCuentaPatrimonio(cuenta.id, ajuste, fechaAjuste);
+      emitPatrimonioChanged();
+    }
   }
+
+  // Cuentas a las que puede ir (o de las que puede salir) un movimiento de Ahorro: corrientes,
+  // remuneradas y de ahorro activas, sin la cuenta "Gastos" (esa ya se sincroniza sola con el
+  // balance del mes). Primero las de ahorro, luego remuneradas, luego corrientes.
+  const cuentasAhorro = useMemo(() => {
+    const orden: Partial<Record<PosicionPatrimonio['tipo'], number>> = { cuenta_ahorro: 0, cuenta_remunerada: 1, cuenta_corriente: 2 };
+    return posicionesActivas
+      .filter((p) => orden[p.tipo] !== undefined && !esCuentaGastos(p))
+      .sort((a, b) => orden[a.tipo]! - orden[b.tipo]! || a.nombre.localeCompare(b.nombre, 'es'));
+  }, [posicionesActivas]);
 
   async function handlePatrimonioCreated(values: PatrimonioFormValues) {
     if (!session) return;
@@ -105,7 +129,7 @@ export function AppShell() {
           onAjustarCuenta={handlePatrimonioAjustado}
         />
       ) : (
-        <QuickAddSheet open={quickAddOpen} onClose={handleCloseQuickAdd} onCreated={handleCreated} />
+        <QuickAddSheet open={quickAddOpen} onClose={handleCloseQuickAdd} onCreated={handleCreated} cuentasAhorro={cuentasAhorro} />
       )}
     </div>
   );

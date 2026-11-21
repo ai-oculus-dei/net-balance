@@ -178,6 +178,17 @@ export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme,
             </div>
           </div>
 
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[11.5px] mb-2">
+            <span className="text-muted">
+              Núcleo <span className="text-fg">{pct(peso.nucleo)}</span> · Satélite <span className="text-fg">{pct(peso.satelite)}</span>
+            </span>
+            {conObjetivo && (
+              <span className={Math.abs(sumaObjetivos - 100) < 0.01 ? 'text-muted' : 'text-warn'}>
+                objetivos: {pct(sumaObjetivos)}
+              </span>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={() => setDetalleAbierto((v) => !v)}
@@ -192,17 +203,6 @@ export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme,
 
           {detalleAbierto && (
           <>
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[11.5px] mb-2">
-            <span className="text-muted">
-              Núcleo <span className="text-fg">{pct(peso.nucleo)}</span> · Satélite <span className="text-fg">{pct(peso.satelite)}</span>
-            </span>
-            {conObjetivo && (
-              <span className={Math.abs(sumaObjetivos - 100) < 0.01 ? 'text-muted' : 'text-warn'}>
-                objetivos: {pct(sumaObjetivos)}
-              </span>
-            )}
-          </div>
-
           <div className="flex flex-col">
             {filas.map((f) => {
               const fueraDeRango = f.estado === 'por_encima' || f.estado === 'por_debajo';

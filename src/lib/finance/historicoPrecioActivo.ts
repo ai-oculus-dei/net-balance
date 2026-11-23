@@ -39,10 +39,18 @@ export interface PrecioDiarioActivo {
   mercado: string;
   fecha: string;
   precioUnitario: number;
+  precioApertura?: number | null; // primer precio del dia (null en filas anteriores a la 0024)
 }
 
 export function precioDiarioDesdeFila(fila: PrecioHistoricoActivo): PrecioDiarioActivo {
-  return { ticker: fila.ticker, mercado: fila.mercado, fecha: fila.fecha, precioUnitario: fila.precio_unitario };
+  return {
+    ticker: fila.ticker,
+    mercado: fila.mercado,
+    fecha: fila.fecha,
+    // numeric puede llegar como string desde PostgREST.
+    precioUnitario: Number(fila.precio_unitario),
+    precioApertura: fila.precio_apertura == null ? null : Number(fila.precio_apertura),
+  };
 }
 
 // Cuantas unidades de UN lote concreto seguian en cartera en `fecha` (inclusive): su cantidad

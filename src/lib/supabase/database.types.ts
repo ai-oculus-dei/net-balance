@@ -238,6 +238,7 @@ export interface PrecioHistoricoActivo {
   mercado: string;
   fecha: string;
   precio_unitario: number;
+  precio_apertura?: number | null; // migracion 0024: primer precio del dia
   created_at: string;
 }
 

@@ -8,10 +8,6 @@ import { Modal } from '../components/ui/Modal';
 import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
 import { PantallaCompletaGrafico } from '../components/charts/PantallaCompletaGrafico';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
-import { GraficoTemporal } from '../components/charts/GraficoTemporal';
-import { SelectorRango } from '../components/charts/SelectorRango';
-import { RANGO_POR_DEFECTO, type RangoTemporal } from '../lib/finance/rangosTemporales';
-import { MAX_LINEAS } from '../components/charts/colorsCategoricos';
 import { PatrimonioTotalCard } from '../components/patrimonio/PatrimonioTotalCard';
 import { PatrimonioPnLCard } from '../components/patrimonio/PatrimonioPnLCard';
 import { RepartoCarteraCard } from '../components/patrimonio/RepartoCarteraCard';
@@ -29,19 +25,28 @@ import { usePreciosHistoricoActivo } from '../hooks/usePreciosHistoricoActivo';
 import { useVentasPatrimonioLotes } from '../hooks/useVentasPatrimonioLotes';
 import { useUltimaActualizacionPrecios } from '../hooks/useUltimaActualizacionPrecios';
 import { useTheme } from '../lib/theme/useTheme';
+import { Card } from '../components/ui/Card';
+import { Segmented } from '../components/ui/Segmented';
+import { Select } from '../components/ui/Select';
+import { claseColorPorSigno } from '../components/charts/colors';
+import { formatearImporte } from '../lib/finance/formato';
+import { pnlDiarioActivo } from '../lib/finance/pnlDiario';
 import {
   ETIQUETA_GRUPO,
+  ETIQUETA_TIPO,
   agruparPorActivo,
   grupoDePosicion,
-  historicoPorActivoDiario,
   historicoTotalPorDia,
   type ActivoAgrupado,
   type GrupoPatrimonio,
 } from '../lib/finance/patrimonio';
 import { precioDiarioDesdeFila, ventaLoteDesdeFila } from '../lib/finance/historicoPrecioActivo';
-import type { PosicionPatrimonio } from '../lib/supabase/database.types';
+import type { PosicionPatrimonio, TipoPosicionPatrimonio } from '../lib/supabase/database.types';
 
 const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
+
+type FiltroTipo = 'todos' | TipoPosicionPatrimonio;
+type Orden = 'valor' | 'variacion';
 
 // Alto total (controles + grafico) del historico pequeno dentro de la tarjeta de un activo.
 const ALTO_GRAFICO_EN_TARJETA = 260;
@@ -59,11 +64,13 @@ export function PatrimonioPage() {
   const { precios: preciosHistoricosFilas, loading: loadingPrecios } = usePreciosHistoricoActivo();
   const { ventasLotes: ventasLotesFilas, loading: loadingVentasLotes } = useVentasPatrimonioLotes();
   const ultimaActualizacionPrecios = useUltimaActualizacionPrecios();
-  const [rangoPosicion, setRangoPosicion] = useState<RangoTemporal>(RANGO_POR_DEFECTO);
   const [editando, setEditando] = useState<PosicionPatrimonio | null>(null);
   const [vendiendo, setVendiendo] = useState<ActivoAgrupado | null>(null);
   const [reduciendo, setReduciendo] = useState<ActivoAgrupado | null>(null);
   const [viendoGrafico, setViendoGrafico] = useState<ActivoAgrupado | null>(null);
+  const [modoPnL, setModoPnL] = useState<'total' | 'diario'>('total');
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('todos');
+  const [orden, setOrden] = useState<Orden>('valor');
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
   const activos = useMemo(() => agruparPorActivo(posicionesActivas), [posicionesActivas]);
@@ -77,12 +84,36 @@ export function PatrimonioPage() {
     () => historicoTotalPorDia(historico, posiciones, preciosHistoricos, ventasLotes),
     [historico, posiciones, preciosHistoricos, ventasLotes]
   );
-  const { puntos: puntosPorPosicion, lineas: lineasPorPosicion } = useMemo(
-    () => historicoPorActivoDiario(posicionesActivas, historico, MAX_LINEAS, posiciones, preciosHistoricos, ventasLotes),
-    [posicionesActivas, historico, posiciones, preciosHistoricos, ventasLotes]
-  );
 
   const loading = loadingPosiciones || loadingHistorico || loadingPrecios || loadingVentasLotes;
+
+  // P/L diario, filtro por tipo y orden de las tarjetas de activos (la agrupacion por grupo se
+  // mantiene; el orden se aplica dentro de cada grupo).
+  const pnlDiarioPorId = useMemo(
+    () => new Map(activos.map((a) => [a.id, pnlDiarioActivo(a, preciosHistoricos)] as const)),
+    [activos, preciosHistoricos]
+  );
+  const tiposPresentes = useMemo(
+    () => (Object.keys(ETIQUETA_TIPO) as TipoPosicionPatrimonio[]).filter((t) => activos.some((a) => a.tipo === t)),
+    [activos]
+  );
+  const filtroTipoEfectivo: FiltroTipo = filtroTipo === 'todos' || tiposPresentes.includes(filtroTipo) ? filtroTipo : 'todos';
+  const activosVisibles = useMemo(() => {
+    const filtrados = activos.filter((a) => filtroTipoEfectivo === 'todos' || a.tipo === filtroTipoEfectivo);
+    const variacion = (a: ActivoAgrupado) => {
+      const d = pnlDiarioPorId.get(a.id);
+      return d ? Math.abs(d.pct) : -1; // sin dato de hoy, al final
+    };
+    return [...filtrados].sort((a, b) =>
+      orden === 'variacion'
+        ? variacion(b) - variacion(a) || b.valorActualTotal - a.valorActualTotal
+        : b.valorActualTotal - a.valorActualTotal
+    );
+  }, [activos, filtroTipoEfectivo, orden, pnlDiarioPorId]);
+  const totalDiario = useMemo(() => {
+    const conDato = activosVisibles.map((a) => pnlDiarioPorId.get(a.id)).filter((d) => d != null);
+    return conDato.length === 0 ? null : Math.round(conDato.reduce((s, d) => s + d.eur, 0) * 100) / 100;
+  }, [activosVisibles, pnlDiarioPorId]);
 
   async function handleActualizar(values: PatrimonioFormValues) {
     if (!editando) return;
@@ -167,20 +198,43 @@ export function PatrimonioPage() {
         }
       />
 
-      <TarjetaGrafico
-        titulo="Histórico por posición"
-        acciones={<SelectorRango value={rangoPosicion} onChange={setRangoPosicion} />}
-        icono={<IconActividad />}
-        render={(altura) =>
-          loading ? (
-            <Cargando />
-          ) : lineasPorPosicion.length === 0 ? (
-            <p className="empty">Todavía no hay histórico.</p>
-          ) : (
-            <GraficoTemporal puntos={puntosPorPosicion} lineas={lineasPorPosicion} rango={rangoPosicion} theme={theme} altura={altura} />
-          )
-        }
-      />
+      {!loading && activos.length > 0 && (
+        <Card className="flex flex-col gap-3">
+          <Segmented
+            full
+            ariaLabel="Qué P/L mostrar"
+            value={modoPnL}
+            onChange={setModoPnL}
+            options={[
+              { value: 'total', label: 'P/L total' },
+              { value: 'diario', label: 'P/L diario' },
+            ]}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Select label="Tipo de activo" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as FiltroTipo)}>
+              <option value="todos">Todos</option>
+              {tiposPresentes.map((t) => (
+                <option key={t} value={t}>
+                  {ETIQUETA_TIPO[t]}
+                </option>
+              ))}
+            </Select>
+            <Select label="Ordenar por" value={orden} onChange={(e) => setOrden(e.target.value as Orden)}>
+              <option value="valor">Valor total</option>
+              <option value="variacion">Variación hoy (%)</option>
+            </Select>
+          </div>
+          {modoPnL === 'diario' && totalDiario !== null && (
+            <div className="flex items-center justify-between gap-3 text-sm pt-1 border-t border-dashed border-line">
+              <span className="text-muted">P/L de hoy{filtroTipo === 'todos' ? '' : ` · ${ETIQUETA_TIPO[filtroTipo]}`}</span>
+              <span className={`font-mono font-semibold ${claseColorPorSigno(totalDiario)}`}>
+                {totalDiario > 0 ? '+' : ''}
+                {formatearImporte(totalDiario)} €
+              </span>
+            </div>
+          )}
+        </Card>
+      )}
 
       {loading ? (
         <Cargando />
@@ -190,7 +244,7 @@ export function PatrimonioPage() {
         </p>
       ) : (
         GRUPOS.map((grupo) => {
-          const deEsteGrupo = activos.filter((a) => grupoDePosicion(a.tipo) === grupo);
+          const deEsteGrupo = activosVisibles.filter((a) => grupoDePosicion(a.tipo) === grupo);
           if (deEsteGrupo.length === 0) return null;
           return (
             <div key={grupo} className="flex flex-col gap-3">
@@ -208,6 +262,8 @@ export function PatrimonioPage() {
                     onVender={setVendiendo}
                     onReducir={setReduciendo}
                     onVerGrafico={setViendoGrafico}
+                    modoPnL={modoPnL}
+                    pnlDiario={pnlDiarioPorId.get(a.id) ?? null}
                     renderGrafico={(activo) => (
                       <HistoricoActivoVista
                         compacto

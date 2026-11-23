@@ -10,6 +10,7 @@ import {
   formatearImporte,
   formatearImporteCorto,
 } from '../../lib/finance/formato';
+import { pnlDiarioLote, type PnLDiario } from '../../lib/finance/pnlDiario';
 import type { PosicionPatrimonio } from '../../lib/supabase/database.types';
 
 // Por encima de este numero de caracteres, "cantidad x precio €/ea" ya no suele caber en el
@@ -33,9 +34,34 @@ interface ActivoCardProps {
   // Grafico pequeno que se muestra debajo de las compras al desplegarlas (el mismo que el de
   // pantalla completa, ver HistoricoActivoVista con `compacto`).
   renderGrafico?: (activo: ActivoAgrupado) => ReactNode;
+  // 'diario': el P/L que se muestra es el de hoy (respecto al precio de apertura, ver
+  // lib/finance/pnlDiario.ts) en vez del total desde la compra.
+  modoPnL?: 'total' | 'diario';
+  pnlDiario?: PnLDiario | null;
 }
 
-export function ActivoCard({ activo, onEditarLote, onVender, onReducir, onVerGrafico, renderGrafico }: ActivoCardProps) {
+// "+12.30 € (+1.2%)" con su color; sin el % si no se conoce.
+function TextoPnL({ eur, pct, sufijo, className = '' }: { eur: number; pct: number | null; sufijo?: string; className?: string }) {
+  return (
+    <span className={`font-mono font-semibold text-right ${claseColorPorSigno(eur)} ${className}`}>
+      {eur > 0 ? '+' : ''}
+      {formatearImporte(eur)} €{pct !== null ? ` (${pct > 0 ? '+' : ''}${formatearImporte(pct, 1)}%)` : ''}
+      {sufijo && <span className="text-muted font-normal"> {sufijo}</span>}
+    </span>
+  );
+}
+
+export function ActivoCard({
+  activo,
+  onEditarLote,
+  onVender,
+  onReducir,
+  onVerGrafico,
+  renderGrafico,
+  modoPnL = 'total',
+  pnlDiario = null,
+}: ActivoCardProps) {
+  const diario = modoPnL === 'diario';
   const [expandido, setExpandido] = useState(false);
   // Cuentas Corriente/Remunerada/Ahorro/Fondo Monetario ya no se tratan como una inversion con
   // coste de compra propio (ver ajustarCuenta en lib/finance/ventas.ts): no tiene sentido
@@ -93,12 +119,14 @@ export function ActivoCard({ activo, onEditarLote, onVender, onReducir, onVerGra
         <span className={`font-mono font-semibold ${activo.ticker ? 'text-[12.5px] text-muted' : 'text-[17px]'}`}>
           {activo.ticker ? `${formatearImporte(precioActualUnitario)} €/ea` : `${formatearImporte(activo.valorActualTotal)} €`}
         </span>
-        {mostrarPnL && (
-          <span className={`font-mono text-xs font-semibold text-right ${claseColorPorSigno(activo.pnl.eur)}`}>
-            {activo.pnl.eur > 0 ? '+' : ''}
-            {formatearImporte(activo.pnl.eur)} €{activo.pnl.pct !== null ? ` (${activo.pnl.pct > 0 ? '+' : ''}${formatearImporte(activo.pnl.pct, 1)}%)` : ''}
-          </span>
-        )}
+        {mostrarPnL &&
+          (!diario ? (
+            <TextoPnL eur={activo.pnl.eur} pct={activo.pnl.pct} className="text-xs" />
+          ) : pnlDiario ? (
+            <TextoPnL eur={pnlDiario.eur} pct={pnlDiario.pct} sufijo="hoy" className="text-xs" />
+          ) : (
+            <span className="font-mono text-xs text-muted">— hoy</span>
+          ))}
       </div>
 
       <div className="flex items-center justify-between mt-3 pt-2.5 gap-2 border-t border-dashed border-line">
@@ -158,7 +186,7 @@ export function ActivoCard({ activo, onEditarLote, onVender, onReducir, onVerGra
               cual es "la primera compra", ver construirActivo en lib/finance/patrimonio.ts) —
               se invierte solo para mostrar, sin tocar ese orden real. */}
           {[...activo.lotes].reverse().map((lote) => {
-            const pnlLote = calcularPnL(lote);
+            const pnlLote = diario ? (pnlDiario ? pnlDiarioLote(lote, pnlDiario) : null) : calcularPnL(lote);
             return (
               <div
                 key={lote.id}
@@ -176,12 +204,12 @@ export function ActivoCard({ activo, onEditarLote, onVender, onReducir, onVerGra
                   )}
                   <span className="truncate">{textoLote(lote)}</span>
                 </span>
-                {mostrarPnL && (
-                  <span className={`font-mono font-semibold shrink-0 ${claseColorPorSigno(pnlLote.eur)}`}>
-                    {pnlLote.eur > 0 ? '+' : ''}
-                    {formatearImporte(pnlLote.eur)} €{pnlLote.pct !== null ? ` (${pnlLote.pct > 0 ? '+' : ''}${formatearImporte(pnlLote.pct, 1)}%)` : ''}
-                  </span>
-                )}
+                {mostrarPnL &&
+                  (pnlLote ? (
+                    <TextoPnL eur={pnlLote.eur} pct={pnlLote.pct} className="shrink-0" />
+                  ) : (
+                    <span className="font-mono text-muted shrink-0">—</span>
+                  ))}
               </div>
             );
           })}

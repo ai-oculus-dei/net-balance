@@ -45,15 +45,15 @@ function fechaEnRango(fechaMovimiento: string, rango: { desde: string; hasta: st
 
 // Serie temporal (un punto por periodo, ya resueltos con las anclas de mes personalizado del
 // usuario — ver src/lib/finance/periodos.ts). Cada punto agrupa uno o mas valores, uno por linea.
-// Subcategorias que conservan su signo en el grafico de evolucion mensual con gastos en
-// positivo (ver signoEvolucionMensual): ingresos y movimientos de ahorro/inversion.
+// Subcategorias que conservan su signo en el grafico de evolucion mensual (ver
+// signoEvolucionMensual): los ingresos reales, que se quedan en positivo igual que en Movimientos.
 const SUBCATEGORIAS_CON_SIGNO_PROPIO = new Set(
-  ['Inversiones', 'Salario', 'Paga Extra', 'Beneficios', 'Ingreso Extra', 'Ingresos Extra', 'Ahorro'].map((n) => n.toLowerCase())
+  ['Salario', 'Paga Extra', 'Variable', 'Beneficios', 'Ingreso Extra', 'Ingresos Extra'].map((n) => n.toLowerCase())
 );
 
 // Factor de signo por movimiento para "Evolucion mensual": a todo se le da la vuelta al signo
-// (un gasto de -50 cuenta +50, una devolucion de +10 cuenta -10) menos a las subcategorias de
-// SUBCATEGORIAS_CON_SIGNO_PROPIO, que se quedan como estan.
+// (un gasto de -50 cuenta +50, una devolucion de +10 cuenta -10; tambien Ahorro, Inversiones,
+// Efectivo e Impuestos) menos a los ingresos reales de SUBCATEGORIAS_CON_SIGNO_PROPIO.
 export function signoEvolucionMensual(m: Movimiento, subcategorias: SubcategoriasPorId): 1 | -1 {
   const nombre = subcategorias.get(m.subcategoria_id)?.nombre.trim().toLowerCase() ?? '';
   return SUBCATEGORIAS_CON_SIGNO_PROPIO.has(nombre) ? 1 : -1;

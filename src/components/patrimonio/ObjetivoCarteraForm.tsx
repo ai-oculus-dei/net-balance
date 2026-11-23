@@ -144,7 +144,7 @@ export function ObjetivoCarteraForm({ unidad, inicial, totalPatrimonio, onSubmit
             {unidadObjetivo === 'eur' && (
               <>
                 <span className="font-mono text-fg">{eur(valor)}</span> son hoy el{' '}
-                <span className="font-mono text-fg">{pct(objetivoPct)}</span> de tu patrimonio ({eur(totalPatrimonio)}): el %
+                <span className="font-mono text-fg">{pct(objetivoPct)}</span> de tu cartera sin el Fondo de Emergencia ({eur(totalPatrimonio)}): el %
                 se recalcula solo cuando cambie el patrimonio.{' '}
               </>
             )}

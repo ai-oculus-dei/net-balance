@@ -52,7 +52,7 @@ const TIPOS_LIQUIDEZ = new Set<TipoPosicionPatrimonio>([
 ]);
 
 const NOMBRE_BLOQUE: Record<string, string> = {
-  [CLAVE_BLOQUE_LIQUIDEZ]: 'Liquidez y renta fija',
+  [CLAVE_BLOQUE_LIQUIDEZ]: 'Fondo de Emergencia',
   [CLAVE_BLOQUE_INDEXADOS_RV]: 'Fondos indexados RV',
 };
 
@@ -73,10 +73,23 @@ export interface UnidadCartera {
   pct: number; // peso dentro del patrimonio total (0-100)
 }
 
-// Unidades con valor positivo, de mayor a menor peso. El % es sobre el patrimonio total (las
-// mismas posiciones activas que suma "Patrimonio total").
+export const NOMBRE_FONDO_EMERGENCIA = NOMBRE_BLOQUE[CLAVE_BLOQUE_LIQUIDEZ];
+
+// Valor del Fondo de Emergencia: toda la liquidez y renta fija (bloque:liquidez). Va aparte del
+// reparto de cartera, con su propio objetivo en euros (ver FondoEmergenciaCard).
+export function valorFondoEmergencia(posicionesActivas: PosicionPatrimonio[], hoy: Date = new Date()): number {
+  return round2(
+    agruparPorActivo(posicionesActivas, hoy)
+      .filter((a) => claveUnidad(a) === CLAVE_BLOQUE_LIQUIDEZ)
+      .reduce((s, a) => s + a.valorActualTotal, 0)
+  );
+}
+
+// Unidades con valor positivo, de mayor a menor peso. El Fondo de Emergencia (liquidez y renta
+// fija) queda fuera: el % es sobre el resto del patrimonio, lo que de verdad se reparte entre
+// inversiones.
 export function unidadesCartera(posicionesActivas: PosicionPatrimonio[], hoy: Date = new Date()): UnidadCartera[] {
-  const activos = agruparPorActivo(posicionesActivas, hoy);
+  const activos = agruparPorActivo(posicionesActivas, hoy).filter((a) => claveUnidad(a) !== CLAVE_BLOQUE_LIQUIDEZ);
   const total = activos.reduce((s, a) => s + a.valorActualTotal, 0);
 
   const porClave = new Map<string, Omit<UnidadCartera, 'pct'>>();
@@ -139,6 +152,7 @@ export function desviacionesCartera(unidades: UnidadCartera[], objetivos: Objeti
   const total = totalCartera(unidades);
   const resultado: DesviacionCartera[] = [];
   for (const o of objetivos) {
+    if (o.clave === CLAVE_BLOQUE_LIQUIDEZ) continue; // el Fondo de Emergencia va aparte
     const objetivoPct = objetivoEfectivoPct(o, total);
     if (objetivoPct === null) continue;
     const unidad = porClave.get(o.clave);

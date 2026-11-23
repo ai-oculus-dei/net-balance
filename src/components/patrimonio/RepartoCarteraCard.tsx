@@ -103,7 +103,7 @@ export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme,
       <CardTitle icon={<IconMedidor />} className="mb-1">
         Reparto vs objetivo
       </CardTitle>
-      <p className="text-xs text-muted mb-2">Interior: peso actual · Exterior: objetivo. Abre el desplegable y toca un activo para fijar su objetivo.</p>
+      <p className="text-xs text-muted mb-2">Sin el Fondo de Emergencia. Interior: peso actual · Exterior: objetivo. Abre el desplegable y toca un activo para fijar su objetivo.</p>
 
       {loading ? (
         <Cargando />

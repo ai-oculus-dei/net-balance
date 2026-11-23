@@ -11,6 +11,7 @@ import {
   parsearPorcentaje,
   pesoPorEtiqueta,
   unidadesCartera,
+  valorFondoEmergencia,
 } from '../objetivosCartera';
 import type { PosicionPatrimonio, TipoPosicionPatrimonio } from '../../supabase/database.types';
 
@@ -53,19 +54,19 @@ describe('claveUnidad', () => {
 });
 
 describe('unidadesCartera', () => {
-  it('suma cada bloque y calcula el peso sobre el patrimonio total, de mayor a menor', () => {
-    const unidades = unidadesCartera([
+  it('deja fuera el Fondo de Emergencia y calcula el peso sobre el resto, de mayor a menor', () => {
+    const posiciones = [
       posicion({ id: 'c1', tipo: 'cuenta_corriente', valor: 1000 }),
       posicion({ id: 'c2', tipo: 'cuenta_remunerada', valor: 1000 }),
       posicion({ id: 'f1', tipo: 'fondo_indexado_rv', valor: 6000 }),
       posicion({ id: 's1', tipo: 'stock', ticker: 'SPCX', valor: 2000 }),
-    ]);
+    ];
+    const unidades = unidadesCartera(posiciones);
     expect(unidades.map((u) => [u.clave, u.valor, u.pct, u.numActivos])).toEqual([
-      [CLAVE_BLOQUE_INDEXADOS_RV, 6000, 60, 1],
-      [CLAVE_BLOQUE_LIQUIDEZ, 2000, 20, 2],
-      ['activo:spcx|', 2000, 20, 1],
+      [CLAVE_BLOQUE_INDEXADOS_RV, 6000, 75, 1],
+      ['activo:spcx|', 2000, 25, 1],
     ]);
-    expect(unidades[1].nombre).toBe('Liquidez y renta fija');
+    expect(valorFondoEmergencia(posiciones)).toBe(2000);
   });
 
   it('las compras de un mismo stock son una sola unidad', () => {
@@ -110,7 +111,7 @@ describe('desviacionesCartera', () => {
     const d = desviacionesCartera(unidades, [
       { clave: CLAVE_BLOQUE_INDEXADOS_RV, etiqueta: 'nucleo', objetivoPct: 70, objetivoEur: null }, // 80 > 75
       { clave: 'activo:spcx|', etiqueta: 'satelite', objetivoPct: 5, objetivoEur: null }, // 10 > 7
-      { clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: 10, objetivoEur: null }, // 10, en rango
+      { clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: 50, objetivoEur: null }, // Fondo de Emergencia: va aparte
       { clave: 'activo:otro', etiqueta: 'satelite', objetivoPct: null, objetivoEur: null }, // sin objetivo
     ]);
     expect(d.map((x) => [x.clave, x.estado])).toEqual([
@@ -120,10 +121,10 @@ describe('desviacionesCartera', () => {
   });
 
   it('un bloque con objetivo pero sin nada dentro cuenta como 0 %', () => {
-    const sinLiquidez = unidadesCartera([posicion({ id: 's1', tipo: 'stock', ticker: 'X', valor: 100 })]);
-    const d = desviacionesCartera(sinLiquidez, [{ clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: 20, objetivoEur: null }]);
+    const sinIndexados = unidadesCartera([posicion({ id: 's1', tipo: 'stock', ticker: 'X', valor: 100 })]);
+    const d = desviacionesCartera(sinIndexados, [{ clave: CLAVE_BLOQUE_INDEXADOS_RV, etiqueta: null, objetivoPct: 20, objetivoEur: null }]);
     expect(d).toEqual([
-      { clave: CLAVE_BLOQUE_LIQUIDEZ, nombre: 'Liquidez y renta fija', pct: 0, objetivoPct: 20, margen: 5, estado: 'por_debajo' },
+      { clave: CLAVE_BLOQUE_INDEXADOS_RV, nombre: 'Fondos indexados RV', pct: 0, objetivoPct: 20, margen: 5, estado: 'por_debajo' },
     ]);
   });
 
@@ -133,7 +134,7 @@ describe('desviacionesCartera', () => {
         { clave: CLAVE_BLOQUE_INDEXADOS_RV, etiqueta: 'nucleo', objetivoPct: null, objetivoEur: null },
         { clave: 'activo:spcx|', etiqueta: 'satelite', objetivoPct: null, objetivoEur: null },
       ])
-    ).toEqual({ nucleo: 80, satelite: 10 });
+    ).toEqual({ nucleo: 88.89, satelite: 11.11 });
   });
 });
 
@@ -157,13 +158,12 @@ describe('objetivo en euros (dinamico)', () => {
 
   it('el aviso usa el % equivalente: 6.000 € de 10.000 € es un 60 %', () => {
     const unidades = unidadesCartera([
-      posicion({ id: 'c1', tipo: 'cuenta_corriente', valor: 2000 }),
+      posicion({ id: 's1', tipo: 'stock', ticker: 'X', valor: 2000 }),
       posicion({ id: 'f1', tipo: 'fondo_indexado_rv', valor: 8000 }),
+      posicion({ id: 'c1', tipo: 'cuenta_corriente', valor: 5000 }), // Fondo de Emergencia: no cuenta en la base
     ]);
-    const d = desviacionesCartera(unidades, [{ clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: null, objetivoEur: 6000 }]);
-    expect(d).toEqual([
-      { clave: CLAVE_BLOQUE_LIQUIDEZ, nombre: 'Liquidez y renta fija', pct: 20, objetivoPct: 60, margen: 5, estado: 'por_debajo' },
-    ]);
+    const d = desviacionesCartera(unidades, [{ clave: 'activo:x|', etiqueta: null, objetivoPct: null, objetivoEur: 6000 }]);
+    expect(d).toEqual([{ clave: 'activo:x|', nombre: 's1', pct: 20, objetivoPct: 60, margen: 5, estado: 'por_debajo' }]);
   });
 
   it('parsearEuros acepta puntos de miles y coma decimal', () => {

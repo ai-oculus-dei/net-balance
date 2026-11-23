@@ -3,12 +3,11 @@ import { Button } from '../components/ui/Button';
 import { Cargando } from '../components/ui/Spinner';
 import { PageHeader } from '../components/layout/PageHeader';
 import { IconPatrimonio } from '../components/layout/NavIcons';
-import { IconActividad, IconArchivar, IconCapas, IconTarta } from '../components/icons/UiIcons';
+import { IconActividad, IconArchivar, IconCapas } from '../components/icons/UiIcons';
 import { Modal } from '../components/ui/Modal';
 import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
 import { PantallaCompletaGrafico } from '../components/charts/PantallaCompletaGrafico';
 import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
-import { LineasPieChart } from '../components/charts/LineasPieChart';
 import { GraficoTemporal } from '../components/charts/GraficoTemporal';
 import { SelectorRango } from '../components/charts/SelectorRango';
 import { RANGO_POR_DEFECTO, type RangoTemporal } from '../lib/finance/rangosTemporales';
@@ -17,7 +16,8 @@ import { PatrimonioTotalCard } from '../components/patrimonio/PatrimonioTotalCar
 import { PatrimonioPnLCard } from '../components/patrimonio/PatrimonioPnLCard';
 import { RepartoCarteraCard } from '../components/patrimonio/RepartoCarteraCard';
 import { useObjetivosCartera } from '../hooks/useObjetivosCartera';
-import { unidadesCartera } from '../lib/finance/objetivosCartera';
+import { CLAVE_BLOQUE_LIQUIDEZ, unidadesCartera, valorFondoEmergencia } from '../lib/finance/objetivosCartera';
+import { FondoEmergenciaCard } from '../components/patrimonio/FondoEmergenciaCard';
 import { ActivoCard } from '../components/patrimonio/ActivoCard';
 import { PatrimonioForm, type PatrimonioFormValues } from '../components/patrimonio/PatrimonioForm';
 import { VenderActivoForm } from '../components/patrimonio/VenderActivoForm';
@@ -31,12 +31,10 @@ import { useUltimaActualizacionPrecios } from '../hooks/useUltimaActualizacionPr
 import { useTheme } from '../lib/theme/useTheme';
 import {
   ETIQUETA_GRUPO,
-  ETIQUETA_TIPO,
   agruparPorActivo,
   grupoDePosicion,
   historicoPorActivoDiario,
   historicoTotalPorDia,
-  patrimonioPorTipo,
   type ActivoAgrupado,
   type GrupoPatrimonio,
 } from '../lib/finance/patrimonio';
@@ -73,11 +71,7 @@ export function PatrimonioPage() {
   const preciosHistoricos = useMemo(() => preciosHistoricosFilas.map(precioDiarioDesdeFila), [preciosHistoricosFilas]);
   const ventasLotes = useMemo(() => ventasLotesFilas.map(ventaLoteDesdeFila), [ventasLotesFilas]);
 
-  const datosPorTipo = useMemo(() => {
-    return patrimonioPorTipo(posicionesActivas)
-      .slice(0, MAX_LINEAS)
-      .map((t, indice) => ({ id: t.tipo, colorIndex: indice, etiqueta: ETIQUETA_TIPO[t.tipo], neto: t.valor }));
-  }, [posicionesActivas]);
+  const fondoEmergencia = useMemo(() => valorFondoEmergencia(posicionesActivas), [posicionesActivas]);
 
   const serieTotal = useMemo(
     () => historicoTotalPorDia(historico, posiciones, preciosHistoricos, ventasLotes),
@@ -147,18 +141,11 @@ export function PatrimonioPage() {
         onGuardar={guardarObjetivoCartera}
       />
 
-      <TarjetaGrafico
-        titulo="Por tipo de activo"
-        icono={<IconTarta />}
-        render={(altura) =>
-          loading ? (
-            <Cargando />
-          ) : datosPorTipo.length === 0 ? (
-            <p className="empty">Todavía no tienes posiciones.</p>
-          ) : (
-            <LineasPieChart datos={datosPorTipo} theme={theme} altura={altura} />
-          )
-        }
+      <FondoEmergenciaCard
+        valor={fondoEmergencia}
+        objetivo={objetivosCartera.find((o) => o.clave === CLAVE_BLOQUE_LIQUIDEZ)}
+        loading={loadingPosiciones || loadingObjetivosCartera}
+        onGuardar={guardarObjetivoCartera}
       />
 
       <TarjetaGrafico

@@ -67,8 +67,13 @@ export function VisualizacionesPage() {
   // que pulsar varias categorias seguidas no se sienta lento.
   const lineasValidasGrafico = useDebounced(lineasValidas, 4000);
 
+  // En valor absoluto: los gastos (netos negativos) se ven en positivo en este grafico.
   const serieTemporal = useMemo(
-    () => serieTemporalPorLineas(movimientos, lineasValidasGrafico, subcategoriasPorId, periodos),
+    () =>
+      serieTemporalPorLineas(movimientos, lineasValidasGrafico, subcategoriasPorId, periodos).map((p) => ({
+        ...p,
+        valores: Object.fromEntries(Object.entries(p.valores).map(([id, v]) => [id, Math.abs(v)])),
+      })),
     [movimientos, lineasValidasGrafico, subcategoriasPorId, periodos]
   );
 

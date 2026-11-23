@@ -5,8 +5,10 @@ import { Modal } from '../components/ui/Modal';
 import { Segmented } from '../components/ui/Segmented';
 import { PageHeader } from '../components/layout/PageHeader';
 import { IconAjustes } from '../components/layout/NavIcons';
-import { IconDescargar, IconEnlace, IconLuna, IconMovil, IconSalir, IconSol, IconUsuario } from '../components/icons/UiIcons';
+import { IconDescargar, IconLuna, IconSalir, IconSol, IconUsuario } from '../components/icons/UiIcons';
 import { ExportarForm } from '../components/ajustes/ExportarForm';
+import { PresupuestoGastoCard } from '../components/ajustes/PresupuestoGastoCard';
+import { AvisosCard, ConfiguracionPorDefectoCard } from '../components/ajustes/PreferenciasCards';
 import { useTheme } from '../lib/theme/useTheme';
 import { useAuth } from '../lib/auth/useAuth';
 import { useProfiles } from '../hooks/useProfiles';
@@ -18,7 +20,6 @@ export function AjustesPage() {
   const [exportando, setExportando] = useState(false);
 
   const perfil = profiles.find((p) => p.id === session?.user.id);
-  const urlAccesoDirecto = `${window.location.origin}${window.location.pathname}#/nuevo-gasto`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,28 +48,11 @@ export function AjustesPage() {
         </div>
       </Card>
 
-      <Card>
-        <CardTitle icon={<IconMovil />} className="mb-3">
-          Acceso directo: nuevo gasto
-        </CardTitle>
-        <p className="text-sm text-muted leading-relaxed mb-3">
-          Añade este enlace a la pantalla de inicio del móvil para tener un icono que abre la app
-          directamente sobre el alta rápida, sin pasar por el inicio.
-        </p>
-        <p className="flex items-start gap-2 text-xs font-mono bg-bg-2 border border-line rounded-[10px] px-3 py-2.5 break-all mb-3">
-          <IconEnlace className="w-3.5 h-3.5 text-cyan mt-px" />
-          <span className="min-w-0">{urlAccesoDirecto}</span>
-        </p>
-        <p className="text-xs text-muted leading-relaxed mb-4">
-          En iPhone: abre este enlace en Safari (no en la app instalada) → botón Compartir →
-          "Añadir a pantalla de inicio".
-        </p>
-        <a href="#/nuevo-gasto">
-          <Button type="button" variant="secondary" className="w-full">
-            Abrir ahora
-          </Button>
-        </a>
-      </Card>
+      <ConfiguracionPorDefectoCard />
+
+      <PresupuestoGastoCard />
+
+      <AvisosCard />
 
       <Card>
         <CardTitle icon={<IconDescargar />} className="mb-3">

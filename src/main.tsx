@@ -5,6 +5,7 @@ import './index.css';
 import App from './App.tsx';
 import { AuthProvider } from './lib/auth/AuthProvider';
 import { ThemeProvider } from './lib/theme/ThemeProvider';
+import { PreferenciasProvider } from './lib/preferencias/PreferenciasProvider';
 import { instalarAjustesIOS } from './lib/ui/iosViewport';
 
 instalarAjustesIOS();
@@ -23,9 +24,11 @@ registerSW({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <PreferenciasProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </PreferenciasProvider>
     </ThemeProvider>
   </StrictMode>
 );

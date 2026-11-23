@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { AvisoCartera } from './AvisoCartera';
+import { AvisoGastos } from './AvisoGastos';
+import { usePreferencias } from '../../lib/preferencias/usePreferencias';
 import { QuickAddButton } from '../movimientos/QuickAddButton';
 import { QuickAddSheet } from '../movimientos/QuickAddSheet';
 import { PatrimonioQuickAddSheet } from '../patrimonio/PatrimonioQuickAddSheet';
@@ -23,6 +25,7 @@ import { VisualizacionesProvider } from '../../lib/visualizaciones/Visualizacion
 
 export function AppShell() {
   const { session } = useAuth();
+  const { preferencias } = usePreferencias();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -110,7 +113,8 @@ export function AppShell() {
       <BottomNav />
 
       <main className="shell flex-1">
-        <AvisoCartera posicionesActivas={posicionesActivas} loading={loadingPosicionesPatrimonio} />
+        {preferencias.avisoCartera && <AvisoCartera posicionesActivas={posicionesActivas} loading={loadingPosicionesPatrimonio} />}
+        {preferencias.avisoGastos && <AvisoGastos />}
         <VisualizacionesProvider>
           <Outlet />
         </VisualizacionesProvider>

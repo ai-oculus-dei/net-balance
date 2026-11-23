@@ -269,6 +269,43 @@ export function IconEscudo(props: IconProps) {
   );
 }
 
+export function IconOjo(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function IconOjoTachado(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c4.4 0 8.2 2.6 9.94 6.65a1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.49" />
+      <path d="M14.08 14.16a3 3 0 0 1-4.24-4.24" />
+      <path d="M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14" />
+      <path d="m2 2 20 20" />
+    </svg>
+  );
+}
+
+export function IconCampana(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  );
+}
+
+export function IconDeslizadores(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+    </svg>
+  );
+}
+
 export function IconDescargar(props: IconProps) {
   return (
     <svg {...base} {...props}>

@@ -1,9 +1,11 @@
 import { Card, CardTitle } from '../ui/Card';
 import { Cargando } from '../ui/Spinner';
-import { IconCartera } from '../icons/UiIcons';
+import { IconCartera, IconOjo, IconOjoTachado } from '../icons/UiIcons';
 import { claseColorPorSigno } from '../charts/colors';
 import { formatearImporte } from '../../lib/finance/formato';
 import { crecimientoDesdeInicioAnio, patrimonioTotalActual } from '../../lib/finance/patrimonio';
+import { IMPORTE_OCULTO } from '../../lib/preferencias/preferencias';
+import { usePreferencias } from '../../lib/preferencias/usePreferencias';
 import type { PrecioDiarioActivo, VentaLote } from '../../lib/finance/historicoPrecioActivo';
 import type { PatrimonioHistorico, PosicionPatrimonio } from '../../lib/supabase/database.types';
 
@@ -26,14 +28,26 @@ export function PatrimonioTotalCard({
   preciosHistoricos = [],
   ventasLotes = [],
 }: PatrimonioTotalCardProps) {
+  const { preferencias, cambiar } = usePreferencias();
+  const oculto = preferencias.ocultarTotales;
   const total = patrimonioTotalActual(posiciones);
   const crecimiento = crecimientoDesdeInicioAnio(historico, total, todasLasPosiciones, preciosHistoricos, ventasLotes);
 
   return (
     <Card glow>
-      <CardTitle icon={<IconCartera />} className="mb-3">
-        Patrimonio total
-      </CardTitle>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <CardTitle icon={<IconCartera />}>Patrimonio total</CardTitle>
+        <button
+          type="button"
+          onClick={() => cambiar({ ocultarTotales: !oculto })}
+          aria-label={oculto ? 'Mostrar importes' : 'Ocultar importes'}
+          aria-pressed={oculto}
+          title={oculto ? 'Mostrar importes' : 'Ocultar importes'}
+          className="icon-btn shrink-0 !w-8 !h-8"
+        >
+          {oculto ? <IconOjoTachado /> : <IconOjo />}
+        </button>
+      </div>
       {loading ? (
         <Cargando />
       ) : (
@@ -42,14 +56,14 @@ export function PatrimonioTotalCard({
             className="font-mono text-[34px] leading-tight font-semibold tracking-[-0.02em] text-cyan break-all"
             style={{ textShadow: '0 0 18px color-mix(in srgb, var(--cyan) 35%, transparent)' }}
           >
-            {formatearImporte(total)} €
+            {oculto ? IMPORTE_OCULTO : formatearImporte(total)} €
           </p>
           {crecimiento.pct !== null && (
             <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-dashed border-line">
               <span className="kpi-label">Desde el 1 de enero</span>
               <span className={`font-mono text-sm font-semibold ${claseColorPorSigno(crecimiento.eur)}`}>
-                {crecimiento.eur > 0 ? '+' : ''}
-                {formatearImporte(crecimiento.eur)} € ({crecimiento.pct > 0 ? '+' : ''}
+                {oculto ? IMPORTE_OCULTO : `${crecimiento.eur > 0 ? '+' : ''}${formatearImporte(crecimiento.eur)}`} € (
+                {crecimiento.pct > 0 ? '+' : ''}
                 {formatearImporte(crecimiento.pct, 1)}%)
               </span>
             </div>

@@ -42,11 +42,13 @@ import {
 } from '../lib/finance/patrimonio';
 import { precioDiarioDesdeFila, ventaLoteDesdeFila } from '../lib/finance/historicoPrecioActivo';
 import type { PosicionPatrimonio, TipoPosicionPatrimonio } from '../lib/supabase/database.types';
+import type { FiltroTipoPatrimonio, ModoPnL, OrdenPatrimonio } from '../lib/preferencias/preferencias';
+import { usePreferencias } from '../lib/preferencias/usePreferencias';
 
 const GRUPOS: GrupoPatrimonio[] = ['renta_variable', 'renta_fija', 'efectivo'];
 
-type FiltroTipo = 'todos' | TipoPosicionPatrimonio;
-type Orden = 'valor' | 'variacion';
+type FiltroTipo = FiltroTipoPatrimonio;
+type Orden = OrdenPatrimonio;
 
 // Alto total (controles + grafico) del historico pequeno dentro de la tarjeta de un activo.
 const ALTO_GRAFICO_EN_TARJETA = 260;
@@ -68,9 +70,11 @@ export function PatrimonioPage() {
   const [vendiendo, setVendiendo] = useState<ActivoAgrupado | null>(null);
   const [reduciendo, setReduciendo] = useState<ActivoAgrupado | null>(null);
   const [viendoGrafico, setViendoGrafico] = useState<ActivoAgrupado | null>(null);
-  const [modoPnL, setModoPnL] = useState<'total' | 'diario'>('total');
-  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('todos');
-  const [orden, setOrden] = useState<Orden>('valor');
+  // Arrancan con la configuracion por defecto elegida en Ajustes.
+  const { preferencias } = usePreferencias();
+  const [modoPnL, setModoPnL] = useState<ModoPnL>(preferencias.patrimonioModoPnL);
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>(preferencias.patrimonioFiltroTipo);
+  const [orden, setOrden] = useState<Orden>(preferencias.patrimonioOrden);
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
   const activos = useMemo(() => agruparPorActivo(posicionesActivas), [posicionesActivas]);

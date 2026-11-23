@@ -4,6 +4,8 @@ import { IconActividad } from '../icons/UiIcons';
 import { claseColorPorSigno } from '../charts/colors';
 import { formatearImporte } from '../../lib/finance/formato';
 import { patrimonioPnLTotal } from '../../lib/finance/patrimonio';
+import { IMPORTE_OCULTO } from '../../lib/preferencias/preferencias';
+import { usePreferencias } from '../../lib/preferencias/usePreferencias';
 import type { PosicionPatrimonio } from '../../lib/supabase/database.types';
 
 interface PatrimonioPnLCardProps {
@@ -13,6 +15,7 @@ interface PatrimonioPnLCardProps {
 
 export function PatrimonioPnLCard({ posiciones, loading }: PatrimonioPnLCardProps) {
   const pnl = patrimonioPnLTotal(posiciones);
+  const { ocultarTotales } = usePreferencias().preferencias;
 
   return (
     <Card>
@@ -24,8 +27,7 @@ export function PatrimonioPnLCard({ posiciones, loading }: PatrimonioPnLCardProp
       ) : (
         <div className={`flex items-baseline justify-between gap-3 ${claseColorPorSigno(pnl.eur)}`}>
           <span className="kpi-value">
-            {pnl.eur > 0 ? '+' : ''}
-            {formatearImporte(pnl.eur)} €
+            {ocultarTotales ? IMPORTE_OCULTO : `${pnl.eur > 0 ? '+' : ''}${formatearImporte(pnl.eur)}`} €
           </span>
           {pnl.pct !== null && (
             <span className="font-mono text-sm font-semibold">

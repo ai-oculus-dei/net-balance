@@ -38,8 +38,8 @@
 // para mostrar "-" en vez de un numero que podria estar desactualizado. En cuanto una
 // actualizacion vuelve a funcionar, error_precio se limpia a null.
 //
-// Se invoca por HTTP (ver supabase/migrations/0012_patrimonio_cron_horario.sql, que la programa
-// cada hora de 8:00 a 23:00 hora de España via pg_cron + pg_net) con la service_role key, para
+// Se invoca por HTTP (ver supabase/migrations/0023_patrimonio_cron_15_min.sql, que la programa
+// cada 15 minutos de 8:00 a 23:00 hora de España via pg_cron + pg_net) con la service_role key, para
 // poder actualizar las posiciones de los dos usuarios sin depender de una sesion concreta.
 //
 // Al terminar cada ejecucion (haya ido bien o mal alguna posicion suelta) se deja constancia de
@@ -124,16 +124,24 @@ async function precioYahoo(ticker: string): Promise<ResultadoPrecio> {
   return { precio, error: null };
 }
 
-async function precioCoinGecko(coinId: string): Promise<ResultadoPrecio> {
-  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coinId)}&vs_currencies=eur`;
-  const res = await fetch(url);
-  if (!res.ok) return { precio: null, error: `CoinGecko (${res.status}): error desconocido` };
-  const data = await res.json().catch(() => null);
-  const precio = data?.[coinId]?.eur;
-  if (typeof precio !== 'number') {
-    return { precio: null, error: 'CoinGecko: precio no disponible (revisa que el ticker sea el ID de CoinGecko)' };
+// Precio de TODAS las criptos en una sola peticion (simple/price acepta varios ids separados por
+// comas): el API sin clave de CoinGecko solo permite ~5 llamadas/minuto compartidas por IP, asi
+// que con el cron cada 15 minutos se gasta siempre 1 llamada por ejecucion, tenga las criptos
+// que tenga.
+async function preciosCoinGecko(coinIds: string[]): Promise<Map<string, ResultadoPrecio>> {
+  const resultado = new Map<string, ResultadoPrecio>();
+  if (coinIds.length === 0) return resultado;
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${coinIds.map(encodeURIComponent).join(',')}&vs_currencies=eur`;
+  const res = await fetch(url).catch(() => null);
+  const data = res?.ok ? await res.json().catch(() => null) : null;
+  for (const id of coinIds) {
+    const precio = data?.[id]?.eur;
+    if (!res || !res.ok) resultado.set(id, { precio: null, error: `CoinGecko (${res?.status ?? 'sin respuesta'}): error desconocido` });
+    else if (typeof precio !== 'number')
+      resultado.set(id, { precio: null, error: 'CoinGecko: precio no disponible (revisa que el ticker sea el ID de CoinGecko)' });
+    else resultado.set(id, { precio, error: null });
   }
-  return { precio, error: null };
+  return resultado;
 }
 
 // A diferencia del cliente (ver fechas.ts), aqui NO aplica la regla de "nunca toISOString" — no
@@ -200,11 +208,14 @@ async function precioCoinGeckoHistorico(coinId: string, desde: Date): Promise<Re
 async function precioDelGrupo(
   grupo: PosicionAActualizar[],
   tipoCambioEurUsd: number | null,
-  errorTipoCambio: string | null
+  errorTipoCambio: string | null,
+  preciosCripto: Map<string, ResultadoPrecio>
 ): Promise<ResultadoPrecio> {
   const [representante] = grupo;
   const esCripto = grupo.some((p) => p.tipo === 'criptomoneda');
-  if (esCripto) return precioCoinGecko(representante.ticker);
+  if (esCripto) {
+    return preciosCripto.get(representante.ticker.trim()) ?? { precio: null, error: 'CoinGecko: precio no disponible' };
+  }
 
   const resultado = await precioYahoo(representante.ticker);
   if (resultado.precio === null || representante.moneda !== 'USD') return resultado;
@@ -296,6 +307,12 @@ Deno.serve(async (req) => {
     errorTipoCambio = resultado.error;
   }
 
+  // Todas las criptos en una unica llamada a CoinGecko (ver preciosCoinGecko).
+  const idsCripto = Array.from(
+    new Set(grupos.filter((g) => g.some((p) => p.tipo === 'criptomoneda')).map((g) => g[0].ticker.trim()))
+  );
+  const preciosCripto = await preciosCoinGecko(idsCripto);
+
   // Un grupo necesita backfill si su ticker+mercado no tiene TODAVIA ninguna fila en
   // precios_historico_activo (se comprueba con una consulta pequeña por grupo, limit 1, sobre el
   // indice unico — el numero de activos distintos reales es siempre pequeño). Si hace falta
@@ -335,7 +352,7 @@ Deno.serve(async (req) => {
     const mercadoNorm = (representante.mercado ?? '').trim().toLowerCase();
 
     try {
-      const { precio, error: errorPrecio } = await precioDelGrupo(grupo, tipoCambioEurUsd, errorTipoCambio);
+      const { precio, error: errorPrecio } = await precioDelGrupo(grupo, tipoCambioEurUsd, errorTipoCambio, preciosCripto);
       if (precio === null) {
         await supabase.from('posiciones_patrimonio').update({ error_precio: errorPrecio }).in('id', ids);
         for (const p of grupo) resultados.push({ id: p.id, ticker: p.ticker, ok: false, error: errorPrecio });

@@ -45,11 +45,27 @@ function fechaEnRango(fechaMovimiento: string, rango: { desde: string; hasta: st
 
 // Serie temporal (un punto por periodo, ya resueltos con las anclas de mes personalizado del
 // usuario — ver src/lib/finance/periodos.ts). Cada punto agrupa uno o mas valores, uno por linea.
+// Subcategorias que conservan su signo en el grafico de evolucion mensual con gastos en
+// positivo (ver signoEvolucionMensual): ingresos y movimientos de ahorro/inversion.
+const SUBCATEGORIAS_CON_SIGNO_PROPIO = new Set(
+  ['Inversiones', 'Salario', 'Paga Extra', 'Beneficios', 'Ingreso Extra', 'Ingresos Extra', 'Ahorro'].map((n) => n.toLowerCase())
+);
+
+// Factor de signo por movimiento para "Evolucion mensual": a todo se le da la vuelta al signo
+// (un gasto de -50 cuenta +50, una devolucion de +10 cuenta -10) menos a las subcategorias de
+// SUBCATEGORIAS_CON_SIGNO_PROPIO, que se quedan como estan.
+export function signoEvolucionMensual(m: Movimiento, subcategorias: SubcategoriasPorId): 1 | -1 {
+  const nombre = subcategorias.get(m.subcategoria_id)?.nombre.trim().toLowerCase() ?? '';
+  return SUBCATEGORIAS_CON_SIGNO_PROPIO.has(nombre) ? 1 : -1;
+}
+
 export function serieTemporalPorLineas(
   movimientos: Movimiento[],
   lineas: LineaSeleccion[],
   subcategorias: SubcategoriasPorId,
-  periodos: PeriodoConEtiqueta[]
+  periodos: PeriodoConEtiqueta[],
+  // Factor por el que se multiplica cada importe (por defecto, tal cual).
+  signo: (m: Movimiento) => number = () => 1
 ): PuntoSerieLineas[] {
   const puntos: PuntoSerieLineas[] = periodos.map((p) => ({
     mes: p.etiquetaCorta,
@@ -61,7 +77,7 @@ export function serieTemporalPorLineas(
     if (indice === -1) continue;
     for (const linea of lineas) {
       if (movimientoPerteneceALinea(m, linea, subcategorias)) {
-        puntos[indice].valores[linea.id] += m.importe;
+        puntos[indice].valores[linea.id] += signo(m) * m.importe;
       }
     }
   }

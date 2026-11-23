@@ -17,9 +17,12 @@ interface SerieTemporalLineasChartProps {
   lineas: SerieLineaInfo[];
   theme: Theme;
   altura?: number;
+  // 'lineal': tramos rectos entre puntos (sin suavizar), con un punto en cada valor.
+  curva?: 'suave' | 'lineal';
 }
 
-export function SerieTemporalLineasChart({ datos, lineas, theme, altura = 280 }: SerieTemporalLineasChartProps) {
+export function SerieTemporalLineasChart({ datos, lineas, theme, altura = 280, curva = 'suave' }: SerieTemporalLineasChartProps) {
+  const tipoCurva = curva === 'lineal' ? 'linear' : 'monotone';
   const idGradiente = `area-${useId().replace(/:/g, '')}`;
 
   if (lineas.length === 0) {
@@ -70,7 +73,7 @@ export function SerieTemporalLineasChart({ datos, lineas, theme, altura = 280 }:
           {lineas.length > 1 && <Legend wrapperStyle={LEYENDA} iconType="circle" iconSize={8} />}
           {unaSola && (
             <Area
-              type="monotone"
+              type={tipoCurva}
               dataKey={lineas[0].id}
               stroke="none"
               fill={`url(#${idGradiente})`}
@@ -83,12 +86,12 @@ export function SerieTemporalLineasChart({ datos, lineas, theme, altura = 280 }:
           {lineas.map((linea) => (
             <Line
               key={linea.id}
-              type="monotone"
+              type={tipoCurva}
               dataKey={linea.id}
               name={linea.etiqueta}
               stroke={colorCategorico(linea.colorIndex, theme)}
               strokeWidth={2}
-              dot={false}
+              dot={curva === 'lineal' ? { r: 2.5, strokeWidth: 0, fill: colorCategorico(linea.colorIndex, theme) } : false}
               activeDot={{ r: 4, strokeWidth: 0 }}
               isAnimationActive={false}
             />

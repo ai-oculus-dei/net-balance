@@ -25,6 +25,7 @@ import {
   etiquetaLinea,
   lineaEsValida,
   serieTemporalPorLineas,
+  signoEvolucionMensual,
   totalesPorLinea,
   type LineaSeleccion,
 } from '../lib/finance/visualizaciones';
@@ -67,13 +68,13 @@ export function VisualizacionesPage() {
   // que pulsar varias categorias seguidas no se sienta lento.
   const lineasValidasGrafico = useDebounced(lineasValidas, 4000);
 
-  // En valor absoluto: los gastos (netos negativos) se ven en positivo en este grafico.
+  // Gastos en positivo: se da la vuelta al signo de todo menos ingresos y ahorro/inversion (ver
+  // signoEvolucionMensual).
   const serieTemporal = useMemo(
     () =>
-      serieTemporalPorLineas(movimientos, lineasValidasGrafico, subcategoriasPorId, periodos).map((p) => ({
-        ...p,
-        valores: Object.fromEntries(Object.entries(p.valores).map(([id, v]) => [id, Math.abs(v)])),
-      })),
+      serieTemporalPorLineas(movimientos, lineasValidasGrafico, subcategoriasPorId, periodos, (m) =>
+        signoEvolucionMensual(m, subcategoriasPorId)
+      ),
     [movimientos, lineasValidasGrafico, subcategoriasPorId, periodos]
   );
 
@@ -243,7 +244,7 @@ export function VisualizacionesPage() {
           loading ? (
             <Cargando />
           ) : (
-            <SerieTemporalLineasChart datos={serieTemporal} lineas={lineasInfo} theme={theme} altura={altura} />
+            <SerieTemporalLineasChart datos={serieTemporal} lineas={lineasInfo} theme={theme} altura={altura} curva="lineal" />
           )
         }
       />

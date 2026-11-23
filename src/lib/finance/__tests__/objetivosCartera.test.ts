@@ -6,6 +6,8 @@ import {
   desviacionesCartera,
   estadoObjetivo,
   margenObjetivo,
+  objetivoEfectivoPct,
+  parsearEuros,
   parsearPorcentaje,
   pesoPorEtiqueta,
   unidadesCartera,
@@ -106,10 +108,10 @@ describe('desviacionesCartera', () => {
 
   it('solo devuelve las unidades con objetivo fuera de margen, las mas desviadas primero', () => {
     const d = desviacionesCartera(unidades, [
-      { clave: CLAVE_BLOQUE_INDEXADOS_RV, etiqueta: 'nucleo', objetivoPct: 70 }, // 80 > 75
-      { clave: 'activo:spcx|', etiqueta: 'satelite', objetivoPct: 5 }, // 10 > 7
-      { clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: 10 }, // 10, en rango
-      { clave: 'activo:otro', etiqueta: 'satelite', objetivoPct: null }, // sin objetivo
+      { clave: CLAVE_BLOQUE_INDEXADOS_RV, etiqueta: 'nucleo', objetivoPct: 70, objetivoEur: null }, // 80 > 75
+      { clave: 'activo:spcx|', etiqueta: 'satelite', objetivoPct: 5, objetivoEur: null }, // 10 > 7
+      { clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: 10, objetivoEur: null }, // 10, en rango
+      { clave: 'activo:otro', etiqueta: 'satelite', objetivoPct: null, objetivoEur: null }, // sin objetivo
     ]);
     expect(d.map((x) => [x.clave, x.estado])).toEqual([
       [CLAVE_BLOQUE_INDEXADOS_RV, 'por_encima'],
@@ -119,7 +121,7 @@ describe('desviacionesCartera', () => {
 
   it('un bloque con objetivo pero sin nada dentro cuenta como 0 %', () => {
     const sinLiquidez = unidadesCartera([posicion({ id: 's1', tipo: 'stock', ticker: 'X', valor: 100 })]);
-    const d = desviacionesCartera(sinLiquidez, [{ clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: 20 }]);
+    const d = desviacionesCartera(sinLiquidez, [{ clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: 20, objetivoEur: null }]);
     expect(d).toEqual([
       { clave: CLAVE_BLOQUE_LIQUIDEZ, nombre: 'Liquidez y renta fija', pct: 0, objetivoPct: 20, margen: 5, estado: 'por_debajo' },
     ]);
@@ -128,8 +130,8 @@ describe('desviacionesCartera', () => {
   it('suma el peso de nucleo y satelite', () => {
     expect(
       pesoPorEtiqueta(unidades, [
-        { clave: CLAVE_BLOQUE_INDEXADOS_RV, etiqueta: 'nucleo', objetivoPct: null },
-        { clave: 'activo:spcx|', etiqueta: 'satelite', objetivoPct: null },
+        { clave: CLAVE_BLOQUE_INDEXADOS_RV, etiqueta: 'nucleo', objetivoPct: null, objetivoEur: null },
+        { clave: 'activo:spcx|', etiqueta: 'satelite', objetivoPct: null, objetivoEur: null },
       ])
     ).toEqual({ nucleo: 80, satelite: 10 });
   });
@@ -142,5 +144,35 @@ describe('parsearPorcentaje', () => {
     expect(parsearPorcentaje('')).toBeNull();
     expect(parsearPorcentaje('120')).toBeNaN();
     expect(parsearPorcentaje('abc')).toBeNaN();
+  });
+});
+
+describe('objetivo en euros (dinamico)', () => {
+  it('se convierte en % sobre el patrimonio total, como mucho 100', () => {
+    expect(objetivoEfectivoPct({ objetivoPct: null, objetivoEur: 6000 }, 60000)).toBe(10);
+    expect(objetivoEfectivoPct({ objetivoPct: null, objetivoEur: 90000 }, 60000)).toBe(100);
+    expect(objetivoEfectivoPct({ objetivoPct: 25, objetivoEur: null }, 60000)).toBe(25);
+    expect(objetivoEfectivoPct({ objetivoPct: null, objetivoEur: 6000 }, 0)).toBeNull();
+  });
+
+  it('el aviso usa el % equivalente: 6.000 € de 10.000 € es un 60 %', () => {
+    const unidades = unidadesCartera([
+      posicion({ id: 'c1', tipo: 'cuenta_corriente', valor: 2000 }),
+      posicion({ id: 'f1', tipo: 'fondo_indexado_rv', valor: 8000 }),
+    ]);
+    const d = desviacionesCartera(unidades, [{ clave: CLAVE_BLOQUE_LIQUIDEZ, etiqueta: null, objetivoPct: null, objetivoEur: 6000 }]);
+    expect(d).toEqual([
+      { clave: CLAVE_BLOQUE_LIQUIDEZ, nombre: 'Liquidez y renta fija', pct: 20, objetivoPct: 60, margen: 5, estado: 'por_debajo' },
+    ]);
+  });
+
+  it('parsearEuros acepta puntos de miles y coma decimal', () => {
+    expect(parsearEuros('6000')).toBe(6000);
+    expect(parsearEuros('6.000')).toBe(6000);
+    expect(parsearEuros('6.000,50 €')).toBe(6000.5);
+    expect(parsearEuros('1.5')).toBe(1.5);
+    expect(parsearEuros('')).toBeNull();
+    expect(parsearEuros('-3')).toBeNaN();
+    expect(parsearEuros('abc')).toBeNaN();
   });
 });

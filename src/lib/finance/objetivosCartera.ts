@@ -17,10 +17,27 @@ export const ETIQUETA_CARTERA: Record<EtiquetaCartera, string> = {
   satelite: 'Satélite',
 };
 
+// El objetivo se puede fijar en % del patrimonio (objetivoPct) o en euros (objetivoEur); como
+// mucho uno de los dos. Uno en euros es "dinamico": su % equivalente se recalcula con el
+// patrimonio total de cada momento (ver objetivoEfectivoPct).
 export interface ObjetivoCartera {
   clave: string;
   etiqueta: EtiquetaCartera | null;
   objetivoPct: number | null;
+  objetivoEur: number | null;
+}
+
+// % objetivo a aplicar ahora mismo: el fijado tal cual, o el equivalente de los euros sobre el
+// patrimonio total (como mucho 100 %). null si no tiene objetivo o no hay patrimonio.
+export function objetivoEfectivoPct(o: Pick<ObjetivoCartera, 'objetivoPct' | 'objetivoEur'>, total: number): number | null {
+  if (o.objetivoPct !== null) return o.objetivoPct;
+  if (o.objetivoEur === null || total <= 0) return null;
+  return round2(Math.min(100, (o.objetivoEur / total) * 100));
+}
+
+// Patrimonio total que reparten las unidades (base de los %).
+export function totalCartera(unidades: UnidadCartera[]): number {
+  return round2(unidades.reduce((s, u) => s + u.valor, 0));
 }
 
 export const CLAVE_BLOQUE_LIQUIDEZ = 'bloque:liquidez';
@@ -119,16 +136,18 @@ export interface DesviacionCartera {
 // conoce el nombre, se omite (no hay nada que enseñar).
 export function desviacionesCartera(unidades: UnidadCartera[], objetivos: ObjetivoCartera[]): DesviacionCartera[] {
   const porClave = new Map(unidades.map((u) => [u.clave, u]));
+  const total = totalCartera(unidades);
   const resultado: DesviacionCartera[] = [];
   for (const o of objetivos) {
-    if (o.objetivoPct === null) continue;
+    const objetivoPct = objetivoEfectivoPct(o, total);
+    if (objetivoPct === null) continue;
     const unidad = porClave.get(o.clave);
     const nombre = unidad?.nombre ?? NOMBRE_BLOQUE[o.clave];
     if (!nombre) continue;
     const pct = unidad?.pct ?? 0;
-    const estado = estadoObjetivo(pct, o.objetivoPct);
+    const estado = estadoObjetivo(pct, objetivoPct);
     if (estado === 'en_rango') continue;
-    resultado.push({ clave: o.clave, nombre, pct, objetivoPct: o.objetivoPct, margen: margenObjetivo(o.objetivoPct), estado });
+    resultado.push({ clave: o.clave, nombre, pct, objetivoPct, margen: margenObjetivo(objetivoPct), estado });
   }
   // Las mas desviadas primero.
   return resultado.sort((a, b) => Math.abs(b.pct - b.objetivoPct) - Math.abs(a.pct - a.objetivoPct));
@@ -152,5 +171,17 @@ export function parsearPorcentaje(texto: string): number | null {
   if (limpio === '') return null;
   const n = Number(limpio);
   if (!Number.isFinite(n) || n < 0 || n > 100) return NaN;
+  return round2(n);
+}
+
+// Importe en euros escrito a mano: "6000", "6.000", "6000,50", "6.000,50 €". null si esta
+// vacio; NaN si no es un numero valido o es negativo.
+export function parsearEuros(texto: string): number | null {
+  let limpio = texto.trim().replace(/€/g, '').replace(/\s/g, '');
+  if (limpio === '') return null;
+  if (limpio.includes(',')) limpio = limpio.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(limpio)) limpio = limpio.replace(/\./g, ''); // puntos de miles
+  const n = Number(limpio);
+  if (!Number.isFinite(n) || n < 0) return NaN;
   return round2(n);
 }

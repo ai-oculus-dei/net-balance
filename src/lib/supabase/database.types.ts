@@ -248,6 +248,7 @@ export interface ObjetivoCarteraFila {
   clave: string;
   etiqueta: 'nucleo' | 'satelite' | null;
   objetivo_pct: number | null;
+  objetivo_eur?: number | null; // migracion 0022
   created_at: string;
   updated_at: string;
 }

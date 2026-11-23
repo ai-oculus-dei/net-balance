@@ -11,7 +11,9 @@ import {
   ETIQUETA_CARTERA,
   estadoObjetivo,
   margenObjetivo,
+  objetivoEfectivoPct,
   pesoPorEtiqueta,
+  totalCartera,
   type ObjetivoCartera,
   type UnidadCartera,
 } from '../../lib/finance/objetivosCartera';
@@ -65,20 +67,23 @@ export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme,
   const [detalleAbierto, setDetalleAbierto] = useState(false);
   const objetivoPorClave = useMemo(() => new Map(objetivos.map((o) => [o.clave, o])), [objetivos]);
 
+  const total = useMemo(() => totalCartera(unidades), [unidades]);
+
   const filas = useMemo(
     () =>
       unidades.map((u, i) => {
         const o = objetivoPorClave.get(u.clave);
-        const objetivo = o?.objetivoPct ?? null;
+        const objetivo = o ? objetivoEfectivoPct(o, total) : null;
         return {
           ...u,
           color: colorCategorico(i, theme),
           etiqueta: o?.etiqueta ?? null,
           objetivo,
+          objetivoEur: o?.objetivoEur ?? null,
           estado: objetivo === null ? null : estadoObjetivo(u.pct, objetivo),
         };
       }),
-    [unidades, objetivoPorClave, theme]
+    [unidades, objetivoPorClave, theme, total]
   );
 
   const sumaObjetivos = filas.reduce((s, f) => s + (f.objetivo ?? 0), 0);
@@ -230,7 +235,9 @@ export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme,
                     <span className="block font-mono text-[11px] text-muted mt-0.5">
                       {f.objetivo === null
                         ? 'sin objetivo'
-                        : `obj ${pct(f.objetivo)} ±${formatearImporte(margenObjetivo(f.objetivo), 1)}`}
+                        : f.objetivoEur !== null
+                          ? `obj ${formatearImporte(f.objetivoEur, 0)} € ≈ ${pct(f.objetivo)} ±${formatearImporte(margenObjetivo(f.objetivo), 1)}`
+                          : `obj ${pct(f.objetivo)} ±${formatearImporte(margenObjetivo(f.objetivo), 1)}`}
                       {f.esBloque ? ` · ${f.numActivos} activos` : ''}
                     </span>
                   </span>
@@ -258,6 +265,7 @@ export function RepartoCarteraCard({ unidades, objetivos, loading, error, theme,
           <ObjetivoCarteraForm
             unidad={editando}
             inicial={objetivoPorClave.get(editando.clave)}
+            totalPatrimonio={total}
             onSubmit={async (o) => {
               await onGuardar(o);
               setEditando(null);

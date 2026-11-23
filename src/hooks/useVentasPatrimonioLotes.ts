@@ -10,7 +10,7 @@ export function useVentasPatrimonioLotes() {
   const [error, setError] = useState<string | null>(null);
 
   const recargar = useCallback(() => {
-    setLoading(true);
+    // Sin setLoading(true): en recargas se mantienen los datos anteriores (ver useObjetivosCartera).
     setError(null);
     return fetchVentasPatrimonioLotes()
       .then(setVentasLotes)

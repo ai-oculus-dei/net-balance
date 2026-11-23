@@ -32,6 +32,7 @@ export function FondoEmergenciaCard({ valor, objetivo, loading, onGuardar }: Fon
   const completo = progreso !== null && progreso >= 100;
 
   return (
+    <>
     <Card onClick={() => setEditando(true)} className="cursor-pointer">
       <div className="flex items-center justify-between gap-3 mb-3">
         <CardTitle icon={<IconEscudo />}>{NOMBRE_FONDO_EMERGENCIA}</CardTitle>
@@ -54,7 +55,10 @@ export function FondoEmergenciaCard({ valor, objetivo, loading, onGuardar }: Fon
           </div>
         </>
       )}
+    </Card>
 
+    {/* Fuera de la tarjeta: los eventos de React atraviesan los portales, y un toque en el fondo
+        de la hoja (que la cierra) llegaria a la tarjeta y la volveria a abrir. */}
       <Modal open={editando} onClose={() => setEditando(false)} title={NOMBRE_FONDO_EMERGENCIA}>
         {editando && (
           <FormularioObjetivo
@@ -73,7 +77,7 @@ export function FondoEmergenciaCard({ valor, objetivo, loading, onGuardar }: Fon
           />
         )}
       </Modal>
-    </Card>
+    </>
   );
 }
 
@@ -88,7 +92,8 @@ function FormularioObjetivo({
   onSubmit: (objetivoEur: number | null) => Promise<void>;
   onCancel: () => void;
 }) {
-  const [texto, setTexto] = useState(inicial !== null ? formatearImporte(inicial, inicial % 1 === 0 ? 0 : 2) : '');
+  // Sin separador de miles: es lo que se va a seguir editando a mano.
+  const [texto, setTexto] = useState(inicial !== null ? String(inicial).replace('.', ',') : '');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const objetivoEur = parsearEuros(texto);
@@ -130,7 +135,10 @@ function FormularioObjetivo({
         <p className="notice">
           <span>
             {valor >= objetivoEur ? (
-              <>Fondo completo: te sobran <span className="font-mono text-fg">{eur(valor - objetivoEur)}</span>.</>
+              <>
+                Fondo completo: tienes <span className="font-mono text-fg">{eur(valor - objetivoEur)}</span> por encima del
+                objetivo.
+              </>
             ) : (
               <>
                 Te faltan <span className="font-mono text-fg">{eur(objetivoEur - valor)}</span> para completarlo.

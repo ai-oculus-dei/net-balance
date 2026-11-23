@@ -188,13 +188,25 @@ export function parsearPorcentaje(texto: string): number | null {
   return round2(n);
 }
 
-// Importe en euros escrito a mano: "6000", "6.000", "6000,50", "6.000,50 €". null si esta
-// vacio; NaN si no es un numero valido o es negativo.
+// Importe en euros escrito a mano. La app muestra los importes en formato "6,000.50" (coma de
+// miles), pero el teclado del iPhone en español escribe coma decimal, asi que se aceptan los dos:
+// "6000", "6,000", "6.000", "6,000.50", "6.000,50", "6000,5", "6000.5". Con los dos separadores,
+// el ultimo es el decimal; con uno solo, si va seguido de grupos de exactamente 3 cifras es de
+// miles, y si no, decimal. null si esta vacio; NaN si no es un numero valido o es negativo.
 export function parsearEuros(texto: string): number | null {
   let limpio = texto.trim().replace(/€/g, '').replace(/\s/g, '');
   if (limpio === '') return null;
-  if (limpio.includes(',')) limpio = limpio.replace(/\./g, '').replace(',', '.');
-  else if (/^\d{1,3}(\.\d{3})+$/.test(limpio)) limpio = limpio.replace(/\./g, ''); // puntos de miles
+  const ultimaComa = limpio.lastIndexOf(',');
+  const ultimoPunto = limpio.lastIndexOf('.');
+  if (ultimaComa >= 0 && ultimoPunto >= 0) {
+    const decimal = ultimaComa > ultimoPunto ? ',' : '.';
+    const miles = decimal === ',' ? '.' : ',';
+    limpio = limpio.split(miles).join('').replace(decimal, '.');
+  } else if (ultimaComa >= 0 || ultimoPunto >= 0) {
+    const sep = ultimaComa >= 0 ? ',' : '.';
+    const esMiles = new RegExp(`^\\d{1,3}(\\${sep}\\d{3})+$`).test(limpio);
+    limpio = esMiles ? limpio.split(sep).join('') : limpio.replace(',', '.');
+  }
   const n = Number(limpio);
   if (!Number.isFinite(n) || n < 0) return NaN;
   return round2(n);

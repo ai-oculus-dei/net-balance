@@ -167,6 +167,14 @@ describe('objetivo en euros (dinamico)', () => {
     expect(d).toEqual([{ clave: 'activo:x|', nombre: 's1', pct: 20, objetivoPct: 60, margen: 5, estado: 'por_debajo' }]);
   });
 
+  it('parsearEuros acepta el formato de la app (coma de miles) y la coma decimal del iPhone', () => {
+    expect(parsearEuros('6,000')).toBe(6000); // como lo muestra la app
+    expect(parsearEuros('6,000.50')).toBe(6000.5);
+    expect(parsearEuros('1,234,567')).toBe(1234567);
+    expect(parsearEuros('6000,5')).toBe(6000.5); // teclado del iPhone en español
+    expect(parsearEuros('1,5')).toBe(1.5);
+  });
+
   it('parsearEuros acepta puntos de miles y coma decimal', () => {
     expect(parsearEuros('6000')).toBe(6000);
     expect(parsearEuros('6.000')).toBe(6000);

@@ -29,7 +29,8 @@ const pct = (v: number, d = 1) => `${formatearImporte(v, d)} %`;
 const eur = (v: number) => `${formatearImporte(v, 0)} €`;
 
 function textoInicial(o: ObjetivoCartera | undefined): string {
-  if (o?.objetivoEur != null) return formatearImporte(o.objetivoEur, o.objetivoEur % 1 === 0 ? 0 : 2);
+  // Sin separador de miles: es lo que se va a seguir editando a mano.
+  if (o?.objetivoEur != null) return String(o.objetivoEur).replace('.', ',');
   if (o?.objetivoPct != null) return String(o.objetivoPct).replace('.', ',');
   return '';
 }

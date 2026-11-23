@@ -10,8 +10,11 @@ export function useObjetivosCartera() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // `loading` solo es true en la PRIMERA carga. En las recargas (p.ej. tras guardar un objetivo)
+  // se siguen mostrando los datos anteriores hasta que llegan los nuevos: si se cambiaban por un
+  // "Cargando", la tarjeta de reparto y el aviso de arriba encogian la pagina justo mientras se
+  // cerraba el formulario, y al restaurar el scroll la pagina quedaba mucho mas abajo.
   const recargar = useCallback(() => {
-    setLoading(true);
     setError(null);
     return fetchObjetivosCartera()
       .then(setObjetivos)

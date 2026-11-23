@@ -5,9 +5,10 @@ import { agruparPorActivo, claveActivo, claveCuenta, round2 } from './patrimonio
 // Objetivos de cartera (etiqueta nucleo/satelite + % objetivo)
 //
 // Se fijan por "unidad de cartera" (ver supabase/migrations/0021_objetivos_cartera.sql):
-//   - un bloque con toda la liquidez y renta fija,
+//   - un bloque con toda la liquidez (cuentas y fondos monetarios) = Fondo de Emergencia,
 //   - un bloque con todos los fondos indexados de renta variable,
-//   - y cada uno del resto de activos (stocks, ETFs, cripto, commodities) por separado.
+//   - y cada uno del resto de activos (stocks, ETFs, fondos indexados RF, cripto, commodities)
+//     por separado.
 // ============================================================
 
 export type EtiquetaCartera = 'nucleo' | 'satelite';
@@ -48,7 +49,6 @@ const TIPOS_LIQUIDEZ = new Set<TipoPosicionPatrimonio>([
   'cuenta_remunerada',
   'cuenta_ahorro',
   'fondo_monetario',
-  'fondo_indexado_rf',
 ]);
 
 const NOMBRE_BLOQUE: Record<string, string> = {
@@ -75,7 +75,7 @@ export interface UnidadCartera {
 
 export const NOMBRE_FONDO_EMERGENCIA = NOMBRE_BLOQUE[CLAVE_BLOQUE_LIQUIDEZ];
 
-// Valor del Fondo de Emergencia: toda la liquidez y renta fija (bloque:liquidez). Va aparte del
+// Valor del Fondo de Emergencia: toda la liquidez, cuentas y fondos monetarios (bloque:liquidez). Va aparte del
 // reparto de cartera, con su propio objetivo en euros (ver FondoEmergenciaCard).
 export function valorFondoEmergencia(posicionesActivas: PosicionPatrimonio[], hoy: Date = new Date()): number {
   return round2(
@@ -85,8 +85,8 @@ export function valorFondoEmergencia(posicionesActivas: PosicionPatrimonio[], ho
   );
 }
 
-// Unidades con valor positivo, de mayor a menor peso. El Fondo de Emergencia (liquidez y renta
-// fija) queda fuera: el % es sobre el resto del patrimonio, lo que de verdad se reparte entre
+// Unidades con valor positivo, de mayor a menor peso. El Fondo de Emergencia (cuentas y fondos
+// monetarios) queda fuera: el % es sobre el resto del patrimonio, lo que de verdad se reparte entre
 // inversiones.
 export function unidadesCartera(posicionesActivas: PosicionPatrimonio[], hoy: Date = new Date()): UnidadCartera[] {
   const activos = agruparPorActivo(posicionesActivas, hoy).filter((a) => claveUnidad(a) !== CLAVE_BLOQUE_LIQUIDEZ);

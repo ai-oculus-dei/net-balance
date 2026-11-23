@@ -15,7 +15,7 @@ import {
 } from '../../lib/finance/objetivosCartera';
 
 interface FondoEmergenciaCardProps {
-  valor: number; // lo que hay ahora en liquidez y renta fija
+  valor: number; // lo que hay ahora en cuentas y fondos monetarios
   objetivo: ObjetivoCartera | undefined; // fila de bloque:liquidez (se usa su objetivoEur)
   loading: boolean;
   onGuardar: (objetivo: ObjetivoCartera) => Promise<void>;
@@ -23,7 +23,7 @@ interface FondoEmergenciaCardProps {
 
 const eur = (v: number) => `${formatearImporte(v, 0)} €`;
 
-// Barra de progreso del Fondo de Emergencia: lo que hay en liquidez y renta fija frente a su
+// Barra de progreso del Fondo de Emergencia: lo que hay en cuentas y fondos monetarios frente a su
 // objetivo en euros. Tocar la tarjeta abre el formulario para fijar ese objetivo.
 export function FondoEmergenciaCard({ valor, objetivo, loading, onGuardar }: FondoEmergenciaCardProps) {
   const [editando, setEditando] = useState(false);
@@ -115,7 +115,7 @@ function FormularioObjetivo({
     // La tarjeta de detras abre este formulario al tocarla: los toques aqui no deben llegarle.
     <form onSubmit={handleSubmit} onClick={(e) => e.stopPropagation()} className="flex flex-col gap-4">
       <p className="text-sm text-muted">
-        Cuentas corrientes, remuneradas, de ahorro, fondos monetarios y renta fija. Ahora tienes{' '}
+        Cuentas corrientes, remuneradas, de ahorro y fondos monetarios. Ahora tienes{' '}
         <span className="font-mono text-fg">{eur(valor)}</span>.
       </p>
       <Input

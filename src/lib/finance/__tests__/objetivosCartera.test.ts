@@ -38,15 +38,16 @@ function posicion(o: Partial<PosicionPatrimonio> & { id: string; tipo: TipoPosic
 }
 
 describe('claveUnidad', () => {
-  it('agrupa liquidez y renta fija en un bloque, y los indexados RV en otro', () => {
-    for (const tipo of ['cuenta_corriente', 'cuenta_remunerada', 'cuenta_ahorro', 'fondo_monetario', 'fondo_indexado_rf'] as const) {
+  it('agrupa la liquidez en un bloque (Fondo de Emergencia), y los indexados RV en otro', () => {
+    for (const tipo of ['cuenta_corriente', 'cuenta_remunerada', 'cuenta_ahorro', 'fondo_monetario'] as const) {
       expect(claveUnidad({ tipo, ticker: null, mercado: null, nombre: 'x' })).toBe(CLAVE_BLOQUE_LIQUIDEZ);
     }
     expect(claveUnidad({ tipo: 'fondo_indexado_rv', ticker: 'IWDA', mercado: null, nombre: 'x' })).toBe(CLAVE_BLOQUE_INDEXADOS_RV);
   });
 
-  it('cada stock, ETF, cripto o commodity va por separado', () => {
+  it('cada stock, ETF, fondo indexado RF, cripto o commodity va por separado', () => {
     expect(claveUnidad({ tipo: 'stock', ticker: 'AAPL', mercado: 'NASDAQ', nombre: 'Apple' })).toBe('activo:aapl|nasdaq');
+    expect(claveUnidad({ tipo: 'fondo_indexado_rf', ticker: 'IE00B1', mercado: null, nombre: 'Bonos' })).toBe('activo:ie00b1|');
     expect(claveUnidad({ tipo: 'etf', ticker: 'VWCE.DE', mercado: null, nombre: 'V' })).not.toBe(
       claveUnidad({ tipo: 'etf', ticker: 'SXR8.DE', mercado: null, nombre: 'S' })
     );

@@ -213,6 +213,9 @@
   .seg.sm button { padding: 4px 10px; font-size: 12px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
   .seg.full { display: flex; width: 100%; }
   .seg.full button { flex: 1 1 0; }
+  /* A todo el ancho los botones ya se reparten el sitio: sin relleno lateral para que quepan
+     muchos (p.ej. los 7 periodos 1W...ALL a 360 px). */
+  .seg.sm.full button { padding-left: 2px; padding-right: 2px; min-width: 0; }
   /* Variantes de color para el elemento activo (Gasto / Ingreso) */
   .seg button.on.tone-bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, var(--card-solid)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--bad) 45%, transparent); }
   .seg button.on.tone-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, var(--card-solid)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ok) 45%, transparent); }

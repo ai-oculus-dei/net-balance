@@ -5,8 +5,9 @@ const hoy = new Date(2026, 10, 19, 15, 30); // 19 nov 2026
 
 describe('fechaInicioRango', () => {
   it('cuenta hacia atras desde hoy', () => {
-    expect(fechaInicioRango('1D', hoy)).toBe('2026-11-18');
     expect(fechaInicioRango('1W', hoy)).toBe('2026-11-12');
+    expect(fechaInicioRango('YTD', hoy)).toBe('2026-01-01');
+    expect(fechaInicioRango('ALL', hoy) < '1900-01-01').toBe(true);
     expect(fechaInicioRango('1M', hoy)).toBe('2026-10-19');
     expect(fechaInicioRango('6M', hoy)).toBe('2026-05-19');
     expect(fechaInicioRango('1Y', hoy)).toBe('2025-11-19');
@@ -59,6 +60,19 @@ describe('eje temporal', () => {
 
   it('con un solo dia devuelve una sola marca', () => {
     const t = timestampDia('2026-11-19');
-    expect(ticksEje(t, t, '1D')).toEqual([t]);
+    expect(ticksEje(t, t, '1W')).toEqual([t]);
+  });
+
+  it('en YTD y ALL la escala depende de lo que cubren los datos', () => {
+    const t = timestampDia('2026-11-19');
+    expect(formatoEjeRango('ALL', timestampDia('2023-01-01'), t)(t)).toBe('2026');
+    expect(formatoEjeRango('YTD', timestampDia('2026-01-01'), t)(t)).toMatch(/^nov 26$/);
+    expect(formatoEjeRango('YTD', timestampDia('2026-01-01'), timestampDia('2026-01-20'))(t)).toMatch(/^19 nov$/);
+    expect(ticksEje(timestampDia('2026-01-01'), t, 'YTD', 4)).toEqual([
+      timestampDia('2026-01-01'),
+      timestampDia('2026-04-01'),
+      timestampDia('2026-07-01'),
+      timestampDia('2026-10-01'),
+    ]);
   });
 });

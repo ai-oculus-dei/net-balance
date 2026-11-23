@@ -7,7 +7,9 @@ import { IconActividad, IconArchivar, IconCapas } from '../components/icons/UiIc
 import { Modal } from '../components/ui/Modal';
 import { TarjetaGrafico } from '../components/charts/TarjetaGrafico';
 import { PantallaCompletaGrafico } from '../components/charts/PantallaCompletaGrafico';
-import { SerieTemporalLineasChart } from '../components/charts/SerieTemporalLineasChart';
+import { GraficoTemporal } from '../components/charts/GraficoTemporal';
+import { SelectorRango } from '../components/charts/SelectorRango';
+import { RANGO_POR_DEFECTO, type RangoTemporal } from '../lib/finance/rangosTemporales';
 import { PatrimonioTotalCard } from '../components/patrimonio/PatrimonioTotalCard';
 import { PatrimonioPnLCard } from '../components/patrimonio/PatrimonioPnLCard';
 import { RepartoCarteraCard } from '../components/patrimonio/RepartoCarteraCard';
@@ -75,6 +77,7 @@ export function PatrimonioPage() {
   const [modoPnL, setModoPnL] = useState<ModoPnL>(preferencias.patrimonioModoPnL);
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>(preferencias.patrimonioFiltroTipo);
   const [orden, setOrden] = useState<Orden>(preferencias.patrimonioOrden);
+  const [rangoHistorico, setRangoHistorico] = useState<RangoTemporal>(RANGO_POR_DEFECTO);
 
   const posicionesActivas = useMemo(() => posiciones.filter((p) => p.activa), [posiciones]);
   const activos = useMemo(() => agruparPorActivo(posicionesActivas), [posicionesActivas]);
@@ -186,15 +189,17 @@ export function PatrimonioPage() {
       <TarjetaGrafico
         titulo="Histórico del patrimonio"
         icono={<IconActividad />}
+        acciones={<SelectorRango value={rangoHistorico} onChange={setRangoHistorico} />}
         render={(altura) =>
           loading ? (
             <Cargando />
           ) : serieTotal.length === 0 ? (
             <p className="empty">Todavía no hay histórico.</p>
           ) : (
-            <SerieTemporalLineasChart
-              datos={serieTotal}
+            <GraficoTemporal
+              puntos={serieTotal}
               lineas={[{ id: 'total', colorIndex: 0, etiqueta: 'Total' }]}
+              rango={rangoHistorico}
               theme={theme}
               altura={altura}
             />

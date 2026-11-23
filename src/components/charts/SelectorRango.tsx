@@ -7,7 +7,7 @@ interface SelectorRangoProps {
   full?: boolean;
 }
 
-// Selector de periodo tipo broker: 1D · 1W · 1M · 6M · 1Y · 5Y.
+// Selector de periodo tipo broker: 1W · 1M · 6M · YTD · 1Y · 5Y · ALL.
 export function SelectorRango({ value, onChange, full = true }: SelectorRangoProps) {
   return (
     <Segmented

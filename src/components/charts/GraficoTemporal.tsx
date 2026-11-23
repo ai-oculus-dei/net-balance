@@ -46,7 +46,7 @@ interface GraficoTemporalProps {
 const formatoEuros = (v: number) => `${formatearImporte(v)} €`;
 
 // Serie temporal diaria con eje X de fechas real (escala de tiempo, no categorias) y filtro de
-// rango tipo broker (1D, 1W, 1M, 6M, 1Y, 5Y).
+// rango tipo broker (1W, 1M, 6M, YTD, 1Y, 5Y, ALL).
 export function GraficoTemporal({
   puntos,
   lineas,
@@ -74,7 +74,7 @@ export function GraficoTemporal({
 
   const min = datos[0].t;
   const max = datos[datos.length - 1].t;
-  const formatoEje = formatoEjeRango(rango);
+  const formatoEje = formatoEjeRango(rango, min, max);
   const unaSola = lineas.length === 1;
   const colorUnica = unaSola ? colorCategorico(lineas[0].colorIndex, theme) : undefined;
   const colorMarcas = 'var(--violet)';

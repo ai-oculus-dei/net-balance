@@ -155,8 +155,8 @@ describe('historicoTotalPorDia', () => {
       historico('b', '2026-01-01', 40),
     ]);
     expect(puntos).toEqual([
-      { mes: '01 ene', valores: { total: 130 } },
-      { mes: '02 ene', valores: { total: 150 } },
+      { fecha: '2026-01-01', mes: '01 ene', valores: { total: 130 } },
+      { fecha: '2026-01-02', mes: '02 ene', valores: { total: 150 } },
     ]);
   });
 
@@ -173,7 +173,7 @@ describe('historicoTotalPorDia', () => {
     const hoy = new Date(2026, 0, 1);
 
     const puntos = historicoTotalPorDia(historicoPlano, posiciones, precios, [], hoy);
-    expect(puntos).toEqual([{ mes: '01 ene', valores: { total: 160 } }]); // 100 (cuenta) + 2x30 (accion)
+    expect(puntos).toEqual([{ fecha: '2026-01-01', mes: '01 ene', valores: { total: 160 } }]); // 100 (cuenta) + 2x30 (accion)
   });
 });
 

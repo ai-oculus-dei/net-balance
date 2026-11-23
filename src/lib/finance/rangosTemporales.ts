@@ -1,23 +1,25 @@
 import { toIsoDate } from './fechas';
 
-// Rangos tipicos de los graficos de un broker. Los datos de patrimonio son DIARIOS (un valor
-// por dia, sin intradia), asi que "1D" muestra ayer y hoy: la variacion del ultimo dia.
-export type RangoTemporal = '1D' | '1W' | '1M' | '6M' | '1Y' | '5Y';
+// Rangos tipicos de los graficos de un broker. Los datos son DIARIOS (un valor por dia, sin
+// intradia), asi que no hay 1D. YTD = desde el 1 de enero de este año; ALL = todo el historico.
+export type RangoTemporal = '1W' | '1M' | '6M' | 'YTD' | '1Y' | '5Y' | 'ALL';
 
-export const RANGOS_TEMPORALES: RangoTemporal[] = ['1D', '1W', '1M', '6M', '1Y', '5Y'];
+export const RANGOS_TEMPORALES: RangoTemporal[] = ['1W', '1M', '6M', 'YTD', '1Y', '5Y', 'ALL'];
 
 export const RANGO_POR_DEFECTO: RangoTemporal = '6M';
 
 // Primer dia (inclusive, "YYYY-MM-DD") que entra en el rango contando hacia atras desde `hoy`.
+// En ALL, una fecha anterior a cualquier dato.
 export function fechaInicioRango(rango: RangoTemporal, hoy: Date = new Date()): string {
+  if (rango === 'ALL') return '0000-01-01';
   const a = hoy.getFullYear();
   const m = hoy.getMonth();
   const d = hoy.getDate();
   const inicio = {
-    '1D': new Date(a, m, d - 1),
     '1W': new Date(a, m, d - 7),
     '1M': new Date(a, m - 1, d),
     '6M': new Date(a, m - 6, d),
+    YTD: new Date(a, 0, 1),
     '1Y': new Date(a - 1, m, d),
     '5Y': new Date(a - 5, m, d),
   }[rango];
@@ -35,13 +37,28 @@ export function timestampDia(fechaIso: string): number {
   return new Date(a, m - 1, d).getTime();
 }
 
+// Escala del eje X: años, meses o dias. Los rangos fijos la tienen fija; YTD y ALL dependen de
+// cuanto tiempo cubren de verdad los datos (min..max).
+type EscalaEje = 'anio' | 'mes' | 'dia';
+
+function escalaEje(rango: RangoTemporal, min: number, max: number): EscalaEje {
+  if (rango === '5Y') return 'anio';
+  if (rango === '6M' || rango === '1Y') return 'mes';
+  if (rango === '1W' || rango === '1M') return 'dia';
+  const dias = (max - min) / 86_400_000;
+  if (dias > 730) return 'anio';
+  if (dias > 62) return 'mes';
+  return 'dia';
+}
+
 // Etiquetas del eje X segun lo largo del rango: dias para rangos cortos, mes y año para medios,
-// solo año para 5Y.
-export function formatoEjeRango(rango: RangoTemporal): (t: number) => string {
+// solo año para los largos.
+export function formatoEjeRango(rango: RangoTemporal, min = 0, max = 0): (t: number) => string {
+  const escala = escalaEje(rango, min, max);
   return (t: number) => {
     const fecha = new Date(t);
-    if (rango === '5Y') return String(fecha.getFullYear());
-    if (rango === '6M' || rango === '1Y') {
+    if (escala === 'anio') return String(fecha.getFullYear());
+    if (escala === 'mes') {
       const mes = fecha.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
       return `${mes} ${String(fecha.getFullYear()).slice(2)}`;
     }
@@ -57,16 +74,17 @@ function aclarar(ticks: number[], maximo: number): number[] {
 }
 
 // Marcas del eje X dentro de [min, max] (como mucho `maximo`), alineadas con lo que muestra la
-// etiqueta de cada rango para que nunca se repitan: 1 de enero en 5Y (etiqueta = año), dia 1
-// de cada mes en 6M/1Y (etiqueta = mes), y dias repartidos por igual en los rangos cortos.
+// etiqueta de cada rango para que nunca se repitan: 1 de enero con escala de años, dia 1 de
+// cada mes con escala de meses, y dias repartidos por igual en los rangos cortos.
 export function ticksEje(min: number, max: number, rango: RangoTemporal, maximo = 5): number[] {
   if (!Number.isFinite(min) || !Number.isFinite(max)) return [];
   if (max <= min) return [min];
 
-  if (rango === '5Y' || rango === '6M' || rango === '1Y') {
+  const escala = escalaEje(rango, min, max);
+  if (escala !== 'dia') {
     const inicio = new Date(min);
     const ticks: number[] = [];
-    if (rango === '5Y') {
+    if (escala === 'anio') {
       for (let a = inicio.getFullYear(); ; a++) {
         const t = new Date(a, 0, 1).getTime();
         if (t > max) break;

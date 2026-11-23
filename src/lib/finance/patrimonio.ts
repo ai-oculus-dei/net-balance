@@ -328,7 +328,7 @@ export function historicoTotalPorDia(
   preciosHistoricos: PrecioDiarioActivo[] = [],
   ventasLotes: VentaLote[] = [],
   hoy: Date = new Date()
-): PuntoSerieLineas[] {
+): (PuntoSerieLineas & PuntoDiario)[] {
   const idsConTicker = new Set(todasLasPosiciones.filter((p) => p.ticker).map((p) => p.id));
   const porFecha = new Map<string, number>();
 
@@ -346,7 +346,7 @@ export function historicoTotalPorDia(
 
   return Array.from(porFecha.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([fecha, total]) => ({ mes: etiquetaFecha(fecha), valores: { total: round2(total) } }));
+    .map(([fecha, total]) => ({ fecha, mes: etiquetaFecha(fecha), valores: { total: round2(total) } }));
 }
 
 export interface LineaHistoricoPosicion {

@@ -5,6 +5,9 @@ interface ProgressRingProps {
   pct: number | null; // null = sin dato (anillo vacio y "—")
   etiqueta: string; // texto pequeño bajo el porcentaje
   size?: number;
+  // Tramos extra que siguen al principal en el mismo anillo (p.ej. ahorro e inversion despues
+  // del gasto), en % del total. Lo que no quepa hasta el 100 % se recorta.
+  segmentos?: { pct: number; color: string }[];
 }
 
 const R = 46;
@@ -13,12 +16,22 @@ const MARCAS = 60;
 
 // Anillo de progreso: trazo en degradado cian -> violeta con brillo, marcas finas alrededor y el
 // porcentaje en mono en el centro. Por encima del 100 % el anillo pasa a --bad.
-export function ProgressRing({ pct, etiqueta, size = 132 }: ProgressRingProps) {
+export function ProgressRing({ pct, etiqueta, size = 132, segmentos = [] }: ProgressRingProps) {
   const id = `ring-${useId().replace(/:/g, '')}`;
   const pasado = pct !== null && pct > 100;
   const relleno = pct === null ? 0 : Math.min(100, Math.max(0, pct));
   const trazo = pasado ? 'var(--bad)' : `url(#${id})`;
   const brillo = pasado ? 'var(--bad)' : 'var(--cyan)';
+
+  // Cada tramo empieza donde acaba el anterior.
+  let inicio = relleno;
+  const tramos = segmentos.flatMap((s) => {
+    const largo = Math.min(Math.max(0, s.pct), 100 - inicio);
+    if (largo <= 0) return [];
+    const tramo = { inicio, largo, color: s.color };
+    inicio += largo;
+    return [tramo];
+  });
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -48,6 +61,26 @@ export function ProgressRing({ pct, etiqueta, size = 132 }: ProgressRingProps) {
         })}
         <circle cx="60" cy="60" r={R} fill="none" stroke="var(--bg-2)" strokeWidth={8} />
         <circle cx="60" cy="60" r={R} fill="none" stroke="var(--line)" strokeWidth={1} />
+        {/* Debajo del tramo principal: su extremo redondeado queda por encima del inicio del
+            primero, igual que antes. */}
+        {tramos.map((t, i) => (
+          <circle
+            key={i}
+            cx="60"
+            cy="60"
+            r={R}
+            fill="none"
+            stroke={t.color}
+            strokeWidth={8}
+            strokeDasharray={`${(t.largo / 100) * CIRC} ${CIRC}`}
+            strokeDashoffset={-(t.inicio / 100) * CIRC}
+            transform="rotate(-90 60 60)"
+            style={{
+              filter: `drop-shadow(0 0 5px color-mix(in srgb, ${t.color} 55%, transparent))`,
+              transition: 'stroke-dasharray .6s cubic-bezier(.2,.8,.2,1), stroke-dashoffset .6s cubic-bezier(.2,.8,.2,1)',
+            }}
+          />
+        ))}
         {relleno > 0 && (
           <circle
             cx="60"

@@ -60,7 +60,16 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading,
       ) : (
         <>
           <div className="flex items-center gap-4 min-w-0">
-            <ProgressRing pct={pctGastado} etiqueta="del ingreso gastado" size={120} />
+            <ProgressRing
+              pct={pctGastado}
+              etiqueta="del ingreso gastado"
+              size={120}
+              // Despues del gasto: lo ahorrado (verde) y lo invertido (naranja), en % del ingreso real.
+              segmentos={[
+                { pct: tasaAhorro ?? 0, color: 'var(--ok)' },
+                { pct: tasaInversion ?? 0, color: 'var(--sem-orange)' },
+              ]}
+            />
             <div className="@container flex-1 min-w-0 flex flex-col divide-y divide-dashed divide-line [&>*]:py-2 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
               <StatTile
                 align="spread"

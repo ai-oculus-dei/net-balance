@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { AvisoCartera } from './AvisoCartera';
 import { AvisoGastos } from './AvisoGastos';
+import { AvisoClasificacion } from './AvisoClasificacion';
 import { usePreferencias } from '../../lib/preferencias/usePreferencias';
 import { QuickAddButton } from '../movimientos/QuickAddButton';
 import { QuickAddSheet } from '../movimientos/QuickAddSheet';
@@ -113,7 +114,8 @@ export function AppShell() {
       <BottomNav />
 
       <main className="shell flex-1">
-        {preferencias.avisoCartera && <AvisoCartera posicionesActivas={posicionesActivas} loading={loadingPosicionesPatrimonio} />}
+        <AvisoClasificacion />
+        {preferencias.avisoCartera &&<AvisoCartera posicionesActivas={posicionesActivas} loading={loadingPosicionesPatrimonio} />}
         {preferencias.avisoGastos && <AvisoGastos />}
         <VisualizacionesProvider>
           <Outlet />

@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  balancePorSubcategoria,
-  desgloseGastosFijos,
-  desgloseGastoVariable,
-  desgloseIngresoReal,
-  indexarSubcategorias,
-  ingresoRealDelMes,
-} from '../taxonomia';
+import { balancePorSubcategoria, indexarSubcategorias } from '../taxonomia';
 import type { Categoria, Movimiento, Subcategoria } from '../../supabase/database.types';
 
 const categorias: Categoria[] = [
@@ -38,84 +31,6 @@ function mov(subcategoria_id: number, importe: number): Movimiento {
     updated_at: '2026-02-10',
   };
 }
-
-const subcategoriasIngreso: Subcategoria[] = [
-  { id: 1, categoria_id: 1, nombre: 'Salario', es_ingreso_real: true, es_gasto_fijo: false, es_ahorro: false, es_inversion: false, es_traspaso: false, es_ingreso_condicional: false },
-  { id: 2, categoria_id: 1, nombre: 'Ingreso Extra', es_ingreso_real: true, es_gasto_fijo: false, es_ahorro: false, es_inversion: false, es_traspaso: false, es_ingreso_condicional: false },
-  { id: 3, categoria_id: 1, nombre: 'Impuestos', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: false, es_inversion: false, es_traspaso: true, es_ingreso_condicional: true },
-  { id: 4, categoria_id: 1, nombre: 'Ahorro', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: true, es_inversion: false, es_traspaso: true, es_ingreso_condicional: true },
-  { id: 5, categoria_id: 1, nombre: 'Efectivo', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: false, es_inversion: false, es_traspaso: true, es_ingreso_condicional: true },
-  { id: 6, categoria_id: 1, nombre: 'Inversiones', es_ingreso_real: false, es_gasto_fijo: false, es_ahorro: false, es_inversion: true, es_traspaso: true, es_ingreso_condicional: true },
-];
-
-const subcategoriasIngresoPorId = indexarSubcategorias(subcategoriasIngreso);
-
-describe('ingresoRealDelMes', () => {
-  it('suma siempre las subcategorias incondicionales, con signo', () => {
-    const movimientos = [mov(1, 2000), mov(2, 100)];
-    expect(ingresoRealDelMes(movimientos, subcategoriasIngresoPorId)).toBe(2100);
-  });
-
-  it('suma una condicional cuando su balance neto del mes es positivo', () => {
-    const movimientos = [mov(1, 2000), mov(3, 50)];
-    expect(ingresoRealDelMes(movimientos, subcategoriasIngresoPorId)).toBe(2050);
-  });
-
-  it('no resta una condicional cuando su balance neto del mes es negativo', () => {
-    const movimientos = [mov(1, 2000), mov(4, -300)];
-    expect(ingresoRealDelMes(movimientos, subcategoriasIngresoPorId)).toBe(2000);
-  });
-
-  it('combina varias condicionales, cada una evaluada de forma independiente', () => {
-    const movimientos = [mov(1, 2000), mov(4, -300), mov(4, 500), mov(5, 20), mov(6, -100)];
-    // Ahorro: -300 + 500 = 200 (positivo, suma 200). Efectivo: 20 (positivo, suma 20).
-    // Inversiones: -100 (negativo, no suma nada).
-    expect(ingresoRealDelMes(movimientos, subcategoriasIngresoPorId)).toBe(2220);
-  });
-});
-
-describe('desgloseIngresoReal', () => {
-  it('incluye las incondicionales completas y solo las condicionales positivas, sumando el total', () => {
-    const movimientos = [mov(1, 2000), mov(2, 100), mov(4, -300), mov(4, 500), mov(5, 20), mov(6, -100)];
-    const filas = desgloseIngresoReal(movimientos, subcategoriasIngresoPorId);
-    expect(filas).toEqual(
-      expect.arrayContaining([
-        { etiqueta: 'Salario', valor: 2000 },
-        { etiqueta: 'Ingreso Extra', valor: 100 },
-        { etiqueta: 'Ahorro', valor: 200 },
-        { etiqueta: 'Efectivo', valor: 20 },
-      ])
-    );
-    expect(filas.find((f) => f.etiqueta === 'Inversiones')).toBeUndefined();
-    expect(filas.reduce((s, f) => s + f.valor, 0)).toBe(ingresoRealDelMes(movimientos, subcategoriasIngresoPorId));
-  });
-});
-
-describe('desgloseGastosFijos', () => {
-  it('suma el balance neto (con signo invertido) de cada subcategoria de gasto fijo', () => {
-    const movimientos = [mov(10, -800), mov(11, -50), mov(11, 20), mov(20, -40)];
-    const filas = desgloseGastosFijos(movimientos, subcategoriasPorId);
-    // Restaurantes (20) no es gasto fijo: no aparece.
-    expect(filas).toEqual([
-      { etiqueta: 'Alquiler', valor: 800 },
-      { etiqueta: 'Luz', valor: 30 },
-    ]);
-  });
-
-  it('omite una subcategoria de gasto fijo si su balance neto ese mes es 0', () => {
-    const movimientos = [mov(10, -800), mov(11, -50), mov(11, 50)];
-    const filas = desgloseGastosFijos(movimientos, subcategoriasPorId);
-    expect(filas).toEqual([{ etiqueta: 'Alquiler', valor: 800 }]);
-  });
-});
-
-describe('desgloseGastoVariable', () => {
-  it('excluye ademas las subcategorias de gasto fijo', () => {
-    const movimientos = [mov(10, -800), mov(11, -50), mov(20, -40)];
-    const filas = desgloseGastoVariable(movimientos, subcategoriasPorId);
-    expect(filas).toEqual([{ etiqueta: 'Restaurantes', valor: 40 }]);
-  });
-});
 
 describe('balancePorSubcategoria', () => {
   it('solo incluye subcategorias con movimientos, con su neto', () => {

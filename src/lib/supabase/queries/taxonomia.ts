@@ -12,3 +12,9 @@ export async function fetchSubcategorias(): Promise<Subcategoria[]> {
   if (error) throw error;
   return data;
 }
+
+// Unica columna de la taxonomia editable desde la app (ver migracion 0026).
+export async function actualizarClaseGasto(subcategoriaId: number, clase: 'fijo' | 'variable'): Promise<void> {
+  const { error } = await supabase.from('subcategorias').update({ clase_gasto: clase }).eq('id', subcategoriaId);
+  if (error) throw error;
+}

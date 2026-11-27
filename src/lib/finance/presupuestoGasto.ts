@@ -1,4 +1,5 @@
 import type { Categoria, Movimiento, Subcategoria } from '../supabase/database.types';
+import { netoPorBolsa } from './bolsas';
 
 // Objetivos de gasto mensual por grupos (Ajustes -> Objetivos de gasto). Cada linea tiene un
 // importe al mes y las subcategorias de la app cuyo gasto cuenta contra ella (una linea puede
@@ -106,11 +107,8 @@ export function estadoPresupuesto(
   movimientos: Movimiento[],
   usuarioId: string | undefined
 ): EstadoLineaPresupuesto[] {
-  const netoPorSub = new Map<number, number>();
-  for (const m of movimientos) {
-    if (usuarioId && m.usuario_id !== usuarioId) continue;
-    netoPorSub.set(m.subcategoria_id, (netoPorSub.get(m.subcategoria_id) ?? 0) + m.importe);
-  }
+  // Mismo neteo por bolsa que las metricas (ver bolsas.ts).
+  const netoPorSub = netoPorBolsa(movimientos.filter((m) => !usuarioId || m.usuario_id === usuarioId));
   return lineas.map((linea) => {
     const neto = linea.subcategoriaIds.reduce((s, id) => s + (netoPorSub.get(id) ?? 0), 0);
     const gastado = round2(Math.max(0, -neto));

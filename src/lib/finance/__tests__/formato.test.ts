@@ -59,3 +59,12 @@ describe('formatearImporteCorto', () => {
     expect(formatearImporteCorto(66277)).toBe('66.28k');
   });
 });
+
+describe('formatearImporte sin "-0"', () => {
+  it('no pone signo menos a lo que redondeado es cero', () => {
+    expect(formatearImporte(-0)).toBe('0.00');
+    expect(formatearImporte(-0.004)).toBe('0.00');
+    expect(formatearImporte(-0.3, 0)).toBe('0');
+    expect(formatearImporte(-0.005)).toBe('-0.01');
+  });
+});

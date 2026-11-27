@@ -5,29 +5,12 @@ import { Cargando } from '../ui/Spinner';
 import { IconMedidor } from '../icons/UiIcons';
 import { StatTile } from '../ui/StatTile';
 import { claseColorPorSigno } from '../charts/colors';
-import {
-  ahorroTotalDelMes,
-  balanceNetoDelMes,
-  gastoRealTotalDelMes,
-  gastoVariableDelMes,
-  inversionTotalDelMes,
-  margenOperativoDelMes,
-  tasaAhorroDelMes,
-  tasaInversionDelMes,
-} from '../../lib/finance/metricas';
-import {
-  desgloseGastosFijos,
-  desgloseGastoVariable,
-  desgloseIngresoReal,
-  gastosFijosDelMes,
-  ingresoRealDelMes,
-  type DesgloseSubcategoria,
-  type SubcategoriasPorId,
-} from '../../lib/finance/taxonomia';
+import { calcularMetricas, type FilaDesglose } from '../../lib/finance/bolsas';
+import type { SubcategoriasPorId } from '../../lib/finance/taxonomia';
 import { formatearImporte } from '../../lib/finance/formato';
 import type { Movimiento } from '../../lib/supabase/database.types';
 
-function comoFilas(desglose: DesgloseSubcategoria[]) {
+function comoFilas(desglose: FilaDesglose[]) {
   return desglose.map((d) => ({ etiqueta: d.etiqueta, valor: `${formatearImporte(d.valor)} €` }));
 }
 
@@ -58,47 +41,14 @@ interface MetricasCardProps {
 // meses...) y calcula todo a partir de ahi, para poder mostrar el mismo bloque en Inicio
 // (mes en curso) y en Visualizaciones (rango de meses elegido).
 export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading, destacada = false }: MetricasCardProps) {
-  const ingresoReal = useMemo(
-    () => ingresoRealDelMes(movimientos, subcategoriasPorId),
-    [movimientos, subcategoriasPorId]
-  );
-  const gastosFijos = useMemo(
-    () => gastosFijosDelMes(movimientos, subcategoriasPorId),
-    [movimientos, subcategoriasPorId]
-  );
-  const gastoRealTotal = useMemo(
-    () => gastoRealTotalDelMes(movimientos, subcategoriasPorId),
-    [movimientos, subcategoriasPorId]
-  );
-  const gastoVariable = useMemo(() => gastoVariableDelMes(gastoRealTotal, gastosFijos), [gastoRealTotal, gastosFijos]);
-  const balanceNeto = useMemo(() => balanceNetoDelMes(movimientos), [movimientos]);
-  const desgloseIngreso = useMemo(
-    () => comoFilas(desgloseIngresoReal(movimientos, subcategoriasPorId)),
-    [movimientos, subcategoriasPorId]
-  );
-  const desgloseFijos = useMemo(
-    () => comoFilas(desgloseGastosFijos(movimientos, subcategoriasPorId)),
-    [movimientos, subcategoriasPorId]
-  );
-  const desgloseVariable = useMemo(
-    () => comoFilas(desgloseGastoVariable(movimientos, subcategoriasPorId)),
-    [movimientos, subcategoriasPorId]
-  );
-  const ahorroTotal = useMemo(
-    () => ahorroTotalDelMes(movimientos, subcategoriasPorId),
-    [movimientos, subcategoriasPorId]
-  );
-  const inversionTotal = useMemo(
-    () => inversionTotalDelMes(movimientos, subcategoriasPorId),
-    [movimientos, subcategoriasPorId]
-  );
-  const tasaAhorro = useMemo(() => tasaAhorroDelMes(ahorroTotal, ingresoReal), [ahorroTotal, ingresoReal]);
-  const tasaInversion = useMemo(() => tasaInversionDelMes(inversionTotal, ingresoReal), [inversionTotal, ingresoReal]);
-  const margenOperativo = useMemo(() => margenOperativoDelMes(ingresoReal, gastosFijos), [ingresoReal, gastosFijos]);
-
-  // Solo para el anillo: que parte del ingreso real se ha ido en gastos (ambas cifras ya se
-  // muestran justo al lado).
-  const pctGastado = ingresoReal > 0 ? (gastoRealTotal / ingresoReal) * 100 : null;
+  // Todo sale del neteo por bolsa (ver lib/finance/bolsas.ts), igual que el resumen de categorias.
+  const m = useMemo(() => calcularMetricas(movimientos, subcategoriasPorId), [movimientos, subcategoriasPorId]);
+  const desgloseIngreso = useMemo(() => comoFilas(m.desgloseIngreso), [m]);
+  const desgloseFijos = useMemo(() => comoFilas(m.desgloseFijos), [m]);
+  const desgloseVariable = useMemo(() => comoFilas(m.desgloseVariables), [m]);
+  const { ingresoReal, gastosFijos, gastosVariables, gastosTotales, ahorroNeto, inversionNeta, balanceNeto } = m;
+  // pctGastado: solo para el anillo (gastos totales / ingreso real).
+  const { tasaAhorro, tasaInversion, margenTrasFijos, pctGastado } = m;
 
   return (
     <Card glow={destacada}>
@@ -124,7 +74,7 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading,
                 align="spread"
                 size="lg"
                 label="Gastos totales"
-                value={`${formatearImporte(gastoRealTotal)} €`}
+                value={`${formatearImporte(gastosTotales)} €`}
                 colorClassName="text-bad"
               />
               <StatTile
@@ -148,12 +98,12 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading,
             />
             <StatTile
               label="Gastos variables"
-              value={`${formatearImporte(gastoVariable)} €`}
-              colorClassName={claseColorPorSigno(-gastoVariable)}
+              value={`${formatearImporte(gastosVariables)} €`}
+              colorClassName="text-bad"
               desglose={desgloseVariable}
             />
-            <StatTile label="Ahorro total" value={`${formatearImporte(ahorroTotal)} €`} colorClassName={claseColorPorSigno(ahorroTotal)} />
-            <StatTile label="Inversión total" value={`${formatearImporte(inversionTotal)} €`} colorClassName={claseColorPorSigno(inversionTotal)} />
+            <StatTile label="Ahorro neto" value={`${formatearImporte(ahorroNeto)} €`} colorClassName={claseColorPorSigno(ahorroNeto)} />
+            <StatTile label="Inversión neta" value={`${formatearImporte(inversionNeta)} €`} colorClassName={claseColorPorSigno(inversionNeta)} />
             <StatTile
               label="Tasa de ahorro"
               value={tasaAhorro === null ? '—' : `${formatearImporte(tasaAhorro, 0)} %`}
@@ -166,9 +116,9 @@ export function MetricasCard({ titulo, movimientos, subcategoriasPorId, loading,
             />
             <div className="col-span-2">
               <StatTile
-                label="Operating margin"
-                value={margenOperativo === null ? '—' : `${formatearImporte(margenOperativo, 0)} %`}
-                colorClassName={margenOperativo === null ? '' : claseColorPorSigno(margenOperativo)}
+                label="Margen tras fijos"
+                value={margenTrasFijos === null ? '—' : `${formatearImporte(margenTrasFijos, 0)} %`}
+                colorClassName={margenTrasFijos === null ? '' : claseColorPorSigno(margenTrasFijos)}
               />
             </div>
           </div>

@@ -8,6 +8,7 @@ import { IconAjustes } from '../components/layout/NavIcons';
 import { IconDescargar, IconLuna, IconSalir, IconSol, IconUsuario } from '../components/icons/UiIcons';
 import { ExportarForm } from '../components/ajustes/ExportarForm';
 import { PresupuestoGastoCard } from '../components/ajustes/PresupuestoGastoCard';
+import { ClaseGastoCard } from '../components/ajustes/ClaseGastoCard';
 import { AvisosCard, ConfiguracionPorDefectoCard } from '../components/ajustes/PreferenciasCards';
 import { useTheme } from '../lib/theme/useTheme';
 import { useAuth } from '../lib/auth/useAuth';
@@ -51,6 +52,8 @@ export function AjustesPage() {
       <ConfiguracionPorDefectoCard />
 
       <PresupuestoGastoCard />
+
+      <ClaseGastoCard />
 
       <AvisosCard />
 

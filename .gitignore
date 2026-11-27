@@ -26,3 +26,6 @@ supabase/.branches/
 *.njsproj
 *.sln
 *.sw?
+
+# Tests con datos financieros reales: solo en local
+src/**/__tests__/privado/

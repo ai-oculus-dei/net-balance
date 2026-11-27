@@ -43,7 +43,10 @@ export interface Subcategoria {
   es_ahorro: boolean;
   es_inversion: boolean;
   es_traspaso: boolean;
-  es_ingreso_condicional: boolean;
+  es_ingreso_condicional: boolean; // ya no se usa (ver migracion 0026)
+  // Clasificacion de la bolsa de gasto (migracion 0026); null = sin clasificar. Opcional para
+  // no obligar a los datos de prueba a incluirla.
+  clase_gasto?: 'fijo' | 'variable' | null;
 }
 
 export interface Movimiento {

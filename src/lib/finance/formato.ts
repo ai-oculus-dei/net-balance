@@ -2,6 +2,8 @@
 // p.ej. 1,234.56. Se usa la locale 'en-US' solo como motor de formato (coma miles/punto
 // decimales); el resto de la app sigue en español (fechas, textos).
 export function formatearImporte(valor: number, decimales = 2): string {
+  // Lo que redondeado se queda en cero se muestra sin signo ("0.00", no "-0.00").
+  if (Math.abs(valor) < 0.5 / 10 ** decimales) valor = 0;
   return valor.toLocaleString('en-US', { minimumFractionDigits: decimales, maximumFractionDigits: decimales });
 }
 
